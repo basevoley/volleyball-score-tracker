@@ -81,7 +81,7 @@ function ActionButtons({ rallyStage, currentServer, currentPossession, handleAct
   }
 
   const showErrorButton = ['afterServe', 'afterReception', 'afterAttack', 'afterBlock', 'afterDig'].includes(rallyStage);
-  const showPointButton = ['afterServe', 'afterReception', 'afterAttack', 'afterBlock', 'afterDig'].includes(rallyStage);
+  const showPointButton = ['afterServe', 'afterAttack', 'afterBlock'].includes(rallyStage);
 
   return (
     <ActionButtonContainer>
