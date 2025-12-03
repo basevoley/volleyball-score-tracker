@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useCallback, useState } from 'react';
+import React, { useReducer, useEffect, useCallback, useState, useRef } from 'react';
 import styled from 'styled-components';
 import ScoreBoard from './ScoreBoard';
 import RallyControl from './RallyControl';
@@ -100,6 +100,63 @@ const calculateUpdatedStatistics = (currentStats, statsUpdate) => {
   return updatedStats;
 };
 
+// Helper to check and handle game/set end
+const checkAndApplyGameEnd = (state, maxSets, teams) => {
+  const scoreDifference = state.scores.teamA - state.scores.teamB;
+  const isTiebreakerSet = state.setsWon.teamA + state.setsWon.teamB === maxSets - 1;
+  const requiredPoints = isTiebreakerSet ? 15 : 25;
+
+  let newSetsWon = { ...state.setsWon };
+  let newScores = { ...state.scores };
+  let matchEnded = false;
+  let setEnded = false;
+  const newSetScores = [...state.setScores, { teamA: state.scores.teamA, teamB: state.scores.teamB }];
+
+  if (state.winner) {
+    return state;
+  }
+
+  if (state.scores.teamA >= requiredPoints && scoreDifference >= 2) {
+    newSetsWon.teamA += 1;
+    setEnded = true;
+  } else if (state.scores.teamB >= requiredPoints && scoreDifference <= -2) {
+    newSetsWon.teamB += 1;
+    setEnded = true;
+  }
+
+  if (setEnded) {
+    if (newSetsWon.teamA === Math.ceil(maxSets / 2) || newSetsWon.teamB === Math.ceil(maxSets / 2)) {
+      matchEnded = true;
+    }
+    newScores = { teamA: 0, teamB: 0 };
+  }
+
+  if (matchEnded) {
+    const winner = newSetsWon.teamA > newSetsWon.teamB ? "teamA" : "teamB";
+    alert(`${teams[winner]} ha ganado el partido!`);
+    return {
+      ...state,
+      setsWon: newSetsWon,
+      setScores: newSetScores,
+      matchStarted: false,
+      timeouts: { teamA: 0, teamB: 0 },
+      winner,
+      currentServer: null,
+      ballPossession: null,
+    };
+  } else if (setEnded) {
+    return {
+      ...state,
+      scores: newScores,
+      setsWon: newSetsWon,
+      setScores: newSetScores,
+      timeouts: { teamA: 0, teamB: 0 },
+    };
+  } else {
+    return state;
+  }
+};
+
 // --- Reducer and Initial State ---
 
 const initialState = {
@@ -138,20 +195,22 @@ const matchReducer = (state, action) => {
       const matchEvent = action.rallyDiscarded ? { type: 'referee-call', details: { text: 'Se repite el punto' } } : state.matchEvent;
       return { ...state, ballPossession: action.newPossession, matchEvent };
     case 'RALLY_END': {
-      const { winner, statsUpdate, faultingTeam, teams } = action;
+      const { winner, statsUpdate, faultingTeam, teams, maxSets } = action;
       const newScores = {
         ...state.scores,
         [winner]: state.scores[winner] + 1,
       };
       const updatedStatistics = calculateUpdatedStatistics(state.statistics, statsUpdate);
       const matchEvent = faultingTeam ? { type: 'referee-call', details: { text: 'Falta', team: teams[faultingTeam] } } : state.matchEvent;
-      return {
+      const stateAfterRally = {
         ...state,
         scores: newScores,
         statistics: updatedStatistics,
         currentServer: winner,
         matchEvent,
       };
+      // Check if this rally ended a set/match
+      return checkAndApplyGameEnd(stateAfterRally, maxSets, teams);
     }
     case 'TIMEOUT':
       const { teams } = action;
@@ -164,85 +223,32 @@ const matchReducer = (state, action) => {
         matchEvent: { type: 'timeout', details: { text: 'Tiempo muerto', team: teams[action.team] } }
       };
     case 'ADJUST_SCORE':
-      return {
+      const stateAfterAdjust = {
         ...state,
         scores: {
           ...state.scores,
           [action.team]: Math.max(0, state.scores[action.team] + action.adjustment),
         },
       };
+      // Check if adjustment ended a set/match
+      return checkAndApplyGameEnd(stateAfterAdjust, action.maxSets, action.teams);
     case 'UPDATE_SETS_WON':
-      return {
+      const stateAfterSetUpdate = {
         ...state,
         setsWon: {
           ...state.setsWon,
           [action.team]: action.newSetsWon,
         },
       };
-    case 'PROCESS_GAME_END': {
-      const { maxSets, teams, setParentMatchDataCallback } = action;
-      const scoreDifference = state.scores.teamA - state.scores.teamB;
-      const isTiebreakerSet = state.setsWon.teamA + state.setsWon.teamB === maxSets - 1;
-      const requiredPoints = isTiebreakerSet ? 15 : 25;
-
-      let newSetsWon = { ...state.setsWon };
-      let newScores = { ...state.scores };
-      let matchEnded = false;
-      let setEnded = false;
-      const newSetScores = [...state.setScores, { teamA: state.scores.teamA, teamB: state.scores.teamB }];
-
-      if (state.winner) {
-        return state;
-      }
-
-      if (state.scores.teamA >= requiredPoints && scoreDifference >= 2) {
-        newSetsWon.teamA += 1;
-        setEnded = true;
-      } else if (state.scores.teamB >= requiredPoints && scoreDifference <= -2) {
-        newSetsWon.teamB += 1;
-        setEnded = true;
-      }
-
-      if (setEnded) {
-        if (newSetsWon.teamA === Math.ceil(maxSets / 2) || newSetsWon.teamB === Math.ceil(maxSets / 2)) {
-          matchEnded = true;
-        }
-        newScores = { teamA: 0, teamB: 0 };
-      }
-
-      if (matchEnded) {
-        const winner = newSetsWon.teamA > newSetsWon.teamB ? "teamA" : "teamB";
-        alert(`${teams[winner]} ha ganado el partido!`);
-        const newState = {
-          ...state,
-          // scores: newScores,
-          setsWon: newSetsWon,
-          setScores: newSetScores,
-          matchStarted: false,
-          timeouts: { teamA: 0, teamB: 0 },
-          winner,
-          currentServer: null,
-          ballPossession: null,
-        };
-        setParentMatchDataCallback(newState);
-        return newState;
-      } else if (setEnded) {
-        const newState = {
-          ...state,
-          scores: newScores,
-          setsWon: newSetsWon,
-          setScores: newSetScores,
-          timeouts: { teamA: 0, teamB: 0 },
-        };
-        setParentMatchDataCallback(newState);
-        return newState;
-      } else {
-        setParentMatchDataCallback(state);
-        return state;
-      }
-    }
+      // Check if set update ended the match
+      return checkAndApplyGameEnd(stateAfterSetUpdate, action.maxSets, action.teams);
     case 'RESET_MATCH':
       return initialState;
+    case 'CLEAN_MATCH_EVENT':
+      return {
+        ...state,
+        matchEvent: { type: null, details: null },
+      };
     default:
       return state;
   }
@@ -256,50 +262,73 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
   const [rallyStage, setRallyStage] = useState('start'); // Track rally stage
 
 
-  const setParentMatchDataCallback = useCallback((data) => {
-    // Emit the updated match details to the server via the socket
-    if (socket) {
-      socket.emit('matchData', data);
-    }
-    data.matchEvent = {
-      type: null,
-      details: null,
-    }
-    setMatchData(data);
-  }, [setMatchData, socket]);
+  const lastActionRef = useRef(null);
+  const didInitRef = useRef(false);
 
+  const emitToParentAndSocket = useCallback((fullState, skipSocket = false) => {
+    if (socket && !skipSocket) {
+      socket.emit('matchData', fullState);
+    }
+    // Merge full state with existing parent state
+    setMatchData(prev => ({
+      ...prev,
+      ...fullState,
+      matchEvent: { type: null, details: null },
+    }));
+  }, [socket, setMatchData]);
+
+  // Sync parent/socket once per action
   useEffect(() => {
-    dispatch({
-      type: 'PROCESS_GAME_END',
-      maxSets,
-      teams,
-      setParentMatchDataCallback,
-    });
-  }, [maxSets, teams, setParentMatchDataCallback, localMatchData.scores, localMatchData.currentServer, localMatchData.matchEvent]);
-  // }, [localMatchData.scores, localMatchData.setsWon, maxSets, teams, setParentMatchDataCallback, localMatchData.currentServer, localMatchData.timeouts, localMatchData.winner, localMatchData.matchEvent]);
+    if (!didInitRef.current) {
+      didInitRef.current = true;
+      return; // skip initial mount
+    }
+
+    const lastAction = lastActionRef.current;
+    if (!lastAction) return;
+
+    // Skip socket emission for ball possession updates
+    const skipSocket = lastAction.type === 'UPDATE_BALL_POSSESSION';
+
+    // Send full local state to parent and socket
+    emitToParentAndSocket(localMatchData, skipSocket);
+
+    // Clean matchEvent from local state after emission
+    if (localMatchData.matchEvent.type !== null) {
+      dispatch({ type: 'CLEAN_MATCH_EVENT' });
+    }
+
+    lastActionRef.current = null;
+  }, [localMatchData, emitToParentAndSocket]);
 
   const handleStartMatch = () => {
+    lastActionRef.current = { type: 'START_MATCH' };
     dispatch({ type: 'START_MATCH' });
   };
 
   const handleSetCurrentServer = (server) => {
+    lastActionRef.current = { type: 'SET_CURRENT_SERVER' };
     dispatch({ type: 'SET_CURRENT_SERVER', server });
   };
 
   const updateBallPossession = (newPossession, rallyDiscarded = null) => {
+    lastActionRef.current = { type: 'UPDATE_BALL_POSSESSION' };
     dispatch({ type: 'UPDATE_BALL_POSSESSION', newPossession, rallyDiscarded });
   };
 
   const handleRallyEnd = (winner, statsUpdate = {}, faultingTeam = null) => {
-    dispatch({ type: 'RALLY_END', winner, statsUpdate, faultingTeam, teams });
+    lastActionRef.current = { type: 'RALLY_END' };
+    dispatch({ type: 'RALLY_END', winner, statsUpdate, faultingTeam, teams, maxSets });
   };
 
   const handleTimeout = (team) => {
+    lastActionRef.current = { type: 'TIMEOUT' };
     dispatch({ type: 'TIMEOUT', team, teams });
   };
 
   const handleAdjustScore = (team, adjustment) => {
-    dispatch({ type: 'ADJUST_SCORE', team, adjustment });
+    lastActionRef.current = { type: 'ADJUST_SCORE' };
+    dispatch({ type: 'ADJUST_SCORE', team, adjustment, maxSets, teams });
   };
 
   const handleRallyStageChange = (stage) => {
@@ -307,10 +336,13 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
   };
 
   const handleSetsWonChange = (team, newSetsWon) => {
+    lastActionRef.current = { type: 'UPDATE_SETS_WON' };
     dispatch({
       type: 'UPDATE_SETS_WON',
       team,
       newSetsWon,
+      maxSets,
+      teams,
     });
   };
 
