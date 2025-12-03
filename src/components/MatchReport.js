@@ -1,5 +1,6 @@
 import React from 'react';
-import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { pdf } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 // import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFilePdf } from '@fortawesome/free-solid-svg-icons';
@@ -123,21 +124,39 @@ const MatchReportDocument = ({ teams, statistics, setScores }) => (
 const MatchReport = ({ teams, statistics, setScores }) => {
     const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
     const fileName = `${teams.teamA}_vs_${teams.teamB}_${currentDate}.pdf`;
+
+    const handleDownload = async () => {
+        const doc = <MatchReportDocument teams={teams} statistics={statistics} setScores={setScores} />;
+        const blob = await pdf(doc).toBlob();
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     return (
-        <PDFDownloadLink
-            document={<MatchReportDocument teams={teams} statistics={statistics} setScores={setScores} />}
-            fileName={fileName}
-            style={{ textDecoration: "none" }}
+        <button
+            onClick={handleDownload}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '5px 10px',
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer'
+            }}
         >
-            {({ blob, url, loading, error }) => (
-                <button style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-                    {/* <PictureAsPdfIcon style={{ marginRight: '5px' }} /> */}
-                    <FontAwesomeIcon icon={faFilePdf} style={{ marginRight: '5px' }} />
-                    {loading ? 'Cargando...' : 'Descargar PDF'}
-                </button>
-            )}
-        </PDFDownloadLink>
-    )
+            <FontAwesomeIcon icon={faFilePdf} style={{ marginRight: '5px' }} />
+            Descargar PDF
+        </button>
+    );
 };
 
 export default MatchReport;
