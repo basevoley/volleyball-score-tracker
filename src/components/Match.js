@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useCallback, useState, useRef } from 'react';
+import React, { useReducer, useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import ScoreBoard from './ScoreBoard';
 import RallyControl from './RallyControl';
@@ -105,6 +105,12 @@ const calculateUpdatedStatistics = (currentStats, statsUpdate) => {
   return updatedStats;
 };
 
+// Empty stats template (includes computed fields so UI shows initialized values)
+const emptyStats = {
+  teamA: { serve: 0, ace: 0, serveError: 0, reception: 0, receptionError: 0, dig: 0, digError: 0, attack: 0, attackPoint: 0, attackError: 0, block: 0, blockPoint: 0, blockOut: 0, fault: 0, selfErrors: 0, serviceEffectiveness: '0%', receptionEffectiveness: '0%', attackEffectiveness: '0%', defenseEffectiveness: '0%' },
+  teamB: { serve: 0, ace: 0, serveError: 0, reception: 0, receptionError: 0, dig: 0, digError: 0, attack: 0, attackPoint: 0, attackError: 0, block: 0, blockPoint: 0, blockOut: 0, fault: 0, selfErrors: 0, serviceEffectiveness: '0%', receptionEffectiveness: '0%', attackEffectiveness: '0%', defenseEffectiveness: '0%' },
+};
+
 // Helper to check and handle game/set end
 const checkAndApplyGameEnd = (state, maxSets, teams) => {
   const scoreDifference = state.scores.teamA - state.scores.teamB;
@@ -116,6 +122,7 @@ const checkAndApplyGameEnd = (state, maxSets, teams) => {
   let matchEnded = false;
   let setEnded = false;
   const newSetScores = [...state.setScores, { teamA: state.scores.teamA, teamB: state.scores.teamB }];
+  let newSetStats = [...state.setStats];
 
   if (state.winner) {
     return state;
@@ -130,6 +137,13 @@ const checkAndApplyGameEnd = (state, maxSets, teams) => {
   }
 
   if (setEnded) {
+    // Save current set stats before resetting
+    newSetStats.push({
+      setNumber: state.setsWon.teamA + state.setsWon.teamB + 1,
+      scores: { teamA: state.scores.teamA, teamB: state.scores.teamB },
+      statistics: state.currentSetStats,
+    });
+
     if (newSetsWon.teamA === Math.ceil(maxSets / 2) || newSetsWon.teamB === Math.ceil(maxSets / 2)) {
       matchEnded = true;
     }
@@ -143,6 +157,7 @@ const checkAndApplyGameEnd = (state, maxSets, teams) => {
       ...state,
       setsWon: newSetsWon,
       setScores: newSetScores,
+      setStats: newSetStats,
       matchStarted: false,
       timeouts: { teamA: 0, teamB: 0 },
       winner,
@@ -155,6 +170,8 @@ const checkAndApplyGameEnd = (state, maxSets, teams) => {
       scores: newScores,
       setsWon: newSetsWon,
       setScores: newSetScores,
+      setStats: newSetStats,
+      currentSetStats: { ...emptyStats }, // Reset stats for new set
       timeouts: { teamA: 0, teamB: 0 },
     };
   } else {
@@ -167,15 +184,14 @@ const checkAndApplyGameEnd = (state, maxSets, teams) => {
 const initialState = {
   scores: { teamA: 0, teamB: 0 },
   setsWon: { teamA: 0, teamB: 0 },
-  setScores: [], // New state property to store scores at the end of each set
+  setScores: [],
   currentServer: null,
   ballPossession: null,
   matchStarted: false,
   timeouts: { teamA: 0, teamB: 0 },
-  statistics: {
-    teamA: { serve: 0, ace: 0, serveError: 0, reception: 0, receptionError: 0, dig: 0, digError: 0, attack: 0, attackPoint: 0, attackError: 0, block: 0, blockPoint: 0, blockOut: 0, fault: 0 },
-    teamB: { serve: 0, ace: 0, serveError: 0, reception: 0, receptionError: 0, dig: 0, digError: 0, attack: 0, attackPoint: 0, attackError: 0, block: 0, blockPoint: 0, blockOut: 0, fault: 0 },
-  },
+  statistics: { ...emptyStats },
+  currentSetStats: { ...emptyStats },
+  setStats: [], // Array of { setNumber, scores: { teamA, teamB }, statistics: {...} }
   winner: '',
   matchEvent: {
     type: null,
@@ -206,11 +222,13 @@ const matchReducer = (state, action) => {
         [winner]: state.scores[winner] + 1,
       };
       const updatedStatistics = calculateUpdatedStatistics(state.statistics, statsUpdate);
+      const updatedSetStats = calculateUpdatedStatistics(state.currentSetStats, statsUpdate);
       const matchEvent = faultingTeam ? { type: 'referee-call', details: { text: 'Falta', team: teams[faultingTeam] } } : state.matchEvent;
       const stateAfterRally = {
         ...state,
         scores: newScores,
         statistics: updatedStatistics,
+        currentSetStats: updatedSetStats,
         currentServer: winner,
         matchEvent,
       };
@@ -265,25 +283,20 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
   const { teams, teamLogos, maxSets } = matchDetails;
   const [localMatchData, dispatch] = useReducer(matchReducer, matchData || initialState);
   const [rallyStage, setRallyStage] = useState('start'); // Track rally stage
-
-
   const lastActionRef = useRef(null);
   const didInitRef = useRef(false);
+  const [expandedSetIndex, setExpandedSetIndex] = useState(
+    (matchData && matchData.setStats && matchData.setStats.length > 0) ? matchData.setStats.length - 1 : null
+  );
 
-  const emitToParentAndSocket = useCallback((fullState, skipSocket = false) => {
-    if (socket && !skipSocket) {
-      socket.emit('matchData', fullState);
-    }
-    // Merge full state with existing parent state
-    setMatchData(prev => ({
-      ...prev,
-      ...fullState,
-      matchEvent: { type: null, details: null },
-    }));
-  }, [socket, setMatchData]);
 
   // Sync parent/socket once per action
   useEffect(() => {
+    // Keep the per-set accordion focused on the most recent set when setStats changes
+    const len = localMatchData.setStats ? localMatchData.setStats.length : 0;
+    if (len > 0) setExpandedSetIndex(len - 1);
+    else setExpandedSetIndex(null);
+
     if (!didInitRef.current) {
       didInitRef.current = true;
       return; // skip initial mount
@@ -295,8 +308,29 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
     // Skip socket emission for ball possession updates
     const skipSocket = lastAction.type === 'UPDATE_BALL_POSSESSION';
 
-    // Send full local state to parent and socket
-    emitToParentAndSocket(localMatchData, skipSocket);
+    // Prepare payload: during play, only emit currentSetStats; on match end, emit all setStats
+    let socketPayload = { ...localMatchData };
+    if (localMatchData.winner) {
+      // Match ended: send aggregated statistics and all set data
+      socketPayload.statistics = localMatchData.statistics;
+      socketPayload.setStats = localMatchData.setStats;
+    } else {
+      // During play: only send current set stats
+      socketPayload.statistics = localMatchData.currentSetStats;
+      delete socketPayload.setStats;
+    }
+
+    // Send to socket
+    if (socket && !skipSocket) {
+      socket.emit('matchData', socketPayload);
+    }
+    
+    // Merge full state with existing parent state
+    setMatchData(prev => ({
+      ...prev,
+      ...localMatchData,
+      matchEvent: { type: null, details: null },
+    }));
 
     // Clean matchEvent from local state after emission
     if (localMatchData.matchEvent.type !== null) {
@@ -304,7 +338,7 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
     }
 
     lastActionRef.current = null;
-  }, [localMatchData, emitToParentAndSocket]);
+  }, [localMatchData, setMatchData, socket]);
 
   const handleStartMatch = () => {
     lastActionRef.current = { type: 'START_MATCH' };
@@ -404,16 +438,56 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
         </AccordionSummary>
         <AccordionDetails style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <DownloadsContainer>
-            <MatchReport teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} />
-            <MatchExcel teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} />
+            <MatchReport teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} setStats={localMatchData.setStats} />
+            <MatchExcel teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} setStats={localMatchData.setStats} />
           </DownloadsContainer>
-          <Statistics teams={teams} statistics={localMatchData.statistics} />
-          <div>
-            <h3>Marcadores por set</h3>
-            {localMatchData.setScores.map((setScore, index) => (
-              <p key={index}>Set {index + 1}: Team A {setScore.teamA} - Team B {setScore.teamB}</p>
-            ))}
+          <div style={{ marginTop: 12, marginBottom: 8 }}>
+            <Typography variant="h6" style={{ fontWeight: 600, color: '#333' }}>
+              Set {(localMatchData.setsWon.teamA + localMatchData.setsWon.teamB) + 1} - Estadísticas en Vivo
+            </Typography>
           </div>
+          <Statistics teams={teams} statistics={localMatchData.currentSetStats} />
+
+          {localMatchData.setStats && localMatchData.setStats.length > 0 && (
+            <div>
+              <h3>Resumen de sets</h3>
+              {localMatchData.setStats.map((set, index) => (
+                <Accordion
+                  key={index}
+                  expanded={expandedSetIndex === index}
+                  style={{ marginBottom: 8, backgroundColor: '#ffffff', borderRadius: 6, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                  onChange={(e, isExpanded) => setExpandedSetIndex(isExpanded ? index : null)}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />} style={{ backgroundColor: '#f6f6f6', padding: '8px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <div style={{ fontWeight: 700, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span>Set {set.setNumber}:</span>
+                        <span style={{ fontWeight: 600 }}>{teams.teamA}</span>
+                        <span style={{ color: '#666' }}>{set.scores.teamA}</span>
+                        <span style={{ margin: '0 6px' }}>-</span>
+                        <span style={{ fontWeight: 600 }}>{teams.teamB}</span>
+                        <span style={{ color: '#666' }}>{set.scores.teamB}</span>
+                      </div>
+                    </div>
+                  </AccordionSummary>
+                  <AccordionDetails style={{ padding: 12, display: 'block', backgroundColor: '#fff' }}>
+                    <Statistics teams={teams} statistics={set.statistics} />
+                  </AccordionDetails>
+                </Accordion>
+              ))}
+            </div>
+          )}
+
+            <div>
+              <Accordion style={{ marginTop: 12, backgroundColor: '#ffffff', borderRadius: 6, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />} style={{ backgroundColor: '#f6f6f6', padding: '8px 12px' }}>
+                  <Typography style={{ fontWeight: 600 }}>Estadísticas Totales del Partido</Typography>
+                </AccordionSummary>
+                <AccordionDetails style={{ padding: 12, display: 'block', backgroundColor: '#fff' }}>
+                  <Statistics teams={teams} statistics={localMatchData.statistics} />
+                </AccordionDetails>
+              </Accordion>
+            </div>
         </AccordionDetails>
       </Accordion>
     </MatchContainer>
