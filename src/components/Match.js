@@ -5,6 +5,11 @@ import RallyControl from './RallyControl';
 import Statistics from './Statistics';
 import MatchReport from './MatchReport';
 import MatchExcel from './MatchExcel';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import Typography from '@mui/material/Typography';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 // --- Styled Components ---
 
@@ -393,17 +398,24 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
         onSetCurrentServer={handleSetCurrentServer}
         onRallyStageChange={handleRallyStageChange}
       />
-      <DownloadsContainer>
-        <MatchReport teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} />
-        <MatchExcel teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} />
-      </DownloadsContainer>
-      <Statistics teams={teams} statistics={localMatchData.statistics} />
-      <div>
-        <h3>Marcadores por set</h3>
-        {localMatchData.setScores.map((setScore, index) => (
-          <p key={index}>Set {index + 1}: Team A {setScore.teamA} - Team B {setScore.teamB}</p>
-        ))}
-      </div>
+      <Accordion style={{ width: '100%', marginTop: 16 }}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Estadísticas y Descargas</Typography>
+        </AccordionSummary>
+        <AccordionDetails style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <DownloadsContainer>
+            <MatchReport teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} />
+            <MatchExcel teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} />
+          </DownloadsContainer>
+          <Statistics teams={teams} statistics={localMatchData.statistics} />
+          <div>
+            <h3>Marcadores por set</h3>
+            {localMatchData.setScores.map((setScore, index) => (
+              <p key={index}>Set {index + 1}: Team A {setScore.teamA} - Team B {setScore.teamB}</p>
+            ))}
+          </div>
+        </AccordionDetails>
+      </Accordion>
     </MatchContainer>
   );
 }
