@@ -352,7 +352,7 @@ function RallyControl({ teams, currentServer, ballPossession, onRallyEnd, update
           <PreviousActionText>{renderPreviousActionText()}</PreviousActionText>
         </PreviousActionTextContainer>
         <StyledButton onClick={handleUndo} disabled={state.actionHistory.length === 0}>Deshacer acción</StyledButton>
-        <StyledButton onClick={handleDiscardRally} disabled={!currentServer}>Repetir punto</StyledButton>
+        <StyledButton onClick={handleDiscardRally} disabled={state.actionHistory.length === 0}>Repetir punto</StyledButton>
       </UndoContainer>
       <FaultButtons teams={teams} currentServer={currentServer} handleAction={handleAction} />
       <ActionButtons
