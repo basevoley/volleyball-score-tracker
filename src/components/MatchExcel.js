@@ -25,7 +25,7 @@ const stats = [
     { label: "Efectividad de la defensa", key: "defenseEffectiveness" },
 ];
 
-const generateExcel = (teams, statistics, setScores) => {
+const generateExcel = (teams, statistics, setScores, setStats) => {
     const workbook = XLSX.utils.book_new();
 
     // Create statistics sheet
@@ -38,7 +38,7 @@ const generateExcel = (teams, statistics, setScores) => {
         ])
     ];
     const statsSheet = XLSX.utils.aoa_to_sheet(statsData);
-    XLSX.utils.book_append_sheet(workbook, statsSheet, 'Estadísticas');
+    XLSX.utils.book_append_sheet(workbook, statsSheet, 'Estadísticas Totales');
 
     // Create set scores sheet
     const setScoresData = [
@@ -50,7 +50,44 @@ const generateExcel = (teams, statistics, setScores) => {
         ])
     ];
     const setScoresSheet = XLSX.utils.aoa_to_sheet(setScoresData);
-    XLSX.utils.book_append_sheet(workbook, setScoresSheet, 'Set Scores');
+    XLSX.utils.book_append_sheet(workbook, setScoresSheet, 'Puntos por Set');
+
+    // Create per-set statistics sheets and rally evolution sheets
+    if (setStats && setStats.length > 0) {
+      setStats.forEach((set) => {
+        const perSetData = [
+          ['Estadísticas', teams.teamA, teams.teamB],
+          ...stats.map(stat => [
+            stat.label,
+            set.statistics && set.statistics.teamA ? set.statistics.teamA[stat.key] : 'N/A',
+            set.statistics && set.statistics.teamB ? set.statistics.teamB[stat.key] : 'N/A'
+          ])
+        ];
+        const perSetSheet = XLSX.utils.aoa_to_sheet(perSetData);
+        XLSX.utils.book_append_sheet(workbook, perSetSheet, `Set ${set.setNumber}`);
+
+        // Create rally evolution sheet for this set
+        const rallyEvolutionData = [
+          ['Rally #', teams.teamA, teams.teamB, 'Evento'],
+          ...set.history.map((entry, idx) => [
+            idx + 1,
+            entry.scores?.teamA ?? 'N/A',
+            entry.scores?.teamB ?? 'N/A',
+            entry.event?.type === 'fault' 
+              ? `Falta (${entry.event.team === 'teamA' ? teams.teamA : teams.teamB})`
+              : entry.event?.type === 'timeout'
+              ? `Tiempo muerto (${entry.event.team === 'teamA' ? teams.teamA : teams.teamB})`
+              : entry.event?.type === 'referee-call'
+              ? 'Llamada del árbitro'
+              : 'Rally'
+          ])
+        ];
+        const rallyEvolutionSheet = XLSX.utils.aoa_to_sheet(rallyEvolutionData);
+        // Auto-fit columns (set reasonable widths)
+        rallyEvolutionSheet['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 25 }];
+        XLSX.utils.book_append_sheet(workbook, rallyEvolutionSheet, `Set ${set.setNumber} - Rallies`);
+      });
+    }
 
     // Generate Excel file and trigger download
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
@@ -66,8 +103,8 @@ const generateExcel = (teams, statistics, setScores) => {
     document.body.removeChild(link);
 };
 
-const MatchExcel = ({ teams, statistics, setScores }) => (
-    <button onClick={() => generateExcel(teams, statistics, setScores)} style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+const MatchExcel = ({ teams, statistics, setScores, setStats }) => (
+    <button onClick={() => generateExcel(teams, statistics, setScores, setStats)} style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
         {/* <DescriptionIcon style={{ marginRight: '5px' }} /> */}
         <FontAwesomeIcon icon={faFileExcel} style={{ marginRight: '5px' }} />
         Descargar XLSX
