@@ -10,6 +10,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Customized } from 'recharts';
 
 // --- Styled Components ---
 
@@ -142,6 +143,7 @@ const checkAndApplyGameEnd = (state, maxSets, teams) => {
       setNumber: state.setsWon.teamA + state.setsWon.teamB + 1,
       scores: { teamA: state.scores.teamA, teamB: state.scores.teamB },
       statistics: state.currentSetStats,
+      history: state.currentSetHistory || [],
     });
 
     if (newSetsWon.teamA === Math.ceil(maxSets / 2) || newSetsWon.teamB === Math.ceil(maxSets / 2)) {
@@ -172,6 +174,7 @@ const checkAndApplyGameEnd = (state, maxSets, teams) => {
       setScores: newSetScores,
       setStats: newSetStats,
       currentSetStats: { ...emptyStats }, // Reset stats for new set
+      currentSetHistory: [],
       timeouts: { teamA: 0, teamB: 0 },
     };
   } else {
@@ -191,6 +194,7 @@ const initialState = {
   timeouts: { teamA: 0, teamB: 0 },
   statistics: { ...emptyStats },
   currentSetStats: { ...emptyStats },
+  currentSetHistory: [],
   setStats: [], // Array of { setNumber, scores: { teamA, teamB }, statistics: {...} }
   winner: '',
   matchEvent: {
@@ -224,11 +228,18 @@ const matchReducer = (state, action) => {
       const updatedStatistics = calculateUpdatedStatistics(state.statistics, statsUpdate);
       const updatedSetStats = calculateUpdatedStatistics(state.currentSetStats, statsUpdate);
       const matchEvent = faultingTeam ? { type: 'referee-call', details: { text: 'Falta', team: teams[faultingTeam] } } : state.matchEvent;
+      const newHistoryEntry = {
+        index: (state.currentSetHistory ? state.currentSetHistory.length : 0) + 1,
+        timestamp: Date.now(),
+        scores: newScores,
+        event: faultingTeam ? { type: 'fault', team: faultingTeam } : { type: 'rally', details: statsUpdate },
+      };
       const stateAfterRally = {
         ...state,
         scores: newScores,
         statistics: updatedStatistics,
         currentSetStats: updatedSetStats,
+        currentSetHistory: [...(state.currentSetHistory || []), newHistoryEntry],
         currentServer: winner,
         matchEvent,
       };
@@ -237,21 +248,37 @@ const matchReducer = (state, action) => {
     }
     case 'TIMEOUT':
       const { teams } = action;
+      const newTimeouts = {
+        ...state.timeouts,
+        [action.team]: state.timeouts[action.team] + 1,
+      };
+      const timeoutHistoryEntry = {
+        index: (state.currentSetHistory ? state.currentSetHistory.length : 0) + 1,
+        timestamp: Date.now(),
+        scores: { ...state.scores },
+        event: { type: 'timeout', team: action.team },
+      };
       return {
         ...state,
-        timeouts: {
-          ...state.timeouts,
-          [action.team]: state.timeouts[action.team] + 1,
-        },
+        timeouts: newTimeouts,
+        currentSetHistory: [...(state.currentSetHistory || []), timeoutHistoryEntry],
         matchEvent: { type: 'timeout', details: { text: 'Tiempo muerto', team: teams[action.team] } }
       };
     case 'ADJUST_SCORE':
+      const adjustedScores = {
+        ...state.scores,
+        [action.team]: Math.max(0, state.scores[action.team] + action.adjustment),
+      };
+      const adjustHistoryEntry = {
+        index: (state.currentSetHistory ? state.currentSetHistory.length : 0) + 1,
+        timestamp: Date.now(),
+        scores: adjustedScores,
+        event: { type: 'rally' },
+      };
       const stateAfterAdjust = {
         ...state,
-        scores: {
-          ...state.scores,
-          [action.team]: Math.max(0, state.scores[action.team] + action.adjustment),
-        },
+        scores: adjustedScores,
+        currentSetHistory: [...(state.currentSetHistory || []), adjustHistoryEntry],
       };
       // Check if adjustment ended a set/match
       return checkAndApplyGameEnd(stateAfterAdjust, action.maxSets, action.teams);
@@ -472,6 +499,11 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
                   </AccordionSummary>
                   <AccordionDetails style={{ padding: 12, display: 'block', backgroundColor: '#fff' }}>
                     <Statistics teams={teams} statistics={set.statistics} />
+                    {set.history && set.history.length > 0 && (
+                      <div style={{ marginTop: 12 }}>
+                        <SetTimeline history={set.history} teams={teams} />
+                      </div>
+                    )}
                   </AccordionDetails>
                 </Accordion>
               ))}
@@ -491,6 +523,103 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
         </AccordionDetails>
       </Accordion>
     </MatchContainer>
+  );
+}
+
+// Per-set timeline chart with event labels and optimized mobile layout
+function SetTimeline({ history = [], teams }) {
+  if (!history || history.length === 0) return null;
+  const data = history.map((h, i) => ({
+    rally: i + 1,
+    teamA: h.scores.teamA,
+    teamB: h.scores.teamB,
+    event: h.event,
+    timestamp: h.timestamp,
+  }));
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const p = payload[0].payload;
+    return (
+      <div style={{ background: 'white', border: '1px solid #ccc', padding: 8, fontSize: 12 }}>
+        <div style={{ fontWeight: 700 }}>Rally {label}</div>
+        <div>{teams.teamA}: {p.teamA}</div>
+        <div>{teams.teamB}: {p.teamB}</div>
+        {p.event && p.event.type !== 'rally' && (
+          <div style={{ marginTop: 6 }}><strong>Evento:</strong> {p.event.type}</div>
+        )}
+      </div>
+    );
+  };
+
+  const renderDot = (props) => {
+    const { cx, cy, payload, dataKey } = props;
+    const hasEvent = payload && payload.event && payload.event.type && payload.event.type !== 'rally';
+    const fill = dataKey === 'teamA' ? '#1976d2' : '#d32f2f';
+    return (
+      <circle cx={cx} cy={cy} r={hasEvent ? 5 : 2.5} fill={fill} stroke={hasEvent ? '#333' : 'none'} strokeWidth={1} />
+    );
+  };
+
+  return (
+    <div style={{ width: '100%', height: 180, position: 'relative' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 20, right: 8, left: 6, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="rally" label={{ value: 'Rally', position: 'insideBottomRight', offset: -6 }} tick={{ fontSize: 10 }} />
+          <YAxis width={30} label={{ value: 'Puntos', angle: -90, position: 'insideLeft', offset: 0 }} allowDecimals={false} tick={{ fontSize: 10 }} />
+          <Tooltip content={<CustomTooltip />} />
+          <Line type="monotone" dataKey="teamA" stroke="#1976d2" dot={renderDot} isAnimationActive={false} strokeWidth={2} />
+          <Line type="monotone" dataKey="teamB" stroke="#d32f2f" dot={renderDot} isAnimationActive={false} strokeWidth={2} />
+          <Customized component={(props) => {
+            const { xAxisMap, yAxisMap } = props;
+            if (!xAxisMap || !yAxisMap) return null;
+            const xScale = xAxisMap[0].scale;
+            const yScale = yAxisMap[0].scale;
+            return (
+              <g>
+                {data.map((d, i) => {
+                  if (!d.event || d.event.type === 'rally') return null;
+                  const eventTeam = d.event.team;
+                  const isFault = d.event.type === 'fault';
+                  const isTimeout = d.event.type === 'timeout';
+                  if (!isFault && !isTimeout) return null;
+                  const cx = xScale(d.rally);
+                  const cy = eventTeam === 'teamA' ? yScale(d.teamA) - 14 : yScale(d.teamB) + 14;
+                  const color = eventTeam === 'teamA' ? '#1976d2' : '#d32f2f';
+                  const eventLabel = isFault ? `Fault (${teams[eventTeam]})` : `Timeout (${teams[eventTeam]})`;
+                  
+                  return (
+                    <g key={`evt-${i}`} style={{ cursor: 'pointer' }}>
+                      {/* SVG symbol: X for fault, rect/lines for timeout */}
+                      {isFault ? (
+                        // Fault: X symbol
+                        <>
+                          <line x1={cx - 5} y1={cy - 5} x2={cx + 5} y2={cy + 5} stroke={color} strokeWidth={2} />
+                          <line x1={cx + 5} y1={cy - 5} x2={cx - 5} y2={cy + 5} stroke={color} strokeWidth={2} />
+                        </>
+                      ) : (
+                        // Timeout: two vertical lines (pause icon)
+                        <>
+                          <rect x={cx - 4} y={cy - 5} width={2} height={10} fill={color} />
+                          <rect x={cx + 2} y={cy - 5} width={2} height={10} fill={color} />
+                        </>
+                      )}
+                      {/* Tooltip on hover (using title for native browser tooltip) */}
+                      <title>{eventLabel}</title>
+                      {/* Invisible larger rect for easier hover target on mobile */}
+                      <rect x={cx - 8} y={cy - 8} width={16} height={16} fill="transparent" pointerEvents="all" style={{ cursor: 'pointer' }}>
+                        <title>{eventLabel}</title>
+                      </rect>
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
