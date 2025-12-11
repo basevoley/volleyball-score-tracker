@@ -2,15 +2,8 @@ import React, { useReducer, useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import ScoreBoard from './ScoreBoard';
 import RallyControl from './RallyControl';
-import Statistics from './Statistics';
-import MatchReport from './MatchReport';
-import MatchExcel from './MatchExcel';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import Typography from '@mui/material/Typography';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Customized } from 'recharts';
+import StatsHandler from './StatsHandler';
+
 
 // --- Styled Components ---
 
@@ -50,13 +43,6 @@ const TimeoutButton = styled.button`
   &:hover:enabled { background-color: #e68900; }
 `;
 
-const DownloadsContainer = styled.div`
-display: flex;
-    align-items: end;
-    justify-content: end;
-    width: 100%;
-    padding-top: 20px;
-`;
 // --- Helper Functions ---
 const calculatePercentage = (value, total) => {
   if (total === 0) return '0%';
@@ -176,6 +162,9 @@ const checkAndApplyGameEnd = (state, maxSets, teams) => {
       currentSetStats: { ...emptyStats }, // Reset stats for new set
       currentSetHistory: [],
       timeouts: { teamA: 0, teamB: 0 },
+      matchStarted: false,
+      currentServer: null,
+      ballPossession: null,
     };
   } else {
     return state;
@@ -346,12 +335,13 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
       socketPayload.statistics = localMatchData.currentSetStats;
       delete socketPayload.setStats;
     }
+    delete socketPayload.currentSetHistory; // No need to send full history
 
     // Send to socket
     if (socket && !skipSocket) {
       socket.emit('matchData', socketPayload);
     }
-    
+
     // Merge full state with existing parent state
     setMatchData(prev => ({
       ...prev,
@@ -459,167 +449,8 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
         onSetCurrentServer={handleSetCurrentServer}
         onRallyStageChange={handleRallyStageChange}
       />
-      <Accordion style={{ width: '100%', marginTop: 16 }}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Estadísticas y Descargas</Typography>
-        </AccordionSummary>
-        <AccordionDetails style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <DownloadsContainer>
-            <MatchReport teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} setStats={localMatchData.setStats} />
-            <MatchExcel teams={teams} statistics={localMatchData.statistics} setScores={localMatchData.setScores} setStats={localMatchData.setStats} />
-          </DownloadsContainer>
-          <div style={{ marginTop: 12, marginBottom: 8 }}>
-            <Typography variant="h6" style={{ fontWeight: 600, color: '#333' }}>
-              Set {(localMatchData.setsWon.teamA + localMatchData.setsWon.teamB) + 1} - Estadísticas en Vivo
-            </Typography>
-          </div>
-          <Statistics teams={teams} statistics={localMatchData.currentSetStats} />
-
-          {localMatchData.setStats && localMatchData.setStats.length > 0 && (
-            <div>
-              <h3>Resumen de sets</h3>
-              {localMatchData.setStats.map((set, index) => (
-                <Accordion
-                  key={index}
-                  expanded={expandedSetIndex === index}
-                  style={{ marginBottom: 8, backgroundColor: '#ffffff', borderRadius: 6, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-                  onChange={(e, isExpanded) => setExpandedSetIndex(isExpanded ? index : null)}
-                >
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />} style={{ backgroundColor: '#f6f6f6', padding: '8px 12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                      <div style={{ fontWeight: 700, display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span>Set {set.setNumber}:</span>
-                        <span style={{ fontWeight: 600 }}>{teams.teamA}</span>
-                        <span style={{ color: '#666' }}>{set.scores.teamA}</span>
-                        <span style={{ margin: '0 6px' }}>-</span>
-                        <span style={{ fontWeight: 600 }}>{teams.teamB}</span>
-                        <span style={{ color: '#666' }}>{set.scores.teamB}</span>
-                      </div>
-                    </div>
-                  </AccordionSummary>
-                  <AccordionDetails style={{ padding: 12, display: 'block', backgroundColor: '#fff' }}>
-                    <Statistics teams={teams} statistics={set.statistics} />
-                    {set.history && set.history.length > 0 && (
-                      <div style={{ marginTop: 12 }}>
-                        <SetTimeline history={set.history} teams={teams} />
-                      </div>
-                    )}
-                  </AccordionDetails>
-                </Accordion>
-              ))}
-            </div>
-          )}
-
-            <div>
-              <Accordion style={{ marginTop: 12, backgroundColor: '#ffffff', borderRadius: 6, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} style={{ backgroundColor: '#f6f6f6', padding: '8px 12px' }}>
-                  <Typography style={{ fontWeight: 600 }}>Estadísticas Totales del Partido</Typography>
-                </AccordionSummary>
-                <AccordionDetails style={{ padding: 12, display: 'block', backgroundColor: '#fff' }}>
-                  <Statistics teams={teams} statistics={localMatchData.statistics} />
-                </AccordionDetails>
-              </Accordion>
-            </div>
-        </AccordionDetails>
-      </Accordion>
+      <StatsHandler teams={teams} localMatchData={localMatchData} expandedSetIndex={expandedSetIndex} setExpandedSetIndex={setExpandedSetIndex}></StatsHandler>
     </MatchContainer>
-  );
-}
-
-// Per-set timeline chart with event labels and optimized mobile layout
-function SetTimeline({ history = [], teams }) {
-  if (!history || history.length === 0) return null;
-  const data = history.map((h, i) => ({
-    rally: i + 1,
-    teamA: h.scores.teamA,
-    teamB: h.scores.teamB,
-    event: h.event,
-    timestamp: h.timestamp,
-  }));
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload || payload.length === 0) return null;
-    const p = payload[0].payload;
-    return (
-      <div style={{ background: 'white', border: '1px solid #ccc', padding: 8, fontSize: 12 }}>
-        <div style={{ fontWeight: 700 }}>Rally {label}</div>
-        <div>{teams.teamA}: {p.teamA}</div>
-        <div>{teams.teamB}: {p.teamB}</div>
-        {p.event && p.event.type !== 'rally' && (
-          <div style={{ marginTop: 6 }}><strong>Evento:</strong> {p.event.type}</div>
-        )}
-      </div>
-    );
-  };
-
-  const renderDot = (props) => {
-    const { cx, cy, payload, dataKey } = props;
-    const hasEvent = payload && payload.event && payload.event.type && payload.event.type !== 'rally';
-    const fill = dataKey === 'teamA' ? '#1976d2' : '#d32f2f';
-    return (
-      <circle cx={cx} cy={cy} r={hasEvent ? 5 : 2.5} fill={fill} stroke={hasEvent ? '#333' : 'none'} strokeWidth={1} />
-    );
-  };
-
-  return (
-    <div style={{ width: '100%', height: 180, position: 'relative' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 20, right: 8, left: 6, bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="rally" label={{ value: 'Rally', position: 'insideBottomRight', offset: -6 }} tick={{ fontSize: 10 }} />
-          <YAxis width={30} label={{ value: 'Puntos', angle: -90, position: 'insideLeft', offset: 0 }} allowDecimals={false} tick={{ fontSize: 10 }} />
-          <Tooltip content={<CustomTooltip />} />
-          <Line type="monotone" dataKey="teamA" stroke="#1976d2" dot={renderDot} isAnimationActive={false} strokeWidth={2} />
-          <Line type="monotone" dataKey="teamB" stroke="#d32f2f" dot={renderDot} isAnimationActive={false} strokeWidth={2} />
-          <Customized component={(props) => {
-            const { xAxisMap, yAxisMap } = props;
-            if (!xAxisMap || !yAxisMap) return null;
-            const xScale = xAxisMap[0].scale;
-            const yScale = yAxisMap[0].scale;
-            return (
-              <g>
-                {data.map((d, i) => {
-                  if (!d.event || d.event.type === 'rally') return null;
-                  const eventTeam = d.event.team;
-                  const isFault = d.event.type === 'fault';
-                  const isTimeout = d.event.type === 'timeout';
-                  if (!isFault && !isTimeout) return null;
-                  const cx = xScale(d.rally);
-                  const cy = eventTeam === 'teamA' ? yScale(d.teamA) - 14 : yScale(d.teamB) + 14;
-                  const color = eventTeam === 'teamA' ? '#1976d2' : '#d32f2f';
-                  const eventLabel = isFault ? `Fault (${teams[eventTeam]})` : `Timeout (${teams[eventTeam]})`;
-                  
-                  return (
-                    <g key={`evt-${i}`} style={{ cursor: 'pointer' }}>
-                      {/* SVG symbol: X for fault, rect/lines for timeout */}
-                      {isFault ? (
-                        // Fault: X symbol
-                        <>
-                          <line x1={cx - 5} y1={cy - 5} x2={cx + 5} y2={cy + 5} stroke={color} strokeWidth={2} />
-                          <line x1={cx + 5} y1={cy - 5} x2={cx - 5} y2={cy + 5} stroke={color} strokeWidth={2} />
-                        </>
-                      ) : (
-                        // Timeout: two vertical lines (pause icon)
-                        <>
-                          <rect x={cx - 4} y={cy - 5} width={2} height={10} fill={color} />
-                          <rect x={cx + 2} y={cy - 5} width={2} height={10} fill={color} />
-                        </>
-                      )}
-                      {/* Tooltip on hover (using title for native browser tooltip) */}
-                      <title>{eventLabel}</title>
-                      {/* Invisible larger rect for easier hover target on mobile */}
-                      <rect x={cx - 8} y={cy - 8} width={16} height={16} fill="transparent" pointerEvents="all" style={{ cursor: 'pointer' }}>
-                        <title>{eventLabel}</title>
-                      </rect>
-                    </g>
-                  );
-                })}
-              </g>
-            );
-          }} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
   );
 }
 
