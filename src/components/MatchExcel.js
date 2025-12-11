@@ -1,6 +1,6 @@
 import React from 'react';
-import * as XLSX from 'xlsx';
-// import DescriptionIcon from '@mui/icons-material/Description';
+import ExcelJS from 'exceljs'; // Importar ExcelJS
+import { saveAs } from 'file-saver'; // Importar saveAs para descargas en el navegador
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileExcel } from '@fortawesome/free-solid-svg-icons';
 
@@ -25,87 +25,101 @@ const stats = [
     { label: "Efectividad de la defensa", key: "defenseEffectiveness" },
 ];
 
-const generateExcel = (teams, statistics, setScores, setStats) => {
-    const workbook = XLSX.utils.book_new();
+// Hacer la función asíncrona para usar workbook.xlsx.writeBuffer()
+const generateExcel = async (teams, statistics, setScores, setStats) => {
+    const workbook = new ExcelJS.Workbook();
+    // Opcional: añadir propiedades al libro de trabajo
+    workbook.creator = 'Tu Aplicación';
+    workbook.created = new Date();
 
-    // Create statistics sheet
-    const statsData = [
-        ['Estadísticas', teams.teamA, teams.teamB],
-        ...stats.map(stat => [
-            stat.label,
-            statistics.teamA[stat.key],
-            statistics.teamB[stat.key]
-        ])
+    // --- Hoja de Estadísticas Totales ---
+    const statsSheet = workbook.addWorksheet('Estadísticas Totales');
+    statsSheet.columns = [
+        { header: 'Estadísticas', key: 'label', width: 30 },
+        { header: teams.teamA, key: 'teamA', width: 15 },
+        { header: teams.teamB, key: 'teamB', width: 15 }
     ];
-    const statsSheet = XLSX.utils.aoa_to_sheet(statsData);
-    XLSX.utils.book_append_sheet(workbook, statsSheet, 'Estadísticas Totales');
 
-    // Create set scores sheet
-    const setScoresData = [
-        ['Set', teams.teamA, teams.teamB],
-        ...setScores.map((setScore, index) => [
-            `Set ${index + 1}`,
-            setScore.teamA,
-            setScore.teamB
-        ])
+    const statsData = stats.map(stat => ({
+        label: stat.label,
+        teamA: statistics.teamA[stat.key],
+        teamB: statistics.teamB[stat.key]
+    }));
+    statsSheet.addRows(statsData);
+
+    // --- Hoja de Puntos por Set ---
+    const setScoresSheet = workbook.addWorksheet('Puntos por Set');
+    setScoresSheet.columns = [
+        { header: 'Set', key: 'set', width: 10 },
+        { header: teams.teamA, key: 'teamA', width: 12 },
+        { header: teams.teamB, key: 'teamB', width: 12 }
     ];
-    const setScoresSheet = XLSX.utils.aoa_to_sheet(setScoresData);
-    XLSX.utils.book_append_sheet(workbook, setScoresSheet, 'Puntos por Set');
 
-    // Create per-set statistics sheets and rally evolution sheets
+    const setScoresData = setScores.map((setScore, index) => ({
+        set: `Set ${index + 1}`,
+        teamA: setScore.teamA,
+        teamB: setScore.teamB
+    }));
+    setScoresSheet.addRows(setScoresData);
+
+    // --- Hojas por Set y Evolución de Rallies ---
     if (setStats && setStats.length > 0) {
-      setStats.forEach((set) => {
-        const perSetData = [
-          ['Estadísticas', teams.teamA, teams.teamB],
-          ...stats.map(stat => [
-            stat.label,
-            set.statistics && set.statistics.teamA ? set.statistics.teamA[stat.key] : 'N/A',
-            set.statistics && set.statistics.teamB ? set.statistics.teamB[stat.key] : 'N/A'
-          ])
-        ];
-        const perSetSheet = XLSX.utils.aoa_to_sheet(perSetData);
-        XLSX.utils.book_append_sheet(workbook, perSetSheet, `Set ${set.setNumber}`);
+        setStats.forEach((set) => {
+            // Hoja de estadísticas por set
+            const perSetSheet = workbook.addWorksheet(`Set ${set.setNumber}`);
+            perSetSheet.columns = [
+                { header: 'Estadísticas', key: 'label', width: 30 },
+                { header: teams.teamA, key: 'teamA', width: 15 },
+                { header: teams.teamB, key: 'teamB', width: 15 }
+            ];
+            const perSetData = stats.map(stat => ({
+                label: stat.label,
+                teamA: set.statistics && set.statistics.teamA ? set.statistics.teamA[stat.key] : 'N/A',
+                teamB: set.statistics && set.statistics.teamB ? set.statistics.teamB[stat.key] : 'N/A'
+            }));
+            perSetSheet.addRows(perSetData);
 
-        // Create rally evolution sheet for this set
-        const rallyEvolutionData = [
-          ['Rally #', teams.teamA, teams.teamB, 'Evento'],
-          ...set.history.map((entry, idx) => [
-            idx + 1,
-            entry.scores?.teamA ?? 'N/A',
-            entry.scores?.teamB ?? 'N/A',
-            entry.event?.type === 'fault' 
-              ? `Falta (${entry.event.team === 'teamA' ? teams.teamA : teams.teamB})`
-              : entry.event?.type === 'timeout'
-              ? `Tiempo muerto (${entry.event.team === 'teamA' ? teams.teamA : teams.teamB})`
-              : entry.event?.type === 'referee-call'
-              ? 'Llamada del árbitro'
-              : 'Rally'
-          ])
-        ];
-        const rallyEvolutionSheet = XLSX.utils.aoa_to_sheet(rallyEvolutionData);
-        // Auto-fit columns (set reasonable widths)
-        rallyEvolutionSheet['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 25 }];
-        XLSX.utils.book_append_sheet(workbook, rallyEvolutionSheet, `Set ${set.setNumber} - Rallies`);
-      });
+            // Hoja de evolución de rallies
+            const rallyEvolutionSheet = workbook.addWorksheet(`Set ${set.setNumber} - Rallies`);
+            rallyEvolutionSheet.columns = [
+                { header: 'Rally #', key: 'rally', width: 10 },
+                { header: teams.teamA, key: 'teamA', width: 12 },
+                { header: teams.teamB, key: 'teamB', width: 12 },
+                { header: 'Evento', key: 'event', width: 25 }
+            ];
+            const rallyEvolutionData = set.history.map((entry, idx) => {
+                let eventDescription = 'Rally';
+                if (entry.event?.type === 'fault') {
+                    eventDescription = `Falta (${entry.event.team === 'teamA' ? teams.teamA : teams.teamB})`;
+                } else if (entry.event?.type === 'timeout') {
+                    eventDescription = `Tiempo muerto (${entry.event.team === 'teamA' ? teams.teamA : teams.teamB})`;
+                } else if (entry.event?.type === 'referee-call') {
+                    eventDescription = 'Llamada del árbitro';
+                }
+                return {
+                    rally: idx + 1,
+                    teamA: entry.scores?.teamA ?? 'N/A',
+                    teamB: entry.scores?.teamB ?? 'N/A',
+                    event: eventDescription
+                };
+            });
+            rallyEvolutionSheet.addRows(rallyEvolutionData);
+        });
     }
 
-    // Generate Excel file and trigger download
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    // Generar el archivo Excel como buffer y descargarlo
+    const excelBuffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-    // Create a link element to trigger the download
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
     const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-    link.download = `${teams.teamA}_vs_${teams.teamB}_${currentDate}.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const fileName = `${teams.teamA}_vs_${teams.teamB}_${currentDate}.xlsx`;
+    
+    // Usar file-saver para la descarga
+    saveAs(blob, fileName);
 };
 
 const MatchExcel = ({ teams, statistics, setScores, setStats }) => (
     <button onClick={() => generateExcel(teams, statistics, setScores, setStats)} style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-        {/* <DescriptionIcon style={{ marginRight: '5px' }} /> */}
         <FontAwesomeIcon icon={faFileExcel} style={{ marginRight: '5px' }} />
         Descargar XLSX
     </button>);
