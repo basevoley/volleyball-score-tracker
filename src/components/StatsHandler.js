@@ -97,11 +97,11 @@ function StatsHandler(props) {
             backgroundColor: '#fff'
           }}>
             <Statistics teams={props.teams} statistics={set.statistics} />
-            {set.history && set.history.length > 0 && <div style={{
-              marginTop: 12
-            }}>
+            {set.history && set.history.length > 0 && 
+            <div style={{ marginTop: 12 }}>
               <PointEvolutionChart history={set.history} teams={props.teams} />
-            </div>}
+            </div>
+            }
           </AccordionDetails>
         </Accordion>)}
       </div>}

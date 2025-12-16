@@ -99,74 +99,60 @@ const emptyStats = {
 };
 
 // Helper to check and handle game/set end
-const checkAndApplyGameEnd = (state, maxSets, teams) => {
-  const scoreDifference = state.scores.teamA - state.scores.teamB;
-  const isTiebreakerSet = state.setsWon.teamA + state.setsWon.teamB === maxSets - 1;
-  const requiredPoints = isTiebreakerSet ? 15 : 25;
-
-  let newSetsWon = { ...state.setsWon };
-  let newScores = { ...state.scores };
-  let matchEnded = false;
-  let setEnded = false;
-  const newSetScores = [...state.setScores, { teamA: state.scores.teamA, teamB: state.scores.teamB }];
-  let newSetStats = [...state.setStats];
-
-  if (state.winner) {
+const checkAndApplyGameEnd = (state, maxSets, teams, latestPointWinner) => {
+  if (state.winner) { 
     return state;
   }
 
-  if (state.scores.teamA >= requiredPoints && scoreDifference >= 2) {
-    newSetsWon.teamA += 1;
-    setEnded = true;
-  } else if (state.scores.teamB >= requiredPoints && scoreDifference <= -2) {
-    newSetsWon.teamB += 1;
-    setEnded = true;
-  }
+  const scoreDifference = Math.abs(state.scores.teamA - state.scores.teamB);
+  const isTiebreakerSet = state.setsWon.teamA + state.setsWon.teamB === maxSets - 1;
+  const requiredPoints = isTiebreakerSet ? 15 : 25;
+  let newSetsWon = { ...state.setsWon };
+  let newSetStats = [...state.setStats];
 
-  if (setEnded) {
-    // Save current set stats before resetting
+  let setEnded = ((state.scores[latestPointWinner] >= requiredPoints) && scoreDifference >= 2);
+  let matchEnded = false;
+  if(setEnded) {
+    newSetsWon[latestPointWinner] += 1;
+    
+    const newSetScores = [...state.setScores, { teamA: state.scores.teamA, teamB: state.scores.teamB }];
     newSetStats.push({
       setNumber: state.setsWon.teamA + state.setsWon.teamB + 1,
       scores: { teamA: state.scores.teamA, teamB: state.scores.teamB },
       statistics: state.currentSetStats,
       history: state.currentSetHistory || [],
     });
-
-    if (newSetsWon.teamA === Math.ceil(maxSets / 2) || newSetsWon.teamB === Math.ceil(maxSets / 2)) {
-      matchEnded = true;
+    
+    matchEnded = newSetsWon[latestPointWinner] === Math.ceil(maxSets / 2);
+    if (matchEnded) {
+      alert(`${teams[latestPointWinner]} ha ganado el partido!`);
+      return {
+        ...state,
+        setsWon: newSetsWon,
+        setScores: newSetScores,
+        setStats: newSetStats,
+        timeouts: { teamA: 0, teamB: 0 },
+        winner: latestPointWinner,
+        matchStarted: false,
+        currentServer: null,
+        ballPossession: null,
+      };
+    }else {
+      return {
+        ...state,
+        scores: { teamA: 0, teamB: 0 },
+        setsWon: newSetsWon,
+        setScores: newSetScores,
+        setStats: newSetStats,
+        currentSetStats: { ...emptyStats }, // Reset stats for new set
+        currentSetHistory: [],
+        timeouts: { teamA: 0, teamB: 0 },
+        matchStarted: false,
+        currentServer: null,
+        ballPossession: null,
+      };
     }
-    newScores = { teamA: 0, teamB: 0 };
-  }
-
-  if (matchEnded) {
-    const winner = newSetsWon.teamA > newSetsWon.teamB ? "teamA" : "teamB";
-    alert(`${teams[winner]} ha ganado el partido!`);
-    return {
-      ...state,
-      setsWon: newSetsWon,
-      setScores: newSetScores,
-      setStats: newSetStats,
-      matchStarted: false,
-      timeouts: { teamA: 0, teamB: 0 },
-      winner,
-      currentServer: null,
-      ballPossession: null,
-    };
-  } else if (setEnded) {
-    return {
-      ...state,
-      scores: newScores,
-      setsWon: newSetsWon,
-      setScores: newSetScores,
-      setStats: newSetStats,
-      currentSetStats: { ...emptyStats }, // Reset stats for new set
-      currentSetHistory: [],
-      timeouts: { teamA: 0, teamB: 0 },
-      matchStarted: false,
-      currentServer: null,
-      ballPossession: null,
-    };
-  } else {
+   } else {
     return state;
   }
 };
@@ -233,7 +219,7 @@ const matchReducer = (state, action) => {
         matchEvent,
       };
       // Check if this rally ended a set/match
-      return checkAndApplyGameEnd(stateAfterRally, maxSets, teams);
+      return checkAndApplyGameEnd(stateAfterRally, maxSets, teams, winner);
     }
     case 'TIMEOUT':
       const { teams } = action;
@@ -270,7 +256,7 @@ const matchReducer = (state, action) => {
         currentSetHistory: [...(state.currentSetHistory || []), adjustHistoryEntry],
       };
       // Check if adjustment ended a set/match
-      return checkAndApplyGameEnd(stateAfterAdjust, action.maxSets, action.teams);
+      return checkAndApplyGameEnd(stateAfterAdjust, action.maxSets, action.teams, action.team);
     case 'UPDATE_SETS_WON':
       const stateAfterSetUpdate = {
         ...state,
@@ -280,7 +266,7 @@ const matchReducer = (state, action) => {
         },
       };
       // Check if set update ended the match
-      return checkAndApplyGameEnd(stateAfterSetUpdate, action.maxSets, action.teams);
+      return checkAndApplyGameEnd(stateAfterSetUpdate, action.maxSets, action.teams, action.team);
     case 'RESET_MATCH':
       return initialState;
     case 'CLEAN_MATCH_EVENT':
@@ -308,10 +294,8 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
 
   // Sync parent/socket once per action
   useEffect(() => {
-    // Keep the per-set accordion focused on the most recent set when setStats changes
-    const len = localMatchData.setStats ? localMatchData.setStats.length : 0;
-    if (len > 0) setExpandedSetIndex(len - 1);
-    else setExpandedSetIndex(null);
+    const lastSet = localMatchData.setStats ? Math.max(localMatchData.setStats.length - 1, 0) : 0;
+    setExpandedSetIndex(null);
 
     if (!didInitRef.current) {
       didInitRef.current = true;
@@ -326,16 +310,17 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
 
     // Prepare payload: during play, only emit currentSetStats; on match end, emit all setStats
     let socketPayload = { ...localMatchData };
-    if (localMatchData.winner) {
-      // Match ended: send aggregated statistics and all set data
-      socketPayload.statistics = localMatchData.statistics;
-      socketPayload.setStats = localMatchData.setStats;
-    } else {
-      // During play: only send current set stats
-      socketPayload.statistics = localMatchData.currentSetStats;
-      delete socketPayload.setStats;
+    if(!localMatchData.matchStarted) {
+      socketPayload.currentSetStats = {...localMatchData.setStats[lastSet]};
+      socketPayload.scores = {...localMatchData.setScores[lastSet] || localMatchData.scores};
+      socketPayload.setScores = localMatchData.setScores.slice(0,-1);
     }
+    delete socketPayload.ballPossession;
+    delete socketPayload.setStats;
     delete socketPayload.currentSetHistory; // No need to send full history
+    if(socketPayload.currentSetStats.history) {
+      delete socketPayload.currentSetStats.history;
+    }
 
     // Send to socket
     if (socket && !skipSocket) {
@@ -360,6 +345,11 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
   const handleStartMatch = () => {
     lastActionRef.current = { type: 'START_MATCH' };
     dispatch({ type: 'START_MATCH' });
+  };
+
+  const handleResetMatch = () => {
+    lastActionRef.current = { type: 'RESET_MATCH' };
+    dispatch({ type: 'RESET_MATCH' });
   };
 
   const handleSetCurrentServer = (server) => {
@@ -405,7 +395,8 @@ function Match({ matchDetails, matchData, setMatchData, socket }) {
   return (
     <MatchContainer>
       <div>
-        <TeamButton onClick={() => handleStartMatch()} disabled={localMatchData.matchStarted} >Iniciar partido</TeamButton>
+        <TeamButton onClick={() => handleStartMatch()} disabled={localMatchData.matchStarted || localMatchData.winner} >Iniciar partido</TeamButton>
+        <TeamButton onClick={() => handleResetMatch()} disabled={!localMatchData.winner} >Reiniciar partido</TeamButton>
       </div>
       <div>
         <TeamButton onClick={() => handleSetCurrentServer('teamA')} disabled={!localMatchData.matchStarted || rallyStage !== 'start'}>Saca Equipo A</TeamButton>
