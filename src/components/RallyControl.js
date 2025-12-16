@@ -47,11 +47,11 @@ const StyledButton = styled.button`
   &:hover:enabled { background-color: #302414ff; }
 `;
 
-const initialState = {
+const getInitialState = (currentServer) => ({
   rallyStage: 'start',
   showConfirmation: false,
   showDiscardConfirmation: false,
-  currentPossession: null,
+  currentPossession: currentServer,
   actionHistory: [],
   statsUpdate: {
     teamA: {
@@ -87,7 +87,7 @@ const initialState = {
       fault: 0,
     },
   },
-};
+});
 
 const actionLabels_sp = {
   serve: 'Saque',
@@ -120,25 +120,35 @@ function reducer(state, action) {
     case 'RESET_STATS':
       return {
         ...state,
-        statsUpdate: {
-          teamA: {
-            serve: 0, ace: 0, serveError: 0, reception: 0, receptionError: 0, dig: 0, digError: 0, attack: 0, attackPoint: 0, attackError: 0, block: 0, blockPoint: 0, blockOut: 0, fault: 0,
-          },
-          teamB: {
-            serve: 0, ace: 0, serveError: 0, reception: 0, receptionError: 0, dig: 0, digError: 0, attack: 0, attackPoint: 0, attackError: 0, block: 0, blockPoint: 0, blockOut: 0, fault: 0,
-          },
-        },
+        statsUpdate: getInitialState(state.currentPossession).statsUpdate,
         actionHistory: [],
         rallyStage: 'start'
       };
+    case 'RESET_ALL':
+      return getInitialState(action.payload);
     default:
       return state;
   }
 }
 
 function RallyControl({ teams, currentServer, ballPossession, onRallyEnd, updateBallPossession, onRallyStageChange }) {
-  const [state, dispatch] = useReducer(reducer, { ...initialState, currentPossession: currentServer });
+  const [state, dispatch] = useReducer(reducer, currentServer, getInitialState);
   const initialPossession = useRef(currentServer);
+  const isFirstRender = useRef(true);
+
+  // Reset state when currentServer changes (new rally/set)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    // Only reset if we're starting fresh (no actions taken yet)
+    if (state.actionHistory.length === 0) {
+      dispatch({ type: 'RESET_ALL', payload: currentServer });
+      initialPossession.current = currentServer;
+    }
+  }, [currentServer, state.actionHistory.length]);
 
   useEffect(() => {
     dispatch({ type: 'SET_POSSESSION', payload: ballPossession });
@@ -231,8 +241,8 @@ function RallyControl({ teams, currentServer, ballPossession, onRallyEnd, update
         } else if (state.rallyStage === 'afterAttack') {
           newStatsUpdate[team].attackPoint += 1;
         }
-        dispatch({ type: 'TOGGLE_CONFIRMATION', payload: true });
         dispatch({ type: 'ADD_ACTION', payload: { action, team, rallyStage: state.rallyStage, previousPossession: state.currentPossession } });
+        dispatch({ type: 'TOGGLE_CONFIRMATION', payload: true });
         break;
       default:
         break;
