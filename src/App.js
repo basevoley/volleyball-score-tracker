@@ -189,6 +189,11 @@ function App() {
       console.log('Message received:', data);
     });
 
+    socketInstance.on('handshake', (data) => {
+      console.log('handshake received:', data);
+      socketInstance.emit('handshake-response', { message: 'Hello from ControlApp!', matchDetails: initialMatchDetails, matchData: initialMatchData, config: initialConfig})
+    });
+
     socketInstance.on('disconnect', () => {
       console.log('Socket.io connection closed');
     });
