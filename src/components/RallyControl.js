@@ -1,8 +1,9 @@
-import React, { useReducer, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import styled from 'styled-components';
 import ActionButtons from './ActionButtons';
 import ConfirmationDialog from './ConfirmationDialog';
 import FaultButtons from './FaultButtons';
+import { useRallyManager } from '../hooks/useRallyManager';
 
 const RallyControlContainer = styled.div`
   width: 100%;
@@ -47,48 +48,6 @@ const StyledButton = styled.button`
   &:hover:enabled { background-color: #302414ff; }
 `;
 
-const getInitialState = (currentServer) => ({
-  rallyStage: 'start',
-  showConfirmation: false,
-  showDiscardConfirmation: false,
-  currentPossession: currentServer,
-  actionHistory: [],
-  statsUpdate: {
-    teamA: {
-      serve: 0,
-      ace: 0,
-      serveError: 0,
-      reception: 0,
-      receptionError: 0,
-      dig: 0,
-      digError: 0,
-      attack: 0,
-      attackPoint: 0,
-      attackError: 0,
-      block: 0,
-      blockPoint: 0,
-      blockOut: 0,
-      fault: 0,
-    },
-    teamB: {
-      serve: 0,
-      ace: 0,
-      serveError: 0,
-      reception: 0,
-      receptionError: 0,
-      dig: 0,
-      digError: 0,
-      attack: 0,
-      attackPoint: 0,
-      attackError: 0,
-      block: 0,
-      blockPoint: 0,
-      blockOut: 0,
-      fault: 0,
-    },
-  },
-});
-
 const actionLabels_sp = {
   serve: 'Saque',
   reception: 'Recepción',
@@ -101,254 +60,55 @@ const actionLabels_sp = {
   error: 'Error',
 }
 
-function reducer(state, action) {
-  switch (action.type) {
-    case 'SET_POSSESSION':
-      return { ...state, currentPossession: action.payload };
-    case 'UPDATE_STATS':
-      return { ...state, statsUpdate: action.payload };
-    case 'ADD_ACTION':
-      return { ...state, actionHistory: [...state.actionHistory, action.payload] };
-    case 'UNDO_ACTION':
-      return { ...state, actionHistory: state.actionHistory.slice(0, -1) };
-    case 'SET_RALLY_STAGE':
-      return { ...state, rallyStage: action.payload };
-    case 'TOGGLE_CONFIRMATION':
-      return { ...state, showConfirmation: action.payload };
-    case 'TOGGLE_DISCARD_CONFIRMATION':
-      return { ...state, showDiscardConfirmation: action.payload };
-    case 'RESET_STATS':
-      return {
-        ...state,
-        statsUpdate: getInitialState(state.currentPossession).statsUpdate,
-        actionHistory: [],
-        rallyStage: 'start'
-      };
-    case 'RESET_ALL':
-      return getInitialState(action.payload);
-    default:
-      return state;
-  }
-}
+function RallyControl({ teams, currentServer, onRallyEnd, updateBallPossession, onRallyStageChange }) {
+  // Create rally manager with possession change callback 
+  const rallyManager = useRallyManager(currentServer, updateBallPossession, onRallyStageChange);
 
-function RallyControl({ teams, currentServer, ballPossession, onRallyEnd, updateBallPossession, onRallyStageChange }) {
-  const [state, dispatch] = useReducer(reducer, currentServer, getInitialState);
-  const initialPossession = useRef(currentServer);
-  const isFirstRender = useRef(true);
+  const {
+    rally,
+    handleAction,
+    undoLastAction,
+    resetRally,
+    discardRally,
+    updateInitialServer,
+    setConfirmation,
+    setDiscardConfirmation,
+    canUndo,
+  } = rallyManager;
 
-  // Reset state when currentServer changes (new rally/set)
+  // Sync currentServer when it changes (new point) 
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
+    if (currentServer !== null) {
+      updateInitialServer(currentServer);
+      resetRally(currentServer);
     }
+  }, [currentServer, updateInitialServer, resetRally]);
 
-    // Only reset if we're starting fresh (no actions taken yet)
-    if (state.actionHistory.length === 0) {
-      dispatch({ type: 'RESET_ALL', payload: currentServer });
-      initialPossession.current = currentServer;
-    }
-  }, [currentServer, state.actionHistory.length]);
 
-  useEffect(() => {
-    dispatch({ type: 'SET_POSSESSION', payload: ballPossession });
-  }, [ballPossession]);
-
-  useEffect(() => {
-    // Update initial possession whenever currentServer changes
-    initialPossession.current = currentServer;
-  }, [currentServer]);
-
-  useEffect(() => {
-    onRallyStageChange(state.rallyStage);
-  }, [state.rallyStage, onRallyStageChange]);
-
-  const handleAction = (action, faultingTeam = null) => {
-    const team = state.currentPossession;
-    const opposingTeam = team === 'teamA' ? 'teamB' : 'teamA';
-    let newStatsUpdate = { ...state.statsUpdate };
-
-    switch (action) {
-      case 'serve':
-        newStatsUpdate[team].serve += 1;
-        dispatch({ type: 'ADD_ACTION', payload: { action, team, rallyStage: state.rallyStage } });
-        dispatch({ type: 'SET_RALLY_STAGE', payload: 'afterServe' });
-        break;
-      case 'reception':
-        newStatsUpdate[opposingTeam].reception += 1;
-        dispatch({ type: 'ADD_ACTION', payload: { action, team: opposingTeam, rallyStage: state.rallyStage } });
-        dispatch({ type: 'SET_POSSESSION', payload: opposingTeam });
-        updateBallPossession(opposingTeam);
-        dispatch({ type: 'SET_RALLY_STAGE', payload: 'afterReception' });
-        break;
-      case 'attack':
-        newStatsUpdate[team].attack += 1;
-        dispatch({ type: 'ADD_ACTION', payload: { action, team, rallyStage: state.rallyStage } });
-        dispatch({ type: 'SET_RALLY_STAGE', payload: 'afterAttack' });
-        break;
-      case 'block':
-        newStatsUpdate[opposingTeam].block += 1;
-        dispatch({ type: 'ADD_ACTION', payload: { action, team: opposingTeam, rallyStage: state.rallyStage } });
-        dispatch({ type: 'SET_POSSESSION', payload: opposingTeam });
-        updateBallPossession(opposingTeam);
-        dispatch({ type: 'SET_RALLY_STAGE', payload: 'afterBlock' });
-        break;
-      case 'continue':
-        newStatsUpdate[team].dig += 1;
-        dispatch({ type: 'ADD_ACTION', payload: { action, team, rallyStage: state.rallyStage } });
-        dispatch({ type: 'SET_RALLY_STAGE', payload: 'afterDig' });
-        break;
-      case 'dig':
-        newStatsUpdate[opposingTeam].dig += 1;
-        if (state.rallyStage === 'afterBlock') {
-          newStatsUpdate[team].attack += 1;
-        }
-        dispatch({ type: 'ADD_ACTION', payload: { action, team: opposingTeam, rallyStage: state.rallyStage } });
-        dispatch({ type: 'SET_POSSESSION', payload: opposingTeam });
-        updateBallPossession(opposingTeam);
-        dispatch({ type: 'SET_RALLY_STAGE', payload: 'afterDig' });
-        break;
-      case 'error':
-        if (state.rallyStage === 'afterServe') {
-          newStatsUpdate[team].serveError += 1;
-        } else if (state.rallyStage === 'afterReception') {
-          newStatsUpdate[team].receptionError += 1;
-        } else if (state.rallyStage === 'afterAttack') {
-          newStatsUpdate[team].attackError += 1;
-        } else if (state.rallyStage === 'afterDig') {
-          newStatsUpdate[team].digError += 1;
-        } else if (state.rallyStage === 'afterBlock') {
-          newStatsUpdate[team].blockOut += 1;
-        }
-        dispatch({ type: 'ADD_ACTION', payload: { action, team, rallyStage: state.rallyStage, previousPossession: state.currentPossession } });
-        dispatch({ type: 'SET_POSSESSION', payload: opposingTeam });
-        updateBallPossession(opposingTeam);
-        dispatch({ type: 'TOGGLE_CONFIRMATION', payload: true });
-        break;
-      case 'fault':
-        newStatsUpdate[faultingTeam].fault += 1;
-        const teamAwarded = faultingTeam === 'teamA' ? 'teamB' : 'teamA';
-        dispatch({ type: 'ADD_ACTION', payload: { action, team: faultingTeam, rallyStage: state.rallyStage, previousPossession: state.currentPossession } });
-        dispatch({ type: 'SET_POSSESSION', payload: teamAwarded });
-        updateBallPossession(teamAwarded);
-        dispatch({ type: 'TOGGLE_CONFIRMATION', payload: true });
-        break;
-      case 'point':
-        if (state.rallyStage === 'afterServe') {
-          newStatsUpdate[team].ace += 1;
-        } else if (state.rallyStage === 'afterBlock') {
-          newStatsUpdate[team].blockPoint += 1;
-        } else if (state.rallyStage === 'afterAttack') {
-          newStatsUpdate[team].attackPoint += 1;
-        }
-        dispatch({ type: 'ADD_ACTION', payload: { action, team, rallyStage: state.rallyStage, previousPossession: state.currentPossession } });
-        dispatch({ type: 'TOGGLE_CONFIRMATION', payload: true });
-        break;
-      default:
-        break;
-    }
-
-    dispatch({ type: 'UPDATE_STATS', payload: newStatsUpdate });
-  };
-
-  const handleUndo = () => {
-    if (state.actionHistory.length === 0) return;
-
-    const lastAction = state.actionHistory[state.actionHistory.length - 1];
-    const { action, team, rallyStage: previousStage, previousPossession } = lastAction;
-    const opposingTeam = team === 'teamA' ? 'teamB' : 'teamA';
-    let newStatsUpdate = { ...state.statsUpdate };
-
-    switch (action) {
-      case 'serve':
-        newStatsUpdate[team].serve -= 1;
-        break;
-      case 'reception':
-        newStatsUpdate[team].reception -= 1;
-        dispatch({ type: 'SET_POSSESSION', payload: opposingTeam });
-        updateBallPossession(opposingTeam);
-        break;
-      case 'attack':
-        newStatsUpdate[team].attack -= 1;
-        break;
-      case 'block':
-        newStatsUpdate[team].block -= 1;
-        dispatch({ type: 'SET_POSSESSION', payload: opposingTeam });
-        updateBallPossession(opposingTeam);
-        break;
-      case 'dig':
-        newStatsUpdate[team].dig -= 1;
-        dispatch({ type: 'SET_POSSESSION', payload: opposingTeam });
-        updateBallPossession(opposingTeam);
-        break;
-      case 'error':
-        if (previousStage === 'afterServe') {
-          newStatsUpdate[team].serveError -= 1;
-        } else if (previousStage === 'afterReception') {
-          newStatsUpdate[team].receptionError -= 1;
-        } else if (previousStage === 'afterAttack') {
-          newStatsUpdate[team].attackError -= 1;
-        } else if (previousStage === 'afterDig') {
-          newStatsUpdate[team].digError -= 1;
-        } else if (previousStage === 'afterBlock') {
-          newStatsUpdate[team].blockOut -= 1;
-        }
-        dispatch({ type: 'SET_POSSESSION', payload: previousPossession || opposingTeam });
-        updateBallPossession(previousPossession || opposingTeam);
-        break;
-      case 'fault':
-        newStatsUpdate[team].fault -= 1;
-        dispatch({ type: 'SET_POSSESSION', payload: previousPossession });
-        updateBallPossession(previousPossession);
-        break;
-      case 'point':
-        if (previousStage === 'afterServe') {
-          newStatsUpdate[team].ace -= 1;
-        } else if (previousStage === 'afterBlock') {
-          newStatsUpdate[team].blockPoint -= 1;
-        } else if (previousStage === 'afterAttack') {
-          newStatsUpdate[team].attackPoint -= 1;
-        }
-        dispatch({ type: 'SET_POSSESSION', payload: previousPossession || team });
-        updateBallPossession(previousPossession || team);
-        break;
-      default:
-        break;
-    }
-
-    dispatch({ type: 'UPDATE_STATS', payload: newStatsUpdate });
-    dispatch({ type: 'UNDO_ACTION' });
-    dispatch({ type: 'SET_RALLY_STAGE', payload: previousStage });
-  };
 
   const handleEndRally = () => {
-    const lastAction = state.actionHistory[state.actionHistory.length - 1];
+    const lastAction = rally.actionHistory[rally.actionHistory.length - 1];
     const faultingTeam = lastAction?.action === 'fault' ? lastAction.team : null;
-    onRallyEnd(state.currentPossession, state.statsUpdate, faultingTeam);
-    dispatch({ type: 'RESET_STATS' });
-    dispatch({ type: 'TOGGLE_CONFIRMATION', payload: false });
+    const winner = rally.possession;
+
+    // End rally in parent
+    onRallyEnd(winner, rally.stats, faultingTeam);
+
+    // Reset rally for next point
+    resetRally(winner);
+    setConfirmation(false);
+
   };
 
-  const handleCancelConfirmation = () => {
-    handleUndo();
-    dispatch({ type: 'TOGGLE_CONFIRMATION', payload: false });
-  };
+  const handleCancelConfirmation = () => { undoLastAction(); setConfirmation(false); };
 
-  const handleDiscardRally = () => {
-    dispatch({ type: 'TOGGLE_DISCARD_CONFIRMATION', payload: true });
-  };
+  const handleDiscardRally = () => { setDiscardConfirmation(true); };
 
-  const confirmDiscardRally = () => {
-    dispatch({ type: 'RESET_STATS' });
-    dispatch({ type: 'SET_POSSESSION', payload: initialPossession.current });
-    updateBallPossession(initialPossession.current, true);
-    dispatch({ type: 'TOGGLE_DISCARD_CONFIRMATION', payload: false });
-  };
+  const confirmDiscardRally = () => { discardRally(); updateBallPossession(currentServer, true); setDiscardConfirmation(false); };
 
   const renderPreviousActionText = () => {
-    if (state.actionHistory.length === 0) return 'Ninguna';
-
-    const lastAction = state.actionHistory[state.actionHistory.length - 1];
+    if (!canUndo) return 'Ninguna';
+    const lastAction = rally.actionHistory[rally.actionHistory.length - 1];
     const { action, team } = lastAction;
     const teamName = teams[team] || team;
     return `${actionLabels_sp[action]} ${teamName}`;
@@ -361,28 +121,36 @@ function RallyControl({ teams, currentServer, ballPossession, onRallyEnd, update
           <PreviousActionLabel>Acción anterior:</PreviousActionLabel>
           <PreviousActionText>{renderPreviousActionText()}</PreviousActionText>
         </PreviousActionTextContainer>
-        <StyledButton onClick={handleUndo} disabled={state.actionHistory.length === 0}>Deshacer acción</StyledButton>
-        <StyledButton onClick={handleDiscardRally} disabled={state.actionHistory.length === 0}>Repetir punto</StyledButton>
+        <StyledButton onClick={undoLastAction} disabled={!canUndo}>Deshacer acción</StyledButton>
+        <StyledButton onClick={handleDiscardRally} disabled={!canUndo}>Repetir punto</StyledButton>
       </UndoContainer>
-      <FaultButtons teams={teams} currentServer={currentServer} handleAction={handleAction} />
-      <ActionButtons
-        rallyStage={state.rallyStage}
+      <FaultButtons
+        teams={teams}
         currentServer={currentServer}
-        currentPossession={ballPossession}
         handleAction={handleAction}
       />
-      {state.showConfirmation && (
+
+
+      <ActionButtons
+        rallyStage={rally.stage}
+        currentServer={currentServer}
+        currentPossession={rally.possession}
+        handleAction={handleAction}
+      />
+
+      {rally.showConfirmation && (
         <ConfirmationDialog
           message="¿Finalizar rally y asignar punto?"
           onConfirm={handleEndRally}
           onCancel={handleCancelConfirmation}
         />
       )}
-      {state.showDiscardConfirmation && (
+
+      {rally.showDiscardConfirmation && (
         <ConfirmationDialog
           message="¿Seguro que desea descartar el rally y repetir el punto?"
           onConfirm={confirmDiscardRally}
-          onCancel={() => dispatch({ type: 'TOGGLE_DISCARD_CONFIRMATION', payload: false })}
+          onCancel={() => setDiscardConfirmation(false)}
         />
       )}
     </RallyControlContainer>

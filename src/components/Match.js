@@ -1,9 +1,8 @@
-import React, { useReducer, useEffect, useState, useRef } from 'react';
+import { useReducer, useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import ScoreBoard from './ScoreBoard';
 import RallyControl from './RallyControl';
 import StatsHandler from './StatsHandler';
-
 
 // --- Styled Components ---
 
