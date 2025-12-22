@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import CustomCombobox from './CustomCombobox';
 import MatchSelector from './MatchSelector';
 import ModalOverlay from './ModalOverlay';
+import { useSocket } from '../contexts/SocketContext';
 
 const PreMatchContainer = styled.div`
   display: flex;
@@ -64,7 +65,7 @@ const StatLabel = styled.label`
   text-align: center;
 `;
 
-function PreMatch({ setMatchDetails, matchDetails, socket }) {
+function PreMatch({ setMatchDetails, matchDetails }) {
   const [teamA, setTeamA] = useState(matchDetails.teams.teamA);
   const [teamB, setTeamB] = useState(matchDetails.teams.teamB);
   const [teamALogo, setTeamALogo] = useState(matchDetails.teamLogos.teamA);
@@ -76,6 +77,8 @@ function PreMatch({ setMatchDetails, matchDetails, socket }) {
   const [maxSets, setMaxSets] = useState(matchDetails.maxSets);
   const [statsA, setStatsA] = useState(matchDetails.stats.teamA);
   const [statsB, setStatsB] = useState(matchDetails.stats.teamB);
+
+  const { socket } = useSocket();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 

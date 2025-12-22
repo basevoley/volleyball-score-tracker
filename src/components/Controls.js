@@ -1,6 +1,7 @@
 // Controls.js
 import React from 'react';
 import styled from 'styled-components';
+import { useSocket } from '../contexts/SocketContext';
 
 const ControlsContainerDiv = styled.div`
     width: 100%;
@@ -20,7 +21,8 @@ const ReloadButton = styled.button`
     right: 10%;
 `;
 
-const Controls = ({ config, setConfig, socket }) => {
+const Controls = ({ config, setConfig }) => {
+    const { socket } = useSocket();
 
     const handleToggle = (section, key) => {
         const updatedConfig = {

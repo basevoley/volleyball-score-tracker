@@ -4,6 +4,7 @@ import ScoreBoard from './ScoreBoard';
 import RallyControl from './RallyControl';
 import StatsHandler from './StatsHandler';
 import { useMatchManager } from '../hooks/useMatchManager';
+import { useSocket } from '../contexts/SocketContext';
 
 // --- Styled Components ---
 
@@ -48,11 +49,15 @@ cursor: pointer;
 
 // --- Main Match Component ---
 
-function Match({ matchDetails, matchData, setMatchData, socket }) {
-  const { teams, teamLogos, maxSets } = matchDetails; 
-  const [rallyStage, setRallyStage] = useState('start'); 
-  const didInitRef = useRef(false); 
-  const [expandedSetIndex, setExpandedSetIndex] = useState(matchData?.setStats?.length > 0 ? matchData.setStats.length - 1 : null);
+function Match({ matchDetails, matchData, setMatchData }) {
+  const { teams, teamLogos, maxSets } = matchDetails;
+  const [rallyStage, setRallyStage] = useState('start');
+  const didInitRef = useRef(false);
+  const [expandedSetIndex, setExpandedSetIndex] = useState(
+    matchData?.setStats?.length > 0 ? matchData.setStats.length - 1 : null
+  );
+
+  const { socket } = useSocket();
 
   // Use the match manager hook 
   const matchManager = useMatchManager(matchData, teams, maxSets); 
