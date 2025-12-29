@@ -23,7 +23,7 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }) => {
       transports: ['websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
+      //reconnectionAttempts: 5,
     });
 
     // Connection event handlers
