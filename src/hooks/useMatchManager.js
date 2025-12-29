@@ -102,6 +102,7 @@ export const useMatchManager = (initialData, teams, maxSets) => {
             alert(`${teams[matchWinner]} ha ganado el partido!`);
             return {
                 ...state,
+                scores,
                 setsWon: newSetsWon,
                 setScores: newSetScores,
                 setStats: newSetStats,
