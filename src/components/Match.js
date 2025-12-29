@@ -84,7 +84,9 @@ function Match({ matchDetails, matchData, setMatchData }) {
     if (!match.matchStarted) {
       socketPayload.currentSetStats = { ...match.setStats[lastSet] };
       socketPayload.scores = { ...match.setScores[lastSet] || match.scores };
+      if(!match.winner){
       socketPayload.setScores = match.setScores.slice(0, -1);
+     }
     }
     delete socketPayload.ballPossession;
     delete socketPayload.setStats;
