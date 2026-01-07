@@ -19,7 +19,7 @@ const TeamScoreA = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: #007BFF; /* Blue for Team A */
+  background-color:  ${({ $color }) => $color || '#007BFF'}; /* Blue for Team A */
   color: white;
   padding: 10px;
   border-radius: 8px;
@@ -39,7 +39,7 @@ const TeamScoreB = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: #FF5733; /* Orange for Team B */
+  background-color: ${({ $color }) => $color || '#FF5733'}; /* Orange for Team B */
   color: white;
   padding: 10px;
   border-radius: 8px;
@@ -107,7 +107,7 @@ const ScoreAdjustButton = styled.button`
   &:hover:enabled { background-color: #45a049; }
 `;
 
-function ScoreBoard({ teams, teamLogos, scores, setsWon, currentServer, ballPossession, matchStarted, onAdjustScore, maxSets, onSetsWonChange }) {
+function ScoreBoard({ teams, teamLogos, teamColors, scores, setsWon, currentServer, ballPossession, matchStarted, onAdjustScore, maxSets, onSetsWonChange }) {
   const handleSetsWonChange = (team, event) => {
     const newSetsWon = parseInt(event.target.value, 10);
     onSetsWonChange(team, newSetsWon);
@@ -125,7 +125,7 @@ function ScoreBoard({ teams, teamLogos, scores, setsWon, currentServer, ballPoss
   return (
     <ScoreBoardContainer>
       <ScoresContainer>
-        <TeamScoreA $isPossession={ballPossession === 'teamA'}>
+        <TeamScoreA $isPossession={ballPossession === 'teamA'} $color={teamColors.teamA}>
           <TeamInfo>
             <TeamLogo src={teamLogos.teamA} alt={`${teams.teamA} logo`} />
             <span>{teams.teamA}</span>
@@ -145,7 +145,7 @@ function ScoreBoard({ teams, teamLogos, scores, setsWon, currentServer, ballPoss
           </ScoreNumberContainer>
           {currentServer === 'teamA' && <ServingIndicator />}
         </TeamScoreA>
-        <TeamScoreB $isPossession={ballPossession === 'teamB'}>
+        <TeamScoreB $isPossession={ballPossession === 'teamB'} $color={teamColors.teamB}>
           <TeamInfo>
             <TeamLogo src={teamLogos.teamB} alt={`${teams.teamB} logo`} />
             <span>{teams.teamB}</span>

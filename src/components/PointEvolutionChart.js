@@ -2,7 +2,7 @@ import React from 'react';
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Line, Customized } from 'recharts';
 
 // Per-set timeline chart with event labels and optimized mobile layout
-function PointEvolutionChart({ history = [], teams }) {
+function PointEvolutionChart({ history = [], teams, teamColors }) {
   if (!history || history.length === 0) return null;
   const data = history.map((h, i) => ({
     rally: i + 1,
@@ -30,7 +30,7 @@ function PointEvolutionChart({ history = [], teams }) {
   const renderDot = (props) => {
     const { cx, cy, payload, dataKey } = props;
     const hasEvent = payload && payload.event && payload.event.type && payload.event.type !== 'rally';
-    const fill = dataKey === 'teamA' ? '#1976d2' : '#d32f2f';
+    const fill = teamColors[dataKey];// === 'teamA' ? '#1976d2' : '#d32f2f';
     return (
       <circle cx={cx} cy={cy} r={hasEvent ? 5 : 2.5} fill={fill} stroke={hasEvent ? '#333' : 'none'} strokeWidth={1} />
     );
@@ -45,8 +45,8 @@ function PointEvolutionChart({ history = [], teams }) {
           <XAxis dataKey="rally" label={{ value: 'Rally', position: 'insideBottomRight', offset: -6 }} tick={{ fontSize: 10 }} />
           <YAxis width={30} label={{ value: 'Puntos', angle: -90, position: 'insideLeft', offset: 0 }} allowDecimals={false} tick={{ fontSize: 10 }} />
           <Tooltip content={<CustomTooltip />} />
-          <Line type="monotone" dataKey="teamA" stroke="#1976d2" dot={renderDot} isAnimationActive={false} strokeWidth={2} />
-          <Line type="monotone" dataKey="teamB" stroke="#d32f2f" dot={renderDot} isAnimationActive={false} strokeWidth={2} />
+          <Line type="monotone" dataKey="teamA" stroke={teamColors.teamA} dot={renderDot} isAnimationActive={false} strokeWidth={2} />
+          <Line type="monotone" dataKey="teamB" stroke={teamColors.teamB} dot={renderDot} isAnimationActive={false} strokeWidth={2} />
 
           <Customized component={(props) => {
             // Acceso CORREGIDO a las escalas (del código anterior)

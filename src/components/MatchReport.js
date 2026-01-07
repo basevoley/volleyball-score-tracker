@@ -1,7 +1,6 @@
 import React from 'react';
 import { pdf, Svg, Path, Circle, Rect, G, Text as SvgText } from '@react-pdf/renderer';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-// import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFilePdf } from '@fortawesome/free-solid-svg-icons';
 
@@ -79,7 +78,7 @@ const stats = [
     { label: "Efectividad de la defensa", key: "defenseEffectiveness" },
 ];
 
-const MatchReportDocument = ({ teams, statistics, setScores, setStats }) => (
+const MatchReportDocument = ({ teams, teamColors, statistics, setScores, setStats }) => (
     <Document>
         <Page size="A4" style={styles.page}>
             <View style={styles.section}>
@@ -178,7 +177,7 @@ const MatchReportDocument = ({ teams, statistics, setScores, setStats }) => (
                             {set.history && set.history.length > 0 && (
                                 <View style={{ marginTop: 12 }}>
                                     <Text style={{ fontSize: 12, marginBottom: 6 }}>Evolución de puntos (por rally)</Text>
-                                    <SetTimelineSVG history={set.history} teams={teams} />
+                                    <SetTimelineSVG history={set.history} teams={teams} teamColors={teamColors} />
                                 </View>
                             )}
                         </View>
@@ -188,7 +187,7 @@ const MatchReportDocument = ({ teams, statistics, setScores, setStats }) => (
 );
 
 // Simple SVG timeline renderer for PDFs using @react-pdf/renderer primitives
-const SetTimelineSVG = ({ history, teams }) => {
+const SetTimelineSVG = ({ history, teams, teamColors }) => {
     const width = 480;
     const height = 140; // give more vertical room for icons
     const padding = 12;
@@ -249,8 +248,8 @@ const SetTimelineSVG = ({ history, teams }) => {
                     const pathBSvg = pathForSvg(pointsB);
                     return (
                         <G>
-                            <Path d={pathASvg} stroke="#2b7cff" strokeWidth={2} fill="none" />
-                            <Path d={pathBSvg} stroke="#ff6b6b" strokeWidth={2} fill="none" />
+                            <Path d={pathASvg} stroke={teamColors.teamA} strokeWidth={2} fill="none" />
+                            <Path d={pathBSvg} stroke={teamColors.teamB} strokeWidth={2} fill="none" />
 
                             {/* markers and event lines/icons */}
                             {pointsA.map((p, i) => {
@@ -258,12 +257,12 @@ const SetTimelineSVG = ({ history, teams }) => {
                                 const yA = yForValue(pointsA[i]);
                                 const yB = yForValue(pointsB[i]);
                                 const entry = history[i] || {};
-                                const eventColor = entry.event && entry.event.team === 'teamA' ? '#2b7cff' : '#ff6b6b';
+                                const eventColor = entry.event && entry.event.team === 'teamA' ? teamColors.teamA : teamColors.teamB;
                                 return (
                                     <G key={`pt-${i}`}>
                                         {/* markers */}
-                                        <Circle cx={x} cy={yA} r={2.5} fill="#2b7cff" />
-                                        <Circle cx={x} cy={yB} r={2.5} fill="#ff6b6b" />
+                                        <Circle cx={x} cy={yA} r={2.5} fill={teamColors.teamA} />
+                                        <Circle cx={x} cy={yB} r={2.5} fill={teamColors.teamB} />
 
                                         {/* event vertical dashed line */}
                                         {entry.event && (entry.event.type === 'fault' || entry.event.type === 'timeout') && (
@@ -292,13 +291,13 @@ const SetTimelineSVG = ({ history, teams }) => {
             <View style={{ width: legendWidth, paddingLeft: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                     <Svg width={14} height={14}>
-                        <Circle cx={7} cy={7} r={6} fill="#2b7cff" />
+                        <Circle cx={7} cy={7} r={6} fill={teamColors.teamA} />
                     </Svg>
                     <Text style={{ fontSize: 10, marginLeft: 6 }}>{teams && teams.teamA ? teams.teamA : 'Team A'}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                     <Svg width={14} height={14}>
-                        <Circle cx={7} cy={7} r={6} fill="#ff6b6b" />
+                        <Circle cx={7} cy={7} r={6} fill={teamColors.teamB} />
                     </Svg>
                     <Text style={{ fontSize: 10, marginLeft: 6 }}>{teams && teams.teamB ? teams.teamB : 'Team B'}</Text>
                 </View>
@@ -320,12 +319,12 @@ const SetTimelineSVG = ({ history, teams }) => {
     );
 };
 
-const MatchReport = ({ teams, statistics, setScores, setStats }) => {
+const MatchReport = ({ teams, teamColors, statistics, setScores, setStats }) => {
     const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
     const fileName = `${teams.teamA}_vs_${teams.teamB}_${currentDate}.pdf`;
 
     const handleDownload = async () => {
-        const doc = <MatchReportDocument teams={teams} statistics={statistics} setScores={setScores} setStats={setStats} />;
+        const doc = <MatchReportDocument teams={teams} teamColors={teamColors} statistics={statistics} setScores={setScores} setStats={setStats} />;
         const blob = await pdf(doc).toBlob();
         const url = URL.createObjectURL(blob);
 

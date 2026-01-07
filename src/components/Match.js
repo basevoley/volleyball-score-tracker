@@ -50,7 +50,7 @@ cursor: pointer;
 // --- Main Match Component ---
 
 function Match({ matchDetails, matchData, setMatchData }) {
-  const { teams, teamLogos, maxSets } = matchDetails;
+  const { teams, teamLogos, teamColors, maxSets } = matchDetails;
   const [rallyStage, setRallyStage] = useState('start');
   const didInitRef = useRef(false);
   const [expandedSetIndex, setExpandedSetIndex] = useState(
@@ -134,6 +134,7 @@ function Match({ matchDetails, matchData, setMatchData }) {
       <ScoreBoard
         teams={teams}
         teamLogos={teamLogos}
+        teamColors={teamColors}
         scores={match.scores}
         setsWon={match.setsWon}
         currentServer={match.currentServer}
@@ -177,6 +178,7 @@ function Match({ matchDetails, matchData, setMatchData }) {
 
       <StatsHandler
         teams={teams}
+        teamColors={teamColors}
         localMatchData={match}
         expandedSetIndex={expandedSetIndex}
         setExpandedSetIndex={setExpandedSetIndex}

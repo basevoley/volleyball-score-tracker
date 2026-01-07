@@ -4,6 +4,7 @@ import CustomCombobox from './CustomCombobox';
 import MatchSelector from './MatchSelector';
 import ModalOverlay from './ModalOverlay';
 import { useSocket } from '../contexts/SocketContext';
+import { TeamColorSelector } from './TeamColorSelector';
 
 const PreMatchContainer = styled.div`
   display: flex;
@@ -25,6 +26,13 @@ const SyncButton = styled.button`
   &:hover {
     background-color: #0056b3;
   }
+`;
+
+const TeamNameInput = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 5px;
 `;
 
 const ImageSelector = styled.div`
@@ -70,6 +78,8 @@ function PreMatch({ setMatchDetails, matchDetails }) {
   const [teamB, setTeamB] = useState(matchDetails.teams.teamB);
   const [teamALogo, setTeamALogo] = useState(matchDetails.teamLogos.teamA);
   const [teamBLogo, setTeamBLogo] = useState(matchDetails.teamLogos.teamB);
+  const [teamAColor, setTeamAColor] = useState(matchDetails.teamColors.teamA);
+  const [teamBColor, setTeamBColor] = useState(matchDetails.teamColors.teamB);
   const [matchHeader, setMatchHeader] = useState(matchDetails.matchHeader);
   const [stadium, setStadium] = useState(matchDetails.stadium);
   const [extendedInfo, setExtendedInfo] = useState(matchDetails.extendedInfo);
@@ -86,6 +96,7 @@ function PreMatch({ setMatchDetails, matchDetails }) {
     const updatedMatchDetails = {
       teams: { teamA, teamB },
       teamLogos: { teamA: teamALogo, teamB: teamBLogo },
+      teamColors: { teamA: teamAColor, teamB: teamBColor },
       matchHeader,
       stadium,
       extendedInfo,
@@ -102,7 +113,7 @@ function PreMatch({ setMatchDetails, matchDetails }) {
     if (socket) {
       socket.emit('matchDetails', updatedMatchDetails);
     }
-  }, [teamA, teamB, teamALogo, teamBLogo, matchHeader, stadium, extendedInfo, competitionLogo, maxSets, statsA, statsB, setMatchDetails, socket]);
+  }, [teamA, teamB, teamALogo, teamBLogo, teamAColor, teamBColor, matchHeader, stadium, extendedInfo, competitionLogo, maxSets, statsA, statsB, setMatchDetails, socket]);
 
   const handleStatChange = (team, stat, value) => {
     const intValue = parseInt(value, 10);
@@ -216,19 +227,27 @@ function PreMatch({ setMatchDetails, matchDetails }) {
         />
         <ImagePreview src={competitionLogo}></ImagePreview>
       </ImageSelector>
-      <Input
-        type="text"
-        placeholder="Nombre del Equipo A"
-        value={teamA}
-        onChange={(e) => setTeamA(e.target.value)}
-      />
+      <h2>Equipo Local (Equipo A)</h2>
+      <TeamNameInput>
+        <Input
+          type="text"
+          placeholder="Nombre del Equipo A"
+          value={teamA}
+          onChange={(e) => setTeamA(e.target.value)}
+        />
+        <TeamColorSelector color={teamAColor} onColorChange={setTeamAColor} />
+      </TeamNameInput>
       <CustomCombobox placeholderText={"URL del escudo del Equipo A"} inputValue={teamALogo} onInputChange={setTeamALogo} />
-      <Input
-        type="text"
-        placeholder="Nombre del Equipo B"
-        value={teamB}
-        onChange={(e) => setTeamB(e.target.value)}
-      />
+      <h2>Equipo Visitante (Equipo B)</h2>
+      <TeamNameInput>
+        <Input
+          type="text"
+          placeholder="Nombre del Equipo B"
+          value={teamB}
+          onChange={(e) => setTeamB(e.target.value)}
+        />
+        <TeamColorSelector color={teamBColor} onColorChange={setTeamBColor} />
+      </TeamNameInput>
       <CustomCombobox placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} />
 
       <h2>Comparativa</h2>

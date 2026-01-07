@@ -32,7 +32,7 @@ function StatsHandler(props) {
       gap: 12
     }}>
       <DownloadsContainer>
-        <MatchReport teams={props.teams} statistics={props.localMatchData.statistics} setScores={props.localMatchData.setScores} setStats={props.localMatchData.setStats} />
+        <MatchReport teams={props.teams} teamColors={props.teamColors} statistics={props.localMatchData.statistics} setScores={props.localMatchData.setScores} setStats={props.localMatchData.setStats} />
         <MatchExcel teams={props.teams} statistics={props.localMatchData.statistics} setScores={props.localMatchData.setScores} setStats={props.localMatchData.setStats} />
       </DownloadsContainer>
       <div style={{
@@ -99,7 +99,7 @@ function StatsHandler(props) {
             <Statistics teams={props.teams} statistics={set.statistics} />
             {set.history && set.history.length > 0 && 
             <div style={{ marginTop: 12 }}>
-              <PointEvolutionChart history={set.history} teams={props.teams} />
+              <PointEvolutionChart history={set.history} teams={props.teams} teamColors={props.teamColors} />
             </div>
             }
           </AccordionDetails>
