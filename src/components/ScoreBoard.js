@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { getContrastColor, isTooSimilar } from '../utils/colorUtils';
 
 const ScoreBoardContainer = styled.div`
   display: flex;
@@ -20,7 +21,7 @@ const TeamScoreA = styled.div`
   flex-direction: column;
   align-items: center;
   background-color:  ${({ $color }) => $color || '#007BFF'}; /* Blue for Team A */
-  color: white;
+  color: ${({ $color }) => getContrastColor($color)}; 
   padding: 10px;
   border-radius: 8px;
   position: relative;
@@ -40,7 +41,7 @@ const TeamScoreB = styled.div`
   flex-direction: column;
   align-items: center;
   background-color: ${({ $color }) => $color || '#FF5733'}; /* Orange for Team B */
-  color: white;
+  color: ${({ $color }) => getContrastColor($color)}; 
   padding: 10px;
   border-radius: 8px;
   position: relative;
@@ -81,6 +82,16 @@ const ServingIndicator = styled.div`
   height: 15px;
   background-color: #FFD700; /* Gold for serving */
   border-radius: 50%;
+  ${({ $bgColor }) => {
+    const gold = "#FFD700";
+    if (isTooSimilar($bgColor, gold)) {
+      return `
+        filter: brightness(0.6) contrast(1.2);
+        border: 1px solid white;
+      `;
+    }
+    return '';
+  }}
 `;
 
 const TeamLogo = styled.img`
@@ -99,12 +110,24 @@ const ScoreAdjustButton = styled.button`
   margin: 5px;
   padding: 5px 10px;
   background-color: #4CAF50;
-  color: white;
+  color: inherit;
   border: none;
   cursor: pointer;
   border-radius: 5px;
   &:disabled { opacity: 0.6; cursor: not-allowed; }
   &:hover:enabled { background-color: #45a049; }
+  ${({ $bgColor }) => {
+    const color = "#4CAF50";
+    if (isTooSimilar($bgColor, color)) {
+      // Si el fondo es muy parecido al dorado (ej. un amarillo o naranja claro)
+      // aplicamos un filtro para oscurecerlo y darle contraste sin cambiar el tono
+      return `
+        filter: brightness(0.6) contrast(1.2);
+        border: 1px solid white;
+      `;
+    }
+    return '';
+  }}
 `;
 
 function ScoreBoard({ teams, teamLogos, teamColors, scores, setsWon, currentServer, ballPossession, matchStarted, onAdjustScore, maxSets, onSetsWonChange }) {
@@ -132,8 +155,8 @@ function ScoreBoard({ teams, teamLogos, teamColors, scores, setsWon, currentServ
           </TeamInfo>
           <ScoreNumberContainer>
             <ScoreAdjustContainer>
-              <ScoreAdjustButton disabled={!matchStarted} onClick={() => onAdjustScore('teamA', 1)}>+</ScoreAdjustButton>
-              <ScoreAdjustButton disabled={!matchStarted} onClick={() => onAdjustScore('teamA', -1)}>-</ScoreAdjustButton>
+              <ScoreAdjustButton disabled={!matchStarted} onClick={() => onAdjustScore('teamA', 1)} $bgColor={teamColors.teamA}>+</ScoreAdjustButton>
+              <ScoreAdjustButton disabled={!matchStarted} onClick={() => onAdjustScore('teamA', -1)} $bgColor={teamColors.teamA}>-</ScoreAdjustButton>
             </ScoreAdjustContainer>
             <ScoreNumber>{scores.teamA}</ScoreNumber>
           <SetsWonContainer>
@@ -143,7 +166,7 @@ function ScoreBoard({ teams, teamLogos, teamColors, scores, setsWon, currentServ
             </SetsWonSelect>
           </SetsWonContainer>
           </ScoreNumberContainer>
-          {currentServer === 'teamA' && <ServingIndicator />}
+          {currentServer === 'teamA' && <ServingIndicator $bgColor={teamColors.teamA}/>}
         </TeamScoreA>
         <TeamScoreB $isPossession={ballPossession === 'teamB'} $color={teamColors.teamB}>
           <TeamInfo>
@@ -159,11 +182,11 @@ function ScoreBoard({ teams, teamLogos, teamColors, scores, setsWon, currentServ
           </SetsWonContainer>
             <ScoreNumber>{scores.teamB}</ScoreNumber>
             <ScoreAdjustContainer>
-              <ScoreAdjustButton disabled={!matchStarted} onClick={() => onAdjustScore('teamB', 1)}>+</ScoreAdjustButton>
-              <ScoreAdjustButton disabled={!matchStarted} onClick={() => onAdjustScore('teamB', -1)}>-</ScoreAdjustButton>
+              <ScoreAdjustButton disabled={!matchStarted} onClick={() => onAdjustScore('teamB', 1)} $bgColor={teamColors.teamB}>+</ScoreAdjustButton>
+              <ScoreAdjustButton disabled={!matchStarted} onClick={() => onAdjustScore('teamB', -1)} $bgColor={teamColors.teamB}>-</ScoreAdjustButton>
             </ScoreAdjustContainer>
           </ScoreNumberContainer>
-          {currentServer === 'teamB' && <ServingIndicator />}
+          {currentServer === 'teamB' && <ServingIndicator $bgColor={teamColors.teamB}/>}
         </TeamScoreB>
       </ScoresContainer>
     </ScoreBoardContainer>
