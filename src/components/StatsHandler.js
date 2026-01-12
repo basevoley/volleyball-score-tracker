@@ -35,19 +35,22 @@ function StatsHandler(props) {
         <MatchReport teams={props.teams} teamColors={props.teamColors} statistics={props.localMatchData.statistics} setScores={props.localMatchData.setScores} setStats={props.localMatchData.setStats} />
         <MatchExcel teams={props.teams} statistics={props.localMatchData.statistics} setScores={props.localMatchData.setScores} setStats={props.localMatchData.setStats} />
       </DownloadsContainer>
-      <div style={{
-        marginTop: 12,
-        marginBottom: 8
-      }}>
-        <Typography variant="h6" style={{
-          fontWeight: 600,
-          color: '#333'
-        }}>
-          Set {props.localMatchData.setsWon.teamA + props.localMatchData.setsWon.teamB + 1} - Estadísticas en Vivo
-        </Typography>
-      </div>
-      <Statistics teams={props.teams} statistics={props.localMatchData.currentSetStats} />
-
+      {!props.localMatchData.winner && (
+        <>
+          <div style={{
+            marginTop: 12,
+            marginBottom: 8
+          }}>
+            <Typography variant="h6" style={{
+              fontWeight: 600,
+              color: '#333'
+            }}>
+              Set {props.localMatchData.setsWon.teamA + props.localMatchData.setsWon.teamB + 1} - Estadísticas en Vivo
+            </Typography>
+          </div>
+          <Statistics teams={props.teams} statistics={props.localMatchData.currentSetStats} />
+        </>
+      )}
       {props.localMatchData.setStats && props.localMatchData.setStats.length > 0 && <div>
         <h3>Resumen de sets</h3>
         {props.localMatchData.setStats.map((set, index) => <Accordion key={index} expanded={props.expandedSetIndex === index} style={{
@@ -97,10 +100,10 @@ function StatsHandler(props) {
             backgroundColor: '#fff'
           }}>
             <Statistics teams={props.teams} statistics={set.statistics} />
-            {set.history && set.history.length > 0 && 
-            <div style={{ marginTop: 12 }}>
-              <PointEvolutionChart history={set.history} teams={props.teams} teamColors={props.teamColors} />
-            </div>
+            {set.history && set.history.length > 0 &&
+              <div style={{ marginTop: 12 }}>
+                <PointEvolutionChart history={set.history} teams={props.teams} teamColors={props.teamColors} />
+              </div>
             }
           </AccordionDetails>
         </Accordion>)}

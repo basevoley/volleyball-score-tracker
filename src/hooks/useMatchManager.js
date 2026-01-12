@@ -84,16 +84,16 @@ export const useMatchManager = (initialData, teams, maxSets) => {
     const matchEventRef = useRef(null);
 
     // Helper to handle set/match end logic
-    const handleGameEnd = useCallback((state, scores, stats, history) => {
+    const handleGameEnd = useCallback((state, scores, currentSetStats, history) => {
         const setWinner = checkSetEnd(scores, state.setsWon, maxSets);
-        if (!setWinner) return { ...state, scores, statistics: stats, currentSetStats: stats, currentSetHistory: history };
+        if (!setWinner) return { ...state, scores, currentSetStats: currentSetStats, currentSetHistory: history };
 
         const newSetsWon = { ...state.setsWon, [setWinner]: state.setsWon[setWinner] + 1 };
         const newSetScores = [...state.setScores, scores];
         const newSetStats = [...state.setStats, {
             setNumber: state.setsWon.teamA + state.setsWon.teamB + 1,
             scores,
-            statistics: stats,
+            statistics: currentSetStats,
             history,
         }];
 
