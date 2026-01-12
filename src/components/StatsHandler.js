@@ -49,6 +49,9 @@ function StatsHandler(props) {
             </Typography>
           </div>
           <Statistics teams={props.teams} statistics={props.localMatchData.currentSetStats} />
+          <div style={{ marginTop: 12 }}>
+            <PointEvolutionChart history={props.localMatchData.currentSetHistory} teams={props.teams} teamColors={props.teamColors} />
+          </div>
         </>
       )}
       {props.localMatchData.setStats && props.localMatchData.setStats.length > 0 && <div>

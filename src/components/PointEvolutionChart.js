@@ -15,13 +15,14 @@ function PointEvolutionChart({ history = [], teams, teamColors }) {
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload || payload.length === 0) return null;
     const p = payload[0].payload;
+    const eventLabel = p.event.type === 'fault' ? 'Falta' : p.event.type === 'timeout' ? 'Tiempo muerto' : 'Cambio';
     return (
       <div style={{ background: 'white', border: '1px solid #ccc', padding: 8, fontSize: 12 }}>
         <div style={{ fontWeight: 700 }}>Rally {label}</div>
         <div>{teams.teamA}: {p.teamA}</div>
         <div>{teams.teamB}: {p.teamB}</div>
         {p.event && p.event.type !== 'rally' && (
-          <div style={{ marginTop: 6 }}><strong>Evento:</strong> {p.event.type}</div>
+          <div style={{ marginTop: 6 }}><strong>{eventLabel}</strong> {teams[p.event.team]}</div>
         )}
       </div>
     );
@@ -29,7 +30,7 @@ function PointEvolutionChart({ history = [], teams, teamColors }) {
 
   const renderDot = (props) => {
     const { cx, cy, payload, dataKey } = props;
-    const hasEvent = payload && payload.event && payload.event.type && payload.event.type !== 'rally';
+    const hasEvent = payload && payload.event && payload.event.type && payload.event.type !== 'rally' && payload.event.team === dataKey;
     const fill = teamColors[dataKey];// === 'teamA' ? '#1976d2' : '#d32f2f';
     return (
       <circle cx={cx} cy={cy} r={hasEvent ? 5 : 2.5} fill={fill} stroke={hasEvent ? '#333' : 'none'} strokeWidth={1} />
@@ -69,17 +70,18 @@ function PointEvolutionChart({ history = [], teams, teamColors }) {
                   const eventTeam = d.event.team;
                   const isFault = d.event.type === 'fault';
                   const isTimeout = d.event.type === 'timeout';
-                  if (!isFault && !isTimeout) return null;
+                  const isSub = d.event.type === 'substitution';
+                  if (!isFault && !isTimeout && !isSub) return null;
 
                   const cx = xScale(d.rally);
-                  const color = eventTeam === 'teamA' ? '#1976d2' : '#d32f2f';
-                  const eventLabel = isFault ? `Fault (${teams[eventTeam]})` : `Timeout (${teams[eventTeam]})`;
+                  const color = teamColors[eventTeam];
+                  const eventLabel = isFault ? `Falta (${teams[eventTeam]})` : isTimeout ? `Tiempo Muerto (${teams[eventTeam]})` : `Cambio (${teams[eventTeam]})`;
 
                   return (
                     <g key={`evt-${i}`} style={{ cursor: 'pointer' }}>
                       <line
                         x1={cx}
-                        y1={yScale(-2)}
+                        y1={yScale(0)}
                         x2={cx}
                         y2={iconY + 8} // La línea termina un poco antes del centro del icono
                         stroke={color}
@@ -93,11 +95,17 @@ function PointEvolutionChart({ history = [], teams, teamColors }) {
                           <line x1={-5} y1={-5} x2={5} y2={5} stroke={color} strokeWidth={2} />
                           <line x1={5} y1={-5} x2={-5} y2={5} stroke={color} strokeWidth={2} />
                         </g>
-                      ) : (
+                      ) : isTimeout ? (
                         // Timeout: two vertical lines (pause icon) (centrado en iconY)
                         <g transform={`translate(${cx}, ${iconY})`}>
                           <rect x={-4} y={-5} width={2} height={10} fill={color} />
                           <rect x={2} y={-5} width={2} height={10} fill={color} />
+                        </g>
+                      ) : (
+                        // Substitution: two vertical lines (pause icon) (centrado en iconY)
+                        <g transform={`translate(${cx}, ${iconY})`}>
+                          <polygon points="-6,0 -1,-5 -1,5" fill={color} />
+                          <polygon points="6,0 1,-5 1,5" fill={color} />
                         </g>
                       )}
 

@@ -47,6 +47,23 @@ cursor: pointer;
   background-color: #e68900; 
 }` ;
 
+const SubstitutionButton = styled.button` 
+flex: 1; 
+margin: 0 5px; 
+padding: 10px; 
+background-color: #4CAF50; //#2ecc71; 
+color: white; 
+border: none; 
+border-radius: 5px; 
+cursor: pointer; 
+&:disabled { 
+  opacity: 0.6;
+  cursor: not-allowed; 
+} 
+&:hover:enabled { 
+  background-color: #45a049; //#29b161ff; 
+}` ;
+
 // --- Main Match Component ---
 
 function Match({ matchDetails, matchData, setMatchData }) {
@@ -61,7 +78,7 @@ function Match({ matchDetails, matchData, setMatchData }) {
 
   // Use the match manager hook 
   const matchManager = useMatchManager(matchData, teams, maxSets); 
-  const { match, startMatch, resetMatch, setServer, updateBallPossession, endRally, callTimeout, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, } = matchManager;
+  const { match, startMatch, resetMatch, setServer, updateBallPossession, endRally, callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, } = matchManager;
 
   // Sync parent/socket when match state changes 
   useEffect(() => {
@@ -156,6 +173,16 @@ function Match({ matchDetails, matchData, setMatchData }) {
         >
           Tiempo Muerto (Equipo A) ({match.timeouts.teamA}/2)
         </TimeoutButton>
+        <SubstitutionButton
+          onClick={() => callSubstitution('teamA')}
+          disabled={
+            !match.matchStarted ||
+            match.substitutions.teamA >= 6 ||
+            rallyStage !== 'start'
+          }
+        >
+          Cambio (Equipo A) ({match.substitutions.teamA}/6)
+        </SubstitutionButton>
         <TimeoutButton
           onClick={() => callTimeout('teamB')}
           disabled={
@@ -166,6 +193,16 @@ function Match({ matchDetails, matchData, setMatchData }) {
         >
           Tiempo Muerto (Equipo B) ({match.timeouts.teamB}/2)
         </TimeoutButton>
+        <SubstitutionButton
+          onClick={() => callSubstitution('teamB')}
+          disabled={
+            !match.matchStarted ||
+            match.substitutions.teamB >= 6 ||
+            rallyStage !== 'start'
+          }
+        >
+          Cambio (Equipo B) ({match.substitutions.teamB}/6)
+        </SubstitutionButton>
       </TimeoutContainer>
 
       <RallyControl

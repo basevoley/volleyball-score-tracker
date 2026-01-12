@@ -1,5 +1,5 @@
 import React from 'react';
-import { pdf, Svg, Path, Circle, Rect, G, Text as SvgText } from '@react-pdf/renderer';
+import { pdf, Svg, Path, Circle, Rect, G, Text as SvgText, Polygon } from '@react-pdf/renderer';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFilePdf } from '@fortawesome/free-solid-svg-icons';
@@ -265,7 +265,7 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
                                         <Circle cx={x} cy={yB} r={2.5} fill={teamColors.teamB} />
 
                                         {/* event vertical dashed line */}
-                                        {entry.event && (entry.event.type === 'fault' || entry.event.type === 'timeout') && (
+                                        {entry.event && (entry.event.type === 'fault' || entry.event.type === 'timeout' || entry.event.type === 'substitution') && (
                                             <Path d={`M${x} ${topPadding} V${bottomY}`} stroke={eventColor} strokeWidth={1} strokeDasharray="3,2" />
                                         )}
 
@@ -277,6 +277,12 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
                                             <G>
                                                 <Rect x={x - 5} y={padding + 2} width={3} height={10} fill={eventColor} />
                                                 <Rect x={x - 1} y={padding + 2} width={3} height={10} fill={eventColor} />
+                                            </G>
+                                        )}
+                                        {entry.event && entry.event.type === 'substitution' && (
+                                            <G>
+                                                <Polygon points={`${x - 6},${padding + 7} ${x - 1},${padding + 2} ${x - 1},${padding + 12}`} fill={eventColor} />
+                                                <Polygon points={`${x + 6},${padding + 7} ${x + 1},${padding + 2} ${x + 1},${padding + 12}`} fill={eventColor} />
                                             </G>
                                         )}
                                     </G>
@@ -313,6 +319,13 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
                         <Rect x={10} y={3} width={3} height={12} fill="#666" />
                     </Svg>
                     <Text style={{ fontSize: 10, marginLeft: 6 }}>Tiempo muerto</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Svg width={18} height={18}>
+                        <Polygon points="2,9 7,4 7,14" fill="#444" />
+                        <Polygon points="16,9 11,4 11,14" fill="#444" />
+                    </Svg>
+                    <Text style={{ fontSize: 10, marginLeft: 6 }}>Cambio</Text>
                 </View>
             </View>
         </View>

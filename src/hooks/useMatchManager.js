@@ -72,6 +72,7 @@ export const useMatchManager = (initialData, teams, maxSets) => {
         ballPossession: null,
         matchStarted: false,
         timeouts: { teamA: 0, teamB: 0 },
+        substitutions: { teamA: 0, teamB: 0 },
         statistics: createEmptyStats(),
         currentSetStats: createEmptyStats(),
         currentSetHistory: [],
@@ -107,6 +108,7 @@ export const useMatchManager = (initialData, teams, maxSets) => {
                 setScores: newSetScores,
                 setStats: newSetStats,
                 timeouts: { teamA: 0, teamB: 0 },
+                substitutions: { teamA: 0, teamB: 0 },
                 winner: matchWinner,
                 matchStarted: false,
                 currentServer: null,
@@ -123,6 +125,7 @@ export const useMatchManager = (initialData, teams, maxSets) => {
             currentSetStats: createEmptyStats(),
             currentSetHistory: [],
             timeouts: { teamA: 0, teamB: 0 },
+            substitutions: { teamA: 0, teamB: 0 },
             matchStarted: false,
             currentServer: null,
             ballPossession: null,
@@ -144,6 +147,7 @@ export const useMatchManager = (initialData, teams, maxSets) => {
             ballPossession: null,
             matchStarted: false,
             timeouts: { teamA: 0, teamB: 0 },
+            substitutions: { teamA: 0, teamB: 0 },
             statistics: createEmptyStats(),
             currentSetStats: createEmptyStats(),
             currentSetHistory: [],
@@ -211,6 +215,21 @@ export const useMatchManager = (initialData, teams, maxSets) => {
         matchEventRef.current = { type: 'TIMEOUT' };
     }, [teams]);
 
+    const callSubstitution = useCallback((team) => {
+        setMatch(prev => ({
+            ...prev,
+            substitutions: { ...prev.substitutions, [team]: prev.substitutions[team] + 1 },
+            currentSetHistory: [...(prev.currentSetHistory || []), {
+                index: (prev.currentSetHistory?.length || 0) + 1,
+                timestamp: Date.now(),
+                scores: { ...prev.scores },
+                event: { type: 'substitution', team },
+            }],
+            matchEvent: { type: 'substitution', details: { text: 'Cambio', team: teams[team] } },
+        }));
+        matchEventRef.current = { type: 'TIMEOUT' };
+    }, [teams]);
+
     const adjustScore = useCallback((team, adjustment) => {
         setMatch(prev => {
             const adjustedScores = { ...prev.scores, [team]: Math.max(0, prev.scores[team] + adjustment) };
@@ -247,6 +266,6 @@ export const useMatchManager = (initialData, teams, maxSets) => {
     const getLastAction = useCallback(() => matchEventRef.current, []); const clearLastAction = useCallback(() => { matchEventRef.current = null; }, []);
 
     return useMemo(() => ({ 
-        match, startMatch, resetMatch, setServer, updateBallPossession, endRally, callTimeout, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, 
-    }), [match, startMatch, resetMatch, setServer, updateBallPossession, endRally, callTimeout, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction,]);
+        match, startMatch, resetMatch, setServer, updateBallPossession, endRally, callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, 
+    }), [match, startMatch, resetMatch, setServer, updateBallPossession, endRally, callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction,]);
 };
