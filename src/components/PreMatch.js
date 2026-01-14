@@ -16,8 +16,12 @@ const PreMatchContainer = styled.div`
 `;
 
 const SyncButton = styled.button`
-  margin: 10px;
-  padding: 10px 20px;
+  margin: 5px;
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   background-color: #007BFF;
   color: white;
   border: none;
@@ -26,6 +30,10 @@ const SyncButton = styled.button`
   &:hover {
     background-color: #0056b3;
   }
+`;
+
+const FmvIcon = styled.img`
+  height: 20px;
 `;
 
 const TeamNameInput = styled.div`
@@ -184,7 +192,7 @@ function PreMatch({ setMatchDetails, matchDetails }) {
 
   return (
     <PreMatchContainer>
-      <SyncButton onClick={() => setIsModalOpen(true)}>Obtener desde FMV</SyncButton>
+      <SyncButton onClick={() => setIsModalOpen(true)}>Obtener desde FMV <FmvIcon src='fmv_icon.png' alt='FMV Logo'></FmvIcon> </SyncButton>
       {isModalOpen && (
         <ModalOverlay onClose={() => setIsModalOpen(false)}>
           <MatchSelector onSelectMatch={handleSelectMatch} />
