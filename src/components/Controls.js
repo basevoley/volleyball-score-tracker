@@ -1,40 +1,45 @@
 import React from 'react';
-import styled from 'styled-components';
 import { useSocket } from '../contexts/SocketContext';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
+import {
+    Switch,
+    FormControlLabel,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Button,
+    Box,
+    Typography,
+    Paper,
+    Divider
+} from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
-const ControlsContainerDiv = styled.div`
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-content: stretch;
-    justify-content: center;
-    align-items: start;
-    position: relative;
-    box-sizing: border-box;
-    padding: 20px;
-`;
-
-const ReloadButton = styled.button`
-    position: absolute;
-    top: 0;
-    right: 5%;
-    margin: 10px;
-    padding: 10px 20px;
-    background-color: #007BFF;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    &:hover {
-        background-color: #0056b3;
-    }
-`;
+// 1. EXTRAER FUERA DEL COMPONENTE PRINCIPAL
+// Esto evita que React desmonte el componente al actualizar el estado
+const ControlSection = ({ title, enabled, onToggle, children }) => (
+    <Box sx={{ paddingY: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="h6" component="h3">
+                {title}
+            </Typography>
+            <FormControlLabel
+                control={
+                    <Switch
+                        checked={enabled}
+                        onChange={(e) => {
+                            // Opcional: previene comportamientos extraños del navegador
+                            onToggle();
+                        }}
+                    />
+                }
+                label={enabled ? 'Mostrar' : 'Ocultar'}
+            />
+        </Box>
+        {children}
+        <Divider sx={{ mt: 2 }} />
+    </Box>
+);
 
 const Controls = ({ config, setConfig }) => {
     const { socket } = useSocket();
@@ -68,124 +73,131 @@ const Controls = ({ config, setConfig }) => {
     };
 
     return (
-        <ControlsContainerDiv>
-            <ReloadButton variant="contained" onClick={handleReloadOverlay}>
-                Recargar overlay
-            </ReloadButton>
-            <div>
-                <h3>Presentación partido</h3>
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={config.matchup.enabled}
-                            onChange={() => handleToggle('matchup', 'enabled')}
-                        />
-                    }
-                    label={config.matchup.enabled ? 'Mostrar' : 'Ocultar'}
-                />
-            </div>
-            <div>
-                <h3>Presentación Lower Third</h3>
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={config.lowerThird.enabled}
-                            onChange={() => handleToggle('lowerThird', 'enabled')}
-                        />
-                    }
-                    label={config.lowerThird.enabled ? 'Mostrar' : 'Ocultar'}
-                />
-            </div>
-            <div>
-                <h3>Comparación de equipos</h3>
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={config.teamComparison.enabled}
-                            onChange={() => handleToggle('teamComparison', 'enabled')}
-                        />
-                    }
-                    label={config.teamComparison.enabled ? 'Mostrar' : 'Ocultar'}
-                />
-            </div>
-            <div>
-                <h3>Panel de patrocinadores</h3>
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={config.sponsors.enabled}
-                            onChange={() => handleToggle('sponsors', 'enabled')}
-                        />
-                    }
-                    label={config.sponsors.enabled ? 'Mostrar' : 'Ocultar'}
-                />
-            </div>
-            <div>
-                <h3>Marcador</h3>
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={config.scoreboard.enabled}
-                            onChange={() => handleToggle('scoreboard', 'enabled')}
-                        />
-                    }
-                    label={config.scoreboard.enabled ? 'Mostrar' : 'Ocultar'}
-                    sx={{ marginRight: '5px' }} 
+        <Box sx={{ width: '100%', p: { xs: 1, sm: 2 }, boxSizing: 'border-box' }}>
+            <Paper 
+                elevation={3} 
+                sx={{ 
+                    width: '100%', 
+                    maxWidth: '800px', 
+                    margin: '0 auto',
+                    p: { xs: 2, sm: 4 },
+                    boxSizing: 'border-box',
+                    borderRadius: 2
+                }}
+            >
+                {/* Cabecera con botón */}
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    mb: 4,
+                    gap: 2,
+                    flexWrap: 'wrap' 
+                }}>
+                    <Typography variant="h4" component="h1">
+                        Controles
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleReloadOverlay}
+                        startIcon={<RefreshIcon />}
+                    >
+                        Recargar overlay
+                    </Button>
+                </Box>
+
+                <ControlSection
+                    title="Presentación partido"
+                    enabled={config.matchup.enabled}
+                    onToggle={() => handleToggle('matchup', 'enabled')}
                 />
 
-                <FormControl sx={{ m: 1, minWidth: 120, margin: '5px' }} size="small">
-                    <InputLabel id='select-scoreboard-type'>Apariencia</InputLabel>
-                    <Select
-                        labelId='select-scoreboard-type'
-                        label='Apariencia'
-                        value={config.scoreboard.type}
-                        onChange={(e) => handleSelectChange('scoreboard', 'type', e.target.value)}
-                    // sx={{ width: 120, fontSize: 12 }}
-                    >
-                        <MenuItem value="classic">Simple</MenuItem>
-                        <MenuItem value="vertical-table">Multilínea</MenuItem>
-                    </Select>
-                </FormControl>
-                <FormControl sx={{ m: 1, minWidth: 120, margin: '5px' }} size="small">
-                    <InputLabel id='select-scoreboard-pos'>Posición</InputLabel>
-                    <Select
-                        labelId='select-scoreboard-pos'
-                        label='Posición'
-                        value={config.scoreboard.position}
-                        onChange={(e) => handleSelectChange('scoreboard', 'position', e.target.value)}
-                    // sx={{ width: 120, fontSize: 12 }}
-                    >
-                        <MenuItem value="top-left">Arriba Izquierda</MenuItem>
-                        <MenuItem value="top">Arriba</MenuItem>
-                        <MenuItem value="top-right">Arriba Derecha</MenuItem>
-                        <MenuItem value="bottom-left">Abajo Izquierda</MenuItem>
-                        <MenuItem value="bottom">Abajo</MenuItem>
-                        <MenuItem value="bottom-right">Abajo Derecha</MenuItem>
-                    </Select>
-                </FormControl>
-            </div>
-            <div>
-                <h3>Panel de resultados</h3>
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={config.afterMatch.enabled}
-                            onChange={() => handleToggle('afterMatch', 'enabled')}
-                        />
-                    }
-                    label={config.afterMatch.enabled ? 'Mostrar' : 'Ocultar'}
+                <ControlSection
+                    title="Presentación Lower Third"
+                    enabled={config.lowerThird.enabled}
+                    onToggle={() => handleToggle('lowerThird', 'enabled')}
                 />
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={config.afterMatch.showStats}
-                            onChange={() => handleToggle('afterMatch', 'showStats')}
-                        />
-                    }
-                    label={config.afterMatch.showStats ? 'Mostrar estadísticas' : 'Ocultar estadísticas'}
+
+                <ControlSection
+                    title="Comparación de equipos"
+                    enabled={config.teamComparison.enabled}
+                    onToggle={() => handleToggle('teamComparison', 'enabled')}
                 />
-            </div>
-        </ControlsContainerDiv>
+
+                <ControlSection
+                    title="Panel de patrocinadores"
+                    enabled={config.sponsors.enabled}
+                    onToggle={() => handleToggle('sponsors', 'enabled')}
+                />
+
+                <ControlSection
+                    title="Panel de redes sociales"
+                    enabled={config.socialMedia.enabled}
+                    onToggle={() => handleToggle('socialMedia', 'enabled')}
+                >
+                    <FormControl sx={{ m: 1, minWidth: 150 }} size="small">
+                        <InputLabel id="select-socialmedia-pos">Posición</InputLabel>
+                        <Select
+                            labelId="select-socialmedia-pos"
+                            label="Posición"
+                            value={config.socialMedia.position}
+                            onChange={(e) => handleSelectChange('socialMedia', 'position', e.target.value)}
+                        >
+                            <MenuItem value="top-left">Arriba Izquierda</MenuItem>
+                            <MenuItem value="top">Arriba</MenuItem>
+                            <MenuItem value="top-right">Arriba Derecha</MenuItem>
+                            <MenuItem value="bottom-left">Abajo Izquierda</MenuItem>
+                            <MenuItem value="bottom">Abajo</MenuItem>
+                            <MenuItem value="bottom-right">Abajo Derecha</MenuItem>
+                        </Select>
+                    </FormControl>
+                </ControlSection>
+
+                <ControlSection
+                    title="Marcador"
+                    enabled={config.scoreboard.enabled}
+                    onToggle={() => handleToggle('scoreboard', 'enabled')}
+                >
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        <FormControl sx={{ minWidth: 150 }} size="small">
+                            <InputLabel id="select-scoreboard-type">Apariencia</InputLabel>
+                            <Select
+                                labelId="select-scoreboard-type"
+                                label="Apariencia"
+                                value={config.scoreboard.type}
+                                onChange={(e) => handleSelectChange('scoreboard', 'type', e.target.value)}
+                            >
+                                <MenuItem value="classic">Simple</MenuItem>
+                                <MenuItem value="vertical-table">Multilínea</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <FormControl sx={{ minWidth: 150 }} size="small">
+                            <InputLabel id="select-scoreboard-pos">Posición</InputLabel>
+                            <Select
+                                labelId="select-scoreboard-pos"
+                                label="Posición"
+                                value={config.scoreboard.position}
+                                onChange={(e) => handleSelectChange('scoreboard', 'position', e.target.value)}
+                            >
+                                <MenuItem value="top-left">Arriba Izquierda</MenuItem>
+                                <MenuItem value="top">Arriba</MenuItem>
+                                <MenuItem value="top-right">Arriba Derecha</MenuItem>
+                                <MenuItem value="bottom-left">Abajo Izquierda</MenuItem>
+                                <MenuItem value="bottom">Abajo</MenuItem>
+                                <MenuItem value="bottom-right">Abajo Derecha</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Box>
+                </ControlSection>
+
+                <ControlSection
+                    title="Panel de resultados"
+                    enabled={config.afterMatch.enabled}
+                    onToggle={() => handleToggle('afterMatch', 'enabled')}
+                />
+            </Paper>
+        </Box>
     );
 };
 
