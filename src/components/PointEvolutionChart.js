@@ -4,13 +4,19 @@ import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, L
 // Per-set timeline chart with event labels and optimized mobile layout
 function PointEvolutionChart({ history = [], teams, teamColors }) {
   if (!history || history.length === 0) return null;
-  const data = history.map((h, i) => ({
-    rally: i + 1,
-    teamA: h.scores.teamA,
-    teamB: h.scores.teamB,
-    event: h.event,
-    timestamp: h.timestamp,
-  }));
+  let data = history.map((h, i) =>({ 
+        rally: i+1,
+        teamA: h.scores.teamA,
+        teamB: h.scores.teamB,
+        event: h.event,
+        timestamp: h.timestamp,
+      }));
+  data.unshift({
+        rally: 0,
+        teamA: 0,
+        teamB: 0,
+        event: 'rally',
+      });
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload || payload.length === 0) return null;
