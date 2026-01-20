@@ -18,9 +18,9 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 // 1. EXTRAER FUERA DEL COMPONENTE PRINCIPAL
 // Esto evita que React desmonte el componente al actualizar el estado
 const ControlSection = ({ title, enabled, onToggle, children }) => (
-    <Box sx={{ paddingY: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="h6" component="h3">
+    <Box sx={{ paddingY: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+            <Typography >
                 {title}
             </Typography>
             <FormControlLabel
@@ -37,7 +37,7 @@ const ControlSection = ({ title, enabled, onToggle, children }) => (
             />
         </Box>
         {children}
-        <Divider sx={{ mt: 2 }} />
+        <Divider sx={{ mt: 1 }} />
     </Box>
 );
 
