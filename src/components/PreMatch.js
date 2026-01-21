@@ -1,85 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
+import {
+  Paper,
+  Box,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  Typography,
+  Grid,
+  InputLabel,
+  Divider,
+} from '@mui/material';
 import CustomCombobox from './CustomCombobox';
 import MatchSelector from './MatchSelector';
 import ModalOverlay from './ModalOverlay';
 import { useSocket } from '../contexts/SocketContext';
 import { TeamColorSelector } from './TeamColorSelector';
-
-const PreMatchContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-  max-width: 600px;
-  margin: auto;
-`;
-
-const SyncButton = styled.button`
-  margin: 5px;
-  padding: 7px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  background-color: #007BFF;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  &:hover {
-    background-color: #0056b3;
-  }
-`;
-
-const FmvIcon = styled.img`
-  height: 20px;
-`;
-
-const TeamNameInput = styled.div`
-  display: flex;
-  align-items: center;
-  width: 100%;
-  gap: 5px;
-`;
-
-const ImageSelector = styled.div`
-  display: flex;
-  width: 100%;
-  gap: 5px;
-`;
-
-const ImagePreview = styled.img`
-  width: 100px;
-`;
-
-const Input = styled.input`
-  margin: 10px 0;
-  padding: 8px;
-  width: 100%;
-`;
-
-const Select = styled.select`
-  margin: 10px 0;
-  padding: 8px;
-  width: 100%;
-`;
-
-const StatInputs = styled.div`
-  display: grid;
-  grid-template-columns: auto auto auto;
-  gap: 10px;
-  width: 100%;
-  margin-top: 15px;
-`;
-
-const StatInput = styled.input`
-  padding: 8px;
-  width: 80%;
-`;
-const StatLabel = styled.label`
-  text-align: center;
-`;
 
 function PreMatch({ setMatchDetails, matchDetails }) {
   const [teamA, setTeamA] = useState(matchDetails.teams.teamA);
@@ -168,100 +105,293 @@ function PreMatch({ setMatchDetails, matchDetails }) {
   ];
 
   const renderStatInputs = (statsA, statsB) => (
-    <StatInputs>
-      <StatLabel>{teamA}</StatLabel>
-      <StatLabel> - </StatLabel>
-      <StatLabel>{teamB}</StatLabel>
-      {statFields.map(stat => (
-        <React.Fragment key={stat.key}>
-          <StatInput
-            type="number"
-            value={statsA[stat.key]}
-            onChange={(e) => handleStatChange('A', stat.key, e.target.value)}
-          />
-          <StatLabel>{stat.label}</StatLabel>
-          <StatInput
-            type="number"
-            value={statsB[stat.key]}
-            onChange={(e) => handleStatChange('B', stat.key, e.target.value)}
-          />
-        </React.Fragment>
-      ))}
-    </StatInputs>
+    <Box sx={{ width: '100%', mt: 2 }}>
+      <Grid container spacing={1}>
+        {/* Header Row */}
+        <Grid size={4}>
+          <Typography variant="subtitle2" align="center" fontWeight="bold">
+            {teamA}
+          </Typography>
+        </Grid>
+        <Grid size={4}>
+          <Typography variant="subtitle2" align="center" fontWeight="bold">
+            -
+          </Typography>
+        </Grid>
+        <Grid size={4}>
+          <Typography variant="subtitle2" align="center" fontWeight="bold">
+            {teamB}
+          </Typography>
+        </Grid>
+
+        {/* Stat Rows */}
+        {statFields.map(stat => (
+          <React.Fragment key={stat.key}>
+            <Grid size={4}>
+              <TextField
+                type="number"
+                size="small"
+                fullWidth
+                value={statsA[stat.key]}
+                onChange={(e) => handleStatChange('A', stat.key, e.target.value)}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    height: '36px'
+                  },
+                  '& .MuiInputBase-input': {
+                    textAlign: 'center',
+                    fontSize: '0.875rem',
+                    padding: '6px 8px'
+                  }
+                }}
+              />
+            </Grid>
+            <Grid size={4}>
+              <Typography
+                variant="body2"
+                align="center"
+                sx={{
+                  fontSize: '0.9rem',
+                  // lineHeight: '36px'
+                }}
+              >
+                {stat.label}
+              </Typography>
+            </Grid>
+            <Grid size={4}>
+              <TextField
+                type="number"
+                size="small"
+                fullWidth
+                value={statsB[stat.key]}
+                onChange={(e) => handleStatChange('B', stat.key, e.target.value)}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    height: '36px'
+                  },
+                  '& .MuiInputBase-input': {
+                    textAlign: 'center',
+                    fontSize: '0.875rem',
+                    padding: '6px 8px'
+                  }
+                }}
+              />
+            </Grid>
+          </React.Fragment>
+        ))}
+      </Grid>
+    </Box>
   );
 
+
+
   return (
-    <PreMatchContainer>
-      <SyncButton onClick={() => setIsModalOpen(true)}>Obtener desde FMV <FmvIcon src='fmv_icon.png' alt='FMV Logo'></FmvIcon> </SyncButton>
-      {isModalOpen && (
-        <ModalOverlay onClose={() => setIsModalOpen(false)}>
-          <MatchSelector onSelectMatch={handleSelectMatch} />
-        </ModalOverlay>
-      )}
-      <Input
-        type="text"
-        placeholder="Cabecera de presentación del partido"
-        value={matchHeader}
-        onChange={(e) => setMatchHeader(e.target.value)}
-      />
-      <Input
-        type="text"
-        placeholder="Información secundaria"
-        value={extendedInfo}
-        onChange={(e) => setExtendedInfo(e.target.value)}
-      />
-      <Input
-        type="text"
-        placeholder="Pabellón de juego"
-        value={stadium}
-        onChange={(e) => setStadium(e.target.value)}
-      />
-      <Select
-        value={maxSets}
-        onChange={(e) => {
-          const newMaxSets = parseInt(e.target.value, 10);
-          setMaxSets(newMaxSets);
+    <Box sx={{ width: '100%', p: { xs: 1, sm: 2 }, boxSizing: 'border-box' }}>
+      <Paper
+        elevation={3}
+        sx={{
+          width: '100%',
+          maxWidth: '800px',
+          margin: '0 auto',
+          p: { xs: 2, sm: 4 },
+          boxSizing: 'border-box',
+          borderRadius: 2
         }}
       >
-        <option value={3}>3 Sets</option>
-        <option value={5}>5 Sets</option>
-      </Select>
-      <ImageSelector>
-        <Input
-          type="text"
-          placeholder="Logo de la Competicion"
-          value={competitionLogo}
-          onChange={(e) => setCompetitionLogo(e.target.value)}
-        />
-        <ImagePreview src={competitionLogo}></ImagePreview>
-      </ImageSelector>
-      <h2>Equipo Local (Equipo A)</h2>
-      <TeamNameInput>
-        <Input
-          type="text"
-          placeholder="Nombre del Equipo A"
-          value={teamA}
-          onChange={(e) => setTeamA(e.target.value)}
-        />
-        <TeamColorSelector color={teamAColor} onColorChange={setTeamAColor} />
-      </TeamNameInput>
-      <CustomCombobox placeholderText={"URL del escudo del Equipo A"} inputValue={teamALogo} onInputChange={setTeamALogo} />
-      <h2>Equipo Visitante (Equipo B)</h2>
-      <TeamNameInput>
-        <Input
-          type="text"
-          placeholder="Nombre del Equipo B"
-          value={teamB}
-          onChange={(e) => setTeamB(e.target.value)}
-        />
-        <TeamColorSelector color={teamBColor} onColorChange={setTeamBColor} />
-      </TeamNameInput>
-      <CustomCombobox placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} />
+        <Box sx={{
+          display: 'flex',
+          
+          alignItems: 'center',
+          justifyContent: 'center',
+          mb: 4,
+          gap: 2,
+          flexWrap: 'wrap'
+        }}>
+          <Button
+            variant="contained"
+            onClick={() => setIsModalOpen(true)}
+            sx={{
+              margin: '5px',
+              padding: '7px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              backgroundColor: '#007BFF',
+              '&:hover': {
+                backgroundColor: '#0056b3'
+              }
+            }}
+          >
+            Obtener desde FMV
+            <Box
+              component="img"
+              src="fmv_icon.png"
+              alt="FMV Logo"
+              sx={{ height: '20px' }}
+            />
+          </Button>
+        </Box>
 
-      <h2>Comparativa</h2>
-      {renderStatInputs(statsA, statsB)}
+        {isModalOpen && (
+          <ModalOverlay onClose={() => setIsModalOpen(false)}>
+            <MatchSelector onSelectMatch={handleSelectMatch} />
+          </ModalOverlay>
+        )}
 
-    </PreMatchContainer>
+        <TextField
+          fullWidth
+          size='small'
+          label="Cabecera de presentación del partido"
+          placeholder="Cabecera de presentación del partido"
+          value={matchHeader}
+          onChange={(e) => setMatchHeader(e.target.value)}
+          sx={{ margin: '10px 0' }}
+        />
+
+        <TextField
+          fullWidth
+          size='small'
+          label="Información secundaria"
+          placeholder="Información secundaria"
+          value={extendedInfo}
+          onChange={(e) => setExtendedInfo(e.target.value)}
+          sx={{ margin: '10px 0' }}
+        />
+
+        <TextField
+          fullWidth
+          size='small'
+          label="Pabellón de juego"
+          placeholder="Pabellón de juego"
+          value={stadium}
+          onChange={(e) => setStadium(e.target.value)}
+          sx={{ margin: '10px 0' }}
+        />
+
+        <FormControl fullWidth sx={{ margin: '10px 0' }}>
+          <InputLabel>Número de Sets</InputLabel>
+          <Select
+            value={maxSets}
+            label="Número de Sets"
+            size='small'
+            onChange={(e) => {
+              const newMaxSets = parseInt(e.target.value, 10);
+              setMaxSets(newMaxSets);
+            }}
+          >
+            <MenuItem value={3}>3 Sets</MenuItem>
+            <MenuItem value={5}>5 Sets</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Box
+          sx={{
+            display: 'flex',
+            width: '100%',
+            gap: '5px',
+            alignItems: 'center'
+          }}
+        >
+          <TextField
+            fullWidth
+            size='small'
+            label="Logo de la Competicion"
+            placeholder="Logo de la Competicion"
+            value={competitionLogo}
+            onChange={(e) => setCompetitionLogo(e.target.value)}
+          />
+          <Box
+            component="img"
+            src={competitionLogo}
+            alt="Competition Logo"
+            sx={{ width: '100px', height: '100px', objectFit: 'contain' }}
+          />
+        </Box>
+<Divider sx={{ mt: 1 }} />
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+          flexWrap: 'wrap'
+        }}>
+          <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+            Equipo Local (Equipo A)
+          </Typography>
+        </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            width: '100%',
+            gap: '5px'
+          }}
+        >
+          <TextField
+            fullWidth
+            size='small'
+            label="Nombre del Equipo A"
+            placeholder="Nombre del Equipo A"
+            value={teamA}
+            onChange={(e) => setTeamA(e.target.value)}
+          />
+          <TeamColorSelector color={teamAColor} onColorChange={setTeamAColor} />
+        </Box>
+
+        <Box sx={{ width: '100%', mt: 1 }}>
+          <CustomCombobox
+            label="URL del escudo del Equipo A"
+            placeholderText="URL del escudo del Equipo A"
+            inputValue={teamALogo}
+            onInputChange={setTeamALogo}
+          />
+        </Box>
+        <Divider sx={{ mt: 1 }} />
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+          flexWrap: 'wrap'
+        }}>
+        <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+          Equipo Visitante (Equipo B)
+        </Typography>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            width: '100%',
+            gap: '5px'
+          }}
+        >
+          <TextField
+            fullWidth
+            size='small'
+            label="Nombre del Equipo B"
+            placeholder="Nombre del Equipo B"
+            value={teamB}
+            onChange={(e) => setTeamB(e.target.value)}
+          />
+          <TeamColorSelector color={teamBColor} onColorChange={setTeamBColor} />
+        </Box>
+
+        <Box sx={{ width: '100%', mt: 1 }}>
+          <CustomCombobox placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} />
+        </Box>
+<Divider sx={{ mt: 1 }} />
+        <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+          Comparativa
+        </Typography>
+        <Box sx={{ width: '100%', mt: 1 }}>
+
+          {renderStatInputs(statsA, statsB)}
+        </Box>
+      </Paper>
+    </Box>
   );
 }
 
