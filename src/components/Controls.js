@@ -74,11 +74,11 @@ const Controls = ({ config, setConfig }) => {
 
     return (
         <Box sx={{ width: '100%', p: { xs: 1, sm: 2 }, boxSizing: 'border-box' }}>
-            <Paper 
-                elevation={3} 
-                sx={{ 
-                    width: '100%', 
-                    maxWidth: '800px', 
+            <Paper
+                elevation={3}
+                sx={{
+                    width: '100%',
+                    maxWidth: '800px',
                     margin: '0 auto',
                     p: { xs: 2, sm: 4 },
                     boxSizing: 'border-box',
@@ -86,13 +86,13 @@ const Controls = ({ config, setConfig }) => {
                 }}
             >
                 {/* Cabecera con botón */}
-                <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
+                <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     mb: 4,
                     gap: 2,
-                    flexWrap: 'wrap' 
+                    flexWrap: 'wrap'
                 }}>
                     <Typography variant="h4" component="h1">
                         Controles
@@ -147,6 +147,7 @@ const Controls = ({ config, setConfig }) => {
                             <MenuItem value="top-left">Arriba Izquierda</MenuItem>
                             <MenuItem value="top">Arriba</MenuItem>
                             <MenuItem value="top-right">Arriba Derecha</MenuItem>
+                            <MenuItem value="center">Centro</MenuItem>
                             <MenuItem value="bottom-left">Abajo Izquierda</MenuItem>
                             <MenuItem value="bottom">Abajo</MenuItem>
                             <MenuItem value="bottom-right">Abajo Derecha</MenuItem>
@@ -183,11 +184,40 @@ const Controls = ({ config, setConfig }) => {
                                 <MenuItem value="top-left">Arriba Izquierda</MenuItem>
                                 <MenuItem value="top">Arriba</MenuItem>
                                 <MenuItem value="top-right">Arriba Derecha</MenuItem>
+                                <MenuItem value="center">Centro</MenuItem>
                                 <MenuItem value="bottom-left">Abajo Izquierda</MenuItem>
                                 <MenuItem value="bottom">Abajo</MenuItem>
                                 <MenuItem value="bottom-right">Abajo Derecha</MenuItem>
                             </Select>
                         </FormControl>
+                    </Box>
+                    <Box
+                        sx={{
+                            ml: 2,
+                            mt: 1,
+                            p: 1.5,
+                            backgroundColor: 'background.paper',
+                            // opacity: config.afterMatch.enabled ? 1 : 0.5,
+                            // pointerEvents: config.afterMatch.enabled ? 'auto' : 'none',
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignitems: 'center', gap: 1 }}>
+                                <Typography variant='body2' sx={{ fontweight: 500 }}>
+                                    Sets anteriores
+                                </Typography>
+                            </Box>
+                            <FormControlLabel control={
+                                <Switch size="small" checked={config.scoreboard.showHistory} onChange={() => handleToggle('scoreboard', 'showHistory')} />
+                            }
+                                label={
+                                    <Typography variant="body2">
+                                        {config.scoreboard.showHistory ? 'Mostrar' : 'Ocultar'}
+                                    </Typography>
+                                }
+                            >
+                            </FormControlLabel>
+                        </Box>
                     </Box>
                 </ControlSection>
 
@@ -195,7 +225,41 @@ const Controls = ({ config, setConfig }) => {
                     title="Panel de resultados"
                     enabled={config.afterMatch.enabled}
                     onToggle={() => handleToggle('afterMatch', 'enabled')}
-                />
+                >
+                    <Box
+                        sx={{
+                            ml: 2,
+                            mt: 1,
+                            p: 1.5,
+                            backgroundColor: 'background.paper',
+                            // opacity: config.afterMatch.enabled ? 1 : 0.5,
+                            // pointerEvents: config.afterMatch.enabled ? 'auto' : 'none',
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignitems: 'center', gap: 1 }}>
+                                <Typography variant='body2' sx={{ fontweight: 500 }}>
+                                    Tabla de Estadísticas
+                                </Typography>
+                            </Box>
+                            <FormControlLabel control={
+                                <Switch size="small" checked={config.afterMatch.showStats} onChange={() => handleToggle('afterMatch', 'showStats')} />
+                            }
+                                label={
+                                    <Typography variant="body2">
+                                        {config.afterMatch.showStats ? 'Mostrar' : 'Ocultar'}
+                                    </Typography>
+                                }
+                            >
+                            </FormControlLabel>
+                        </Box>
+                    </Box>
+                </ControlSection>
+
+
+
+
+
             </Paper>
         </Box>
     );

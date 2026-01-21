@@ -63,6 +63,7 @@ const initialConfig = {
     enabled: false,
     type: 'classic',
     position: 'top',
+    showHistory: true,
   },
   matchup: {
     enabled: false,
