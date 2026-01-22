@@ -200,7 +200,7 @@ function PreMatch({ setMatchDetails, matchDetails }) {
       >
         <Box sx={{
           display: 'flex',
-          
+
           alignItems: 'center',
           justifyContent: 'center',
           mb: 4,
@@ -269,7 +269,7 @@ function PreMatch({ setMatchDetails, matchDetails }) {
           sx={{ margin: '10px 0' }}
         />
 
-        <FormControl fullWidth sx={{ margin: '10px 0' }}>
+        <FormControl fullWidth sx={{ margin: '10px 0' }} size='small'>
           <InputLabel>Número de Sets</InputLabel>
           <Select
             value={maxSets}
@@ -308,7 +308,7 @@ function PreMatch({ setMatchDetails, matchDetails }) {
             sx={{ width: '100px', height: '100px', objectFit: 'contain' }}
           />
         </Box>
-<Divider sx={{ mt: 1 }} />
+        <Divider sx={{ mt: 1 }} />
         <Box sx={{
           display: 'flex',
           alignItems: 'center',
@@ -355,9 +355,9 @@ function PreMatch({ setMatchDetails, matchDetails }) {
           gap: 2,
           flexWrap: 'wrap'
         }}>
-        <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
-          Equipo Visitante (Equipo B)
-        </Typography>
+          <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+            Equipo Visitante (Equipo B)
+          </Typography>
         </Box>
 
         <Box
@@ -380,9 +380,9 @@ function PreMatch({ setMatchDetails, matchDetails }) {
         </Box>
 
         <Box sx={{ width: '100%', mt: 1 }}>
-          <CustomCombobox placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} />
+          <CustomCombobox label={"URL del escudo del Equipo B"} placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} />
         </Box>
-<Divider sx={{ mt: 1 }} />
+        <Divider sx={{ mt: 1 }} />
         <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
           Comparativa
         </Typography>
