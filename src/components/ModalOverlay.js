@@ -1,48 +1,64 @@
 import React from 'react';
-import styled from 'styled-components';
-
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-`;
-
-const ModalContent = styled.div`
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  max-width: 600px;
-  width: 100%;
-  z-index: 1001;
-`;
-
-const CloseButton = styled.button`
-  background-color: #ff5733;
-  color: white;
-  border: none;
-  padding: 10px;
-  border-radius: 5px;
-  cursor: pointer;
-  &:hover {
-    background-color: #e04e2d;
-  }
-`;
+import {
+  Dialog,
+  DialogContent,
+  DialogActions,
+  Button,
+  IconButton,
+  Box
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 
 const Modal = ({ children, onClose }) => {
   return (
-    <ModalOverlay>
-      <ModalContent>
-        <CloseButton onClick={onClose}>Cerrar</CloseButton>
+    <Dialog
+      open={true}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          padding: 1
+        }
+      }}
+    >
+      <Box sx={{ position: 'relative' }}>
+        <Button 
+          onClick={onClose}
+          variant="contained"
+          sx={{
+            backgroundColor: '#ff5733',
+            color: 'white',
+            '&:hover': {
+              backgroundColor: '#e04e2d'
+            }
+          }}
+        >
+          Cerrar
+        </Button>
+      </Box>
+
+      <DialogContent sx={{ pt: 5 }}>
         {children}
-      </ModalContent>
-    </ModalOverlay>
+      </DialogContent>
+
+      {/* <DialogActions sx={{ padding: 2 }}>
+        <Button 
+          onClick={onClose}
+          variant="contained"
+          sx={{
+            backgroundColor: '#ff5733',
+            color: 'white',
+            '&:hover': {
+              backgroundColor: '#e04e2d'
+            }
+          }}
+        >
+          Cerrar
+        </Button>
+      </DialogActions> */}
+    </Dialog>
   );
 };
 

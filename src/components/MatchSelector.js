@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-
-const MatchSelectorContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 20px;
-`;
-
-const Select = styled.select`
-  margin: 10px 0;
-  padding: 8px;
-  width: 100%;
-`;
+import {
+    Box,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
+} from '@mui/material';
 
 const MatchSelector = ({ onSelectMatch }) => {
     const [competitionTypes, setCompetitionTypes] = useState([]);
@@ -172,7 +165,6 @@ const MatchSelector = ({ onSelectMatch }) => {
         };
 
         onSelectMatch(matchDetails);
-
     };
 
     const handleMatchDropdownChange = (e) => {
@@ -185,49 +177,194 @@ const MatchSelector = ({ onSelectMatch }) => {
     };
 
     return (
-        <MatchSelectorContainer>
-            <Select value={selectedCompetitionType} onChange={(e) => setSelectedCompetitionType(e.target.value)}>
-                <option value="">Tipo de competición</option>
-                {competitionTypes.map(type => (
-                    <option key={type.id} value={type.id}>{type.nombre}</option>
-                ))}
-            </Select>
+        <Box
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                marginBottom: '20px',
+                width: '100%',
+                gap: 2
+            }}
+            size="small"
+        >
+            <FormControl fullWidth sx={{ margin: '10px 0' }} size="small">
+                <InputLabel>Tipo de competición</InputLabel>
+                <Select
+                    size="small"
+                    value={selectedCompetitionType}
+                    label="Tipo de competición"
+                    onChange={(e) => setSelectedCompetitionType(e.target.value)}
+                    MenuProps={{
+                        PaperProps: {
+                            sx: {
+                                maxHeight: 300,
+                                '& .MuiMenuItem-root': {
+                                    fontSize: '0.875rem',
+                                    padding: '6px 16px',
+                                    whiteSpace: 'normal',
+                                    wordWrap: 'break-word'
+                                }
+                            }
+                        }
+                    }}
+                >
+                    <MenuItem value="">
+                        <em>Tipo de competición</em>
+                    </MenuItem>
+                    {competitionTypes.map(type => (
+                        <MenuItem key={type.id} value={type.id}>{type.nombre}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
 
-            <Select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} disabled={!selectedCompetitionType}>
-                <option value="">Categoría</option>
-                {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.nombre_comp}</option>
-                ))}
-            </Select>
+            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedCompetitionType} size="small">
+                <InputLabel>Categoría</InputLabel>
+                <Select
+                    value={selectedCategory}
+                    label="Categoría"
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    MenuProps={{
+                        PaperProps: {
+                            sx: {
+                                maxHeight: 300,
+                                '& .MuiMenuItem-root': {
+                                    fontSize: '0.875rem',
+                                    padding: '6px 16px',
+                                    whiteSpace: 'normal',
+                                    wordWrap: 'break-word'
+                                }
+                            }
+                        }
+                    }}
+                >
+                    <MenuItem value="">
+                        <em>Categoría</em>
+                    </MenuItem>
+                    {categories.map(cat => (
+                        <MenuItem key={cat.id} value={cat.id}>{cat.nombre_comp}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
 
-            <Select value={selectedDivision} onChange={(e) => setSelectedDivision(e.target.value)} disabled={!selectedCategory}>
-                <option value="">División</option>
-                {divisions.map(div => (
-                    <option key={div.id} value={div.id}>{div.nombre}</option>
-                ))}
-            </Select>
+            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedCategory} size="small">
+                <InputLabel>División</InputLabel>
+                <Select
+                    value={selectedDivision}
+                    label="División"
+                    onChange={(e) => setSelectedDivision(e.target.value)}
+                    MenuProps={{
+                        PaperProps: {
+                            sx: {
+                                maxHeight: 300,
+                                '& .MuiMenuItem-root': {
+                                    fontSize: '0.875rem',
+                                    padding: '6px 16px',
+                                    whiteSpace: 'normal',
+                                    wordWrap: 'break-word'
+                                }
+                            }
+                        }
+                    }}
+                >
+                    <MenuItem value="">
+                        <em>División</em>
+                    </MenuItem>
+                    {divisions.map(div => (
+                        <MenuItem key={div.id} value={div.id}>{div.nombre}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
 
-            <Select value={selectedPhase} onChange={(e) => setSelectedPhase(e.target.value)} disabled={!selectedDivision}>
-                <option value="">Fase</option>
-                {phases.map(phase => (
-                    <option key={phase.id} value={phase.id}>{phase.nombre}</option>
-                ))}
-            </Select>
+            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedDivision} size="small">
+                <InputLabel>Fase</InputLabel>
+                <Select
+                    value={selectedPhase}
+                    label="Fase"
+                    onChange={(e) => setSelectedPhase(e.target.value)}
+                    MenuProps={{
+                        PaperProps: {
+                            sx: {
+                                maxHeight: 300,
+                                '& .MuiMenuItem-root': {
+                                    fontSize: '0.875rem',
+                                    padding: '6px 16px',
+                                    whiteSpace: 'normal',
+                                    wordWrap: 'break-word'
+                                }
+                            }
+                        }
+                    }}
+                >
+                    <MenuItem value="">
+                        <em>Fase</em>
+                    </MenuItem>
+                    {phases.map(phase => (
+                        <MenuItem key={phase.id} value={phase.id}>{phase.nombre}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
 
-            <Select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} disabled={!selectedPhase}>
-                <option value="">Grupo</option>
-                {groups.map(group => (
-                    <option key={group.id} value={group.id}>{group.nombre}</option>
-                ))}
-            </Select>
+            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedPhase} size="small">
+                <InputLabel>Grupo</InputLabel>
+                <Select
+                    value={selectedGroup}
+                    label="Grupo"
+                    onChange={(e) => setSelectedGroup(e.target.value)}
+                    MenuProps={{
+                        PaperProps: {
+                            sx: {
+                                maxHeight: 300,
+                                '& .MuiMenuItem-root': {
+                                    fontSize: '0.875rem',
+                                    padding: '6px 16px',
+                                    whiteSpace: 'normal',
+                                    wordWrap: 'break-word'
+                                }
+                            }
+                        }
+                    }}
+                >
+                    <MenuItem value="">
+                        <em>Grupo</em>
+                    </MenuItem>
+                    {groups.map(group => (
+                        <MenuItem key={group.id} value={group.id}>{group.nombre}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
 
-            <Select value={selectedMatch?.id || ''} onChange={handleMatchDropdownChange} disabled={!selectedGroup}>
-                <option value="">Partido</option>
-                {matches.map(match => (
-                    <option key={match.id} value={match.id}>{match.equipo_local} vs {match.equipo_visitante}</option>
-                ))}
-            </Select>
-        </MatchSelectorContainer>
+            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedGroup} size="small">
+                <InputLabel>Partido</InputLabel>
+                <Select
+                    value={selectedMatch?.id || ''}
+                    label="Partido"
+                    onChange={handleMatchDropdownChange}
+                    MenuProps={{
+                        PaperProps: {
+                            sx: {
+                                maxHeight: 300,
+                                '& .MuiMenuItem-root': {
+                                    fontSize: '0.875rem',
+                                    padding: '6px 16px',
+                                    whiteSpace: 'normal',
+                                    wordWrap: 'break-word'
+                                }
+                            }
+                        }
+                    }}
+                >
+                    <MenuItem value="">
+                        <em>Partido</em>
+                    </MenuItem>
+                    {matches.map(match => (
+                        <MenuItem key={match.id} value={match.id} size="small">
+                            {match.equipo_local} vs {match.equipo_visitante}
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+        </Box>
     );
 };
 
