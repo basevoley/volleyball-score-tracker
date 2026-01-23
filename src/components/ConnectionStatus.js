@@ -6,7 +6,6 @@ import {
   Alert,
   Button,
   CircularProgress,
-  Box
 } from '@mui/material';
 import {
   Refresh as RefreshIcon
