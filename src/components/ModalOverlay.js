@@ -4,10 +4,8 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  IconButton,
-  Box
+  DialogTitle
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 
 const Modal = ({ children, onClose }) => {
   return (
@@ -16,35 +14,23 @@ const Modal = ({ children, onClose }) => {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          padding: 1
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 2,
+            padding: 1
+          }
         }
       }}
     >
-      <Box sx={{ position: 'relative' }}>
-        <Button 
-          onClick={onClose}
-          variant="contained"
-          sx={{
-            backgroundColor: '#ff5733',
-            color: 'white',
-            '&:hover': {
-              backgroundColor: '#e04e2d'
-            }
-          }}
-        >
-          Cerrar
-        </Button>
-      </Box>
+      <DialogTitle>Selector de Partidos</DialogTitle>
 
       <DialogContent sx={{ pt: 5 }}>
         {children}
       </DialogContent>
 
-      {/* <DialogActions sx={{ padding: 2 }}>
-        <Button 
+      <DialogActions sx={{ padding: 0 }}>
+        <Button
           onClick={onClose}
           variant="contained"
           sx={{
@@ -55,9 +41,9 @@ const Modal = ({ children, onClose }) => {
             }
           }}
         >
-          Cerrar
+          Descartar
         </Button>
-      </DialogActions> */}
+      </DialogActions>
     </Dialog>
   );
 };

@@ -100,8 +100,14 @@ const Controls = ({ config, setConfig }) => {
                     <Button
                         variant="contained"
                         color="primary"
+                        size='small'
                         onClick={handleReloadOverlay}
                         startIcon={<RefreshIcon />}
+                        sx={{
+                            color: 'white',
+                            fontSize: '0.75rem',
+                            padding: '6px 12px',
+                        }}
                     >
                         Recargar overlay
                     </Button>

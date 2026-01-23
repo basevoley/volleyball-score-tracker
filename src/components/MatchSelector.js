@@ -182,9 +182,8 @@ const MatchSelector = ({ onSelectMatch }) => {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                marginBottom: '20px',
                 width: '100%',
-                gap: 2
+                gap: 0
             }}
             size="small"
         >
