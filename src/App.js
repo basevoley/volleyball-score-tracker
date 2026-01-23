@@ -1,6 +1,15 @@
 // app.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import styled from 'styled-components';
+import {
+  Container,
+  Box,
+  Button,
+  Typography,
+  Paper,
+  Tabs,
+  Tab
+} from '@mui/material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PreMatch from './components/PreMatch';
 import Match from './components/Match';
 import Controls from './components/Controls';
@@ -8,52 +17,6 @@ import ResizablePreview from './components/ResizablePreview';
 import Cookies from 'js-cookie';
 import ShortUUID from 'short-uuid';
 import { SocketProvider } from './contexts/SocketContext';
-
-// --- Styled Components ---
-
-const AppContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 600px;
-  min-width: 400px;
-  margin: auto;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-`;
-
-const TabContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-`;
-
-const TabButton = styled.button`
-  padding: 10px 20px;
-  margin: 0 5px;
-  background-color: ${({ $active }) => ($active ? '#007bff' : '#ccc')};
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  &:hover {
-    background-color: ${({ $active }) => ($active ? '#0056b3' : '#bbb')};
-  }
-`;
-
-const OpenLinkButton = styled.button`
-  margin: 0 5px;
-  padding: 10px 20px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  &:hover {
-    background-color: #45a049;
-  }
-`;
 
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3005';
 const OVERLAY_URL = process.env.REACT_APP_OVERLAY_URL || 'http://localhost:3001';
@@ -95,8 +58,8 @@ const initialConfig = {
       'sponsors-1.png',
       'sponsors-2.png',
       'sponsors-3.png',
-      // Añade más URLs según sea necesario
-    ], displayTime: 5000,
+    ],
+    displayTime: 5000,
   },
 };
 
@@ -148,7 +111,7 @@ const initialMatchDetails = {
 const initialMatchData = {
   scores: { teamA: 0, teamB: 0 },
   setsWon: { teamA: 0, teamB: 0 },
-  setScores: [],//{ teamA: 25, teamB: 0 },{ teamA: 25, teamB: 0 },],
+  setScores: [],
   currentServer: null,
   ballPossession: null,
   matchStarted: false,
@@ -175,7 +138,7 @@ function App() {
   const [matchDetails, setMatchDetails] = useState(initialMatchDetails);
   const [matchData, setMatchData] = useState(initialMatchData);
   const [config, setConfig] = useState(initialConfig);
-  const [activeTab, setActiveTab] = useState('prematch');
+  const [activeTab, setActiveTab] = useState(0);
 
   const matchDetailsRef = useRef(matchDetails);
   const matchDataRef = useRef(matchData);
@@ -202,7 +165,7 @@ function App() {
     } else {
       const translator = ShortUUID();
       const newKey = translator.new();
-      Cookies.set('websocket-key', newKey, { expires: 365 }); // Store the key in a cookie for 1 year
+      Cookies.set('websocket-key', newKey, { expires: 365 });
       return newKey;
     }
   });
@@ -215,41 +178,115 @@ function App() {
       matchData: matchDataRef.current,
       config: configRef.current,
     };
-  }, []); // No dependencies needed - uses refs
+  }, []);
 
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
 
   const openOtherApp = () => {
-    // window.open(overlayUrl, '_blank');
     navigator.clipboard.writeText(overlayUrl);
-
-    // Alert the copied text
     alert("Output URL copied to clipboard");
   };
 
   return (
     <SocketProvider url={SOCKET_SERVER_URL} socketKey={key} onHandshake={handleHandshake}>
-      <AppContainer>
-        <h2 style={{ margin: "0px" }}>Vista Previa</h2>
-        <ResizablePreview src={overlayUrl} />
-        <TabContainer>
-          <TabButton $active={activeTab === 'prematch'} onClick={() => setActiveTab('prematch')}>
-            Datos del partido
-          </TabButton>
-          <TabButton $active={activeTab === 'match'} onClick={() => setActiveTab('match')}>
-            Partido
-          </TabButton>
-          <TabButton $active={activeTab === 'controls'} onClick={() => setActiveTab('controls')}>
-            Controles de vídeo
-          </TabButton>
-          <OpenLinkButton onClick={openOtherApp}>
-            Copiar URL de overlay
-          </OpenLinkButton>
-        </TabContainer>
+      <Container
+        maxWidth="lg"
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          minWidth: '400px',
+          p:0,
+        }}
+      >
+        <Paper
+          elevation={3}
+          sx={{
+            width: '100%',
+            backgroundColor: '#f9f9f9',
+            borderRadius: 2,
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Header with title and copy button */}
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              p: 2,
+              pb: 1
+            }}
+          >
+            <Typography variant="h5" sx={{ m: 0 }}>
+              Vista Previa
+            </Typography>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={openOtherApp}
+              startIcon={<ContentCopyIcon />}
+              sx={{
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                fontSize: '0.75rem',
+                padding: '6px 12px',
+                '&:hover': {
+                  backgroundColor: '#45a049'
+                }
+              }}
+            >
+              Copiar URL
+            </Button>
+          </Box>
 
-        {activeTab === 'prematch' && <PreMatch setMatchDetails={setMatchDetails} matchDetails={matchDetails} />}
-        {activeTab === 'match' && <Match matchDetails={matchDetails} matchData={matchData} setMatchData={setMatchData} />}
-        {activeTab === 'controls' && <Controls config={config} setConfig={setConfig} />}
-      </AppContainer>
+          <Box sx={{ px: 0 }}>
+            <ResizablePreview src={overlayUrl} />
+          </Box>
+
+          {/* Tabs with background */}
+          <Box
+            sx={{
+              backgroundColor: '#e0e0e0',
+            }}
+          >
+            <Tabs
+              value={activeTab}
+              onChange={handleTabChange}
+              variant="fullWidth"
+              sx={{
+                '& .MuiTab-root': {
+                  fontWeight: 500,
+                  fontSize: '0.9rem',
+                  backgroundColor: '#e0e0e0',
+                  '&.Mui-selected': {
+                    backgroundColor: '#f9f9f9#007bff',
+                    color: '#007bff'
+                  },
+                  '&:hover': {
+                    backgroundColor: '#d0d0d0'
+                  }
+                },
+                '& .MuiTabs-indicator': {
+                  backgroundColor: '#007bff',
+                  height: 3
+                }
+              }} >
+                <Tab label="Datos del partido"/>
+                <Tab label="Partido"/>
+                <Tab label="Controles de vídeo"/>
+            </Tabs>
+          </Box>
+          <Box sx={{ p: 0 }}>
+            {activeTab === 0 && <PreMatch setMatchDetails={setMatchDetails} matchDetails={matchDetails} />}
+            {activeTab === 1 && <Match matchDetails={matchDetails} matchData={matchData} setMatchData={setMatchData} />}
+            {activeTab === 2 && <Controls config={config} setConfig={setConfig} />}
+          </Box>
+        </Paper>
+      </Container>
     </SocketProvider>
   );
 }
