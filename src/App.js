@@ -17,6 +17,7 @@ import ResizablePreview from './components/ResizablePreview';
 import Cookies from 'js-cookie';
 import ShortUUID from 'short-uuid';
 import { SocketProvider } from './contexts/SocketContext';
+import { ConnectionStatus } from './components/ConnectionStatus';
 
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3005';
 const OVERLAY_URL = process.env.REACT_APP_OVERLAY_URL || 'http://localhost:3001';
@@ -191,6 +192,7 @@ function App() {
 
   return (
     <SocketProvider url={SOCKET_SERVER_URL} socketKey={key} onHandshake={handleHandshake}>
+      <ConnectionStatus />
       <Container
         maxWidth="lg"
         sx={{
