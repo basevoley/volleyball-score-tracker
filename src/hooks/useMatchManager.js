@@ -151,7 +151,7 @@ export const useMatchManager = (initialData, teams, maxSets) => {
             statistics: createEmptyStats(),
             currentSetStats: createEmptyStats(),
             currentSetHistory: [],
-            setStats: [],
+            setStats: null,
             winner: null,
             matchEvent: { type: null, details: null },
         });

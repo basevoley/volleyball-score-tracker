@@ -1,23 +1,15 @@
 // app.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Container,
-  Box,
-  Button,
-  Typography,
-  Paper,
-  Tabs,
-  Tab
-} from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { Container, Box, Typography, Paper, Tabs, Tab } from '@mui/material';
 import PreMatch from './components/PreMatch';
 import Match from './components/Match';
 import Controls from './components/Controls';
-import ResizablePreview from './components/ResizablePreview';
 import Cookies from 'js-cookie';
 import ShortUUID from 'short-uuid';
 import { SocketProvider } from './contexts/SocketContext';
 import { ConnectionStatus } from './components/ConnectionStatus';
+import OverlayPreview from './components/OverlayPreview';
+import PackageJson from '../package.json';
 
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3005';
 const OVERLAY_URL = process.env.REACT_APP_OVERLAY_URL || 'http://localhost:3001';
@@ -200,7 +192,8 @@ function App() {
           flexDirection: 'column',
           alignItems: 'center',
           minWidth: '400px',
-          p:0,
+          p: 0,
+          minHeight: '100vh',
         }}
       >
         <Paper
@@ -211,43 +204,13 @@ function App() {
             borderRadius: 2,
             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
             overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1
           }}
         >
-          {/* Header with title and copy button */}
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              p: 2,
-              pb: 1
-            }}
-          >
-            <Typography variant="h5" sx={{ m: 0 }}>
-              Vista Previa
-            </Typography>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={openOtherApp}
-              startIcon={<ContentCopyIcon />}
-              sx={{
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                fontSize: '0.75rem',
-                padding: '6px 12px',
-                '&:hover': {
-                  backgroundColor: '#45a049'
-                }
-              }}
-            >
-              Copiar URL
-            </Button>
-          </Box>
 
-          <Box sx={{ px: 0 }}>
-            <ResizablePreview src={overlayUrl} />
-          </Box>
+          <OverlayPreview overlayUrl={overlayUrl} />
 
           {/* Tabs with background */}
           <Box
@@ -277,15 +240,64 @@ function App() {
                   height: 3
                 }
               }} >
-                <Tab label="Datos del partido"/>
-                <Tab label="Partido"/>
-                <Tab label="Controles de vídeo"/>
+              <Tab label="Datos del partido" />
+              <Tab label="Partido" />
+              <Tab label="Controles de vídeo" />
             </Tabs>
           </Box>
-          <Box sx={{ p: 0 }}>
-            {activeTab === 0 && <PreMatch setMatchDetails={setMatchDetails} matchDetails={matchDetails} />}
-            {activeTab === 1 && <Match matchDetails={matchDetails} matchData={matchData} setMatchData={setMatchData} />}
-            {activeTab === 2 && <Controls config={config} setConfig={setConfig} />}
+          {activeTab === 0 && <PreMatch setMatchDetails={setMatchDetails} matchDetails={matchDetails} />}
+          {activeTab === 1 && <Match matchDetails={matchDetails} matchData={matchData} setMatchData={setMatchData} />}
+          {activeTab === 2 && <Controls config={config} setConfig={setConfig} />}
+
+          <Box
+            component="footer"
+            sx={{
+              py: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              mt: 'auto', // Empuja al fondo si estás en un flex container
+            }}
+          >
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.5,
+                px: 1,
+                py: 0.3,
+                border: '1px solid',
+                borderColor: 'divider', // Color sutil del tema
+                borderRadius: '12px', // Forma redondeada integrada
+                color: 'text.secondary', // Color discreto
+                backgroundColor: 'rgba(0, 0, 0, 0.02)', // Fondo casi imperceptible
+                transition: 'all 0.2s',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  color: 'primary.main',
+                  backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                },
+              }}
+            >
+              <Box
+                component="img"
+                src="voleibol.png"
+                alt="Volley Tracker Logo"
+                sx={{ height: '20px' }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: '0.65rem',
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  lineHeight: 1,
+                }}
+              >
+                VolleyTracker v{PackageJson.version || '0.0.1B'}
+              </Typography>
+            </Box>
           </Box>
         </Paper>
       </Container>

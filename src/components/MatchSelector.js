@@ -212,7 +212,7 @@ const MatchSelector = ({ onSelectMatch }) => {
                         <em>Tipo de competición</em>
                     </MenuItem>
                     {competitionTypes.map(type => (
-                        <MenuItem key={type.id} value={type.id}>{type.nombre}</MenuItem>
+                        <MenuItem key={type.id} value={type.id} >{type.nombre}</MenuItem>
                     ))}
                 </Select>
             </FormControl>

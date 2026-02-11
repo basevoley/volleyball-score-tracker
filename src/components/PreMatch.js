@@ -11,6 +11,7 @@ import {
   Grid,
   InputLabel,
   Divider,
+  Avatar,
 } from '@mui/material';
 import CustomCombobox from './CustomCombobox';
 import MatchSelector from './MatchSelector';
@@ -209,18 +210,9 @@ function PreMatch({ setMatchDetails, matchDetails }) {
         }}>
           <Button
             variant="contained"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => setIsModalOpen(true)} 
             sx={{
-              margin: '5px',
-              padding: '7px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '5px',
-              backgroundColor: '#007BFF',
-              '&:hover': {
-                backgroundColor: '#0056b3'
-              }
+              gap: '8px',
             }}
           >
             Obtener desde FMV
