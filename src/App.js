@@ -177,11 +177,6 @@ function App() {
     setActiveTab(newValue);
   };
 
-  const openOtherApp = () => {
-    navigator.clipboard.writeText(overlayUrl);
-    alert("Output URL copied to clipboard");
-  };
-
   return (
     <SocketProvider url={SOCKET_SERVER_URL} socketKey={key} onHandshake={handleHandshake}>
       <ConnectionStatus />

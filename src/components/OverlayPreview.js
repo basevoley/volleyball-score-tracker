@@ -1,5 +1,7 @@
-import React, { useState, MouseEvent } from 'react';
-import { Box, Button, Typography, Collapse, IconButton, Menu, MenuItem, Tooltip } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Button, Typography, Collapse, IconButton,
+    //  Menu, MenuItem, 
+     Tooltip } from '@mui/material';
 import CastIcon from '@mui/icons-material/Cast';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -11,14 +13,14 @@ const OverlayPreview = ({ overlayUrl }) => {
     const { socket } = useSocket();
     const [isExpanded, setIsExpanded] = useState(true);
 
-    const [anchorEl, setAnchorEl] = React.useState(null);
-    const open = Boolean(anchorEl);
-    const handleClick = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
+    // const [anchorEl, setAnchorEl] = React.useState(null);
+    // const open = Boolean(anchorEl);
+    // const handleClick = (event) => {
+    //     setAnchorEl(event.currentTarget);
+    // };
+    // const handleClose = () => {
+    //     setAnchorEl(null);
+    // };
 
     const handleCopyUrl = () => {
         navigator.clipboard.writeText(overlayUrl);
@@ -92,7 +94,6 @@ const OverlayPreview = ({ overlayUrl }) => {
                                     backgroundColor: '#4CAF50',
                                     color: 'white',
                                     fontSize: '0.75rem',
-                                    // padding: '6px 12px',
                                     '&:hover': {
                                         backgroundColor: '#45a049'
                                     },
@@ -138,7 +139,6 @@ const OverlayPreview = ({ overlayUrl }) => {
                                     backgroundColor: '#FF9800',
                                     color: 'white',
                                     fontSize: '0.75rem',
-                                    // padding: '6px 12px',
                                     '&:hover': {
                                         backgroundColor: '#F57C00'
                                     },
@@ -147,7 +147,6 @@ const OverlayPreview = ({ overlayUrl }) => {
                                     }
                                 }}
                             >
-                                {/* <RefreshIcon /> */}
                                 <SyncProblem />
                             </IconButton>
                         </span>
@@ -185,9 +184,7 @@ const OverlayPreview = ({ overlayUrl }) => {
 
             {/* Collapsible Preview */}
             <Collapse in={isExpanded} timeout="auto" unmountOnExit sx={{ minHeight: '10px' }}>
-                {/* <Box sx={{ px: 0 }}> */}
                 <ResizablePreview src={overlayUrl} />
-                {/* </Box> */}
             </Collapse>
         </>
     );

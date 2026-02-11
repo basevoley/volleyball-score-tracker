@@ -1,20 +1,6 @@
-import { Box, Button, Grid, Stack } from '@mui/material';
+import {  Button, Grid, Stack } from '@mui/material';
 import React from 'react';
 import styled from 'styled-components';
-
-const ActionButtonContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 10px;
-`;
-
-const InnerActionButtonContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-    width: 33%;
-`;
 
 const ActionButton = styled(Button)({
   margin: '5px',
@@ -54,13 +40,6 @@ const ActionButton = styled(Button)({
     },
   }
 });
-
-const FixedButtonContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-align-items: center;
-width: 33%;
-`;
 
 function ActionButtons({ rallyStage, currentServer, currentPossession, handleAction }) {
   const actions = [];

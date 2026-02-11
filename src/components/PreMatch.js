@@ -11,7 +11,6 @@ import {
   Grid,
   InputLabel,
   Divider,
-  Avatar,
 } from '@mui/material';
 import CustomCombobox from './CustomCombobox';
 import MatchSelector from './MatchSelector';

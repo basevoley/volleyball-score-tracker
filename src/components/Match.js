@@ -3,7 +3,7 @@ import ScoreBoard from './ScoreBoard';
 import StatsHandler from './StatsHandler';
 import { useMatchManager } from '../hooks/useMatchManager';
 import { useSocket } from '../contexts/SocketContext';
-import { Box, Button, ButtonGroup, Card, colors, IconButton, Paper, Stack, styled, TextField, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
+import { Box, Button, Card, IconButton, Paper, styled, TextField, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
 import { useRallyManager } from '../hooks/useRallyManager';
 import ConfirmationDialog from './ConfirmationDialog';
 import ActionButtons from './ActionButtons';
@@ -12,25 +12,12 @@ import { ArrowLeft, ArrowRight, RestartAlt, Undo } from '@mui/icons-material';
 
 const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
   display: 'flex',
-  // gap: '10px', // Opcional: si quieres que estén separados como tus botones
   '& .MuiToggleButtonGroup-grouped': {
-    // border: 'none', // Eliminamos el borde estándar de MUI
-    // borderRadius: '5px !important', // Forzamos el radio de tu ActionButton
-    // minHeight: '64px',
-    // color: 'white',
-    // backgroundColor: '#4CAF50', // Verde por defecto
-    flex: 1, // Para que ocupen el mismo ancho
+    flex: 1,
     transition: 'background-color 0.2s, color 0.2s',
-    // '&:hover': {
-    //   color: 'white',
-    //   backgroundColor: '#45a049',
-    // },
     '&.Mui-selected': {
-      backgroundColor: '#4CAF50', //'#2E7D32', // Un verde más oscuro para el estado seleccionado
+      backgroundColor: '#4CAF50',
       color: 'white',
-      // '&:hover': {
-      //   backgroundColor: '#2E7D32', //'#1B5E20',
-      // },
     },
     '@media (hover: hover)': {
       '&:hover': {
@@ -224,14 +211,6 @@ function Match({ matchDetails, matchData, setMatchData }) {
               alignItems: 'center',
               my: 1,
             }}>
-            {/* <ToggleButtonGroup exclusive value={match.currentServer}
-              onChange={(event, newVal) => setServer(newVal)} disabled={!match.matchStarted || rallyStage !== 'start'}
-              color="success" size='small'
-              sx={{ display: (match.matchStarted || match.winner) ? undefined : 'none' }}
-            >
-              <ToggleButton value='teamA'> <ArrowLeft />Saca Equipo A</ToggleButton >
-              <ToggleButton value='teamB'>Saca Equipo B<ArrowRight /></ToggleButton >
-            </ToggleButtonGroup> */}
             <StyledToggleButtonGroup
               exclusive
               value={match.currentServer}
@@ -239,7 +218,7 @@ function Match({ matchDetails, matchData, setMatchData }) {
               disabled={!match.matchStarted || rallyStage !== 'start'}
               sx={{
                 display: (match.matchStarted || match.winner) ? 'flex' : 'none',
-                width: '100%', // Para que abarque el mismo ancho que los botones de acción
+                width: '100%',
                 mt: 1
               }}
             >
