@@ -1,3 +1,12 @@
+## [0.56.2](https://github.com/dagarfol/volleyball-score-tracker/compare/v0.56.1...v0.56.2) (2026-02-11)
+
+
+### Bug Fixes
+
+* cleaned up commented out and leftover code ([794d8a4](https://github.com/dagarfol/volleyball-score-tracker/commit/794d8a403545771fba2c17a199c2148276e5bdd1))
+* corrected master branch name on release flow ([b54d4e7](https://github.com/dagarfol/volleyball-score-tracker/commit/b54d4e7f1819a13b7bf4b9317fa459aff460a7eb))
+* updated master branch name on releaserc file too ([ac90269](https://github.com/dagarfol/volleyball-score-tracker/commit/ac902690285628d61fe8fbd91baed9411408b208))
+
 # Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
