@@ -1,3 +1,16 @@
+# [0.57.0](https://github.com/dagarfol/volleyball-score-tracker/compare/v0.56.2...v0.57.0) (2026-02-12)
+
+
+### Bug Fixes
+
+* adjusted select width on scoreboard ([1504c67](https://github.com/dagarfol/volleyball-score-tracker/commit/1504c673e1ab2907dfd565b5a702ab3b214a071a))
+
+
+### Features
+
+* added integrated end-of-match dialog instead of browser alert ([dc09e5a](https://github.com/dagarfol/volleyball-score-tracker/commit/dc09e5a5f98372b79212bfcccfec8c6795fe3fa3))
+* added support for subscribe component ([bb9314c](https://github.com/dagarfol/volleyball-score-tracker/commit/bb9314c44c21357ad13b9d4e694af11cdb429dfd))
+
 ## [0.56.2](https://github.com/dagarfol/volleyball-score-tracker/compare/v0.56.1...v0.56.2) (2026-02-11)
 
 
