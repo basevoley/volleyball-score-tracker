@@ -9,6 +9,16 @@ import ConfirmationDialog from './ConfirmationDialog';
 import ActionButtons from './ActionButtons';
 import { ArrowLeft, ArrowRight, RestartAlt, Undo } from '@mui/icons-material';
 
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Typography,
+  Avatar
+} from '@mui/material';
+import TrophyIcon from '@mui/icons-material/EmojiEvents';
+
 
 const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
   display: 'flex',
@@ -18,6 +28,9 @@ const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
     '&.Mui-selected': {
       backgroundColor: '#4CAF50',
       color: 'white',
+      '&.Mui-disabled': {
+        backgroundColor: '#A5D6A7',
+      },
     },
     '@media (hover: hover)': {
       '&:hover': {
@@ -27,11 +40,6 @@ const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
       '&.Mui-selected:hover': {
         backgroundColor: '#1B5E20',
       },
-    },
-        '&.Mui-disabled': {
-      backgroundColor: '#ccc',
-      color: 'rgba(255, 255, 255, 0.7)',
-      opacity: 0.6,
     },
   },
 }));
@@ -80,7 +88,7 @@ function Match({ matchDetails, matchData, setMatchData }) {
 
     // Prepare payload
     let socketPayload = { ...match };
-    if (!match.matchStarted && match.setStats) {
+    if (!match.matchStarted && match.setStats.length > 0) {
       socketPayload.currentSetStats = { ...match.setStats[lastSet].statistics };
       socketPayload.scores = { ...match.setScores[lastSet] || match.scores };
       if (!match.winner) {
@@ -169,7 +177,18 @@ function Match({ matchDetails, matchData, setMatchData }) {
     return `${actionLabels_sp[action]} ${teamName}`;
   };
 
+  const [winnerDialogOpen, setWinnerDialogOpen] = useState(false);
 
+  // Efecto para abrir el diálogo cuando haya un ganador
+  useEffect(() => {
+    if (match.winner) {
+      setWinnerDialogOpen(true);
+    }
+  }, [match.winner]);
+
+  const handleCloseWinnerDialog = () => {
+    setWinnerDialogOpen(false);
+  };
 
   return (
     <Box sx={{ width: '100%', p: { xs: 1, sm: 2 }, boxSizing: 'border-box', display: 'flex', height: '100%', flexGrow: 1, pb: '72px' }}>
@@ -268,7 +287,7 @@ function Match({ matchDetails, matchData, setMatchData }) {
             onConfirm={confirmDiscardRally}
             onCancel={() => setDiscardConfirmation(false)}
           />
-          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center' }}>
             <TextField
               fullWidth
               size='small'
@@ -302,7 +321,6 @@ function Match({ matchDetails, matchData, setMatchData }) {
                   </IconButton>
                   <Button
                     variant="contained"
-                    size="small"
                     onClick={undoLastAction}
                     disabled={!canUndo}
                     startIcon={<Undo />}
@@ -342,7 +360,6 @@ function Match({ matchDetails, matchData, setMatchData }) {
                   </IconButton>
                   <Button onClick={handleDiscardRally} disabled={!canUndo}
                     variant="contained"
-                    size="small"
                     startIcon={<RestartAlt />}
                     sx={{
                       display: { xs: 'none', md: 'flex' },
@@ -373,6 +390,49 @@ function Match({ matchDetails, matchData, setMatchData }) {
           setExpandedSetIndex={setExpandedSetIndex}
         />
       </Paper>
+      <Dialog
+        open={winnerDialogOpen}
+        onClose={handleCloseWinnerDialog}
+        slotProps={{ paper: { sx: { borderRadius: 3, textAlign: 'center', p: 2 } } }}
+      >
+        <DialogTitle display='flex' flexDirection={'row'} justifyContent={'space-evenly'}>
+          <TrophyIcon sx={{ fontSize: 60, color: '#FFD700' }} />
+          <Typography variant="h4" component="div" sx={{ mt: 2, fontWeight: 'bold' }}>
+            ¡Final!
+          </Typography>
+          <TrophyIcon sx={{ fontSize: 60, color: '#FFD700' }} />
+        </DialogTitle>
+        <DialogContent sx={{ overflow: 'visible' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <Avatar
+              src={teamLogos[match.winner]}
+              sx={{
+                width: 130,
+                height: 130,
+                mx: 'auto',
+                border: `2px solid ${teamColors[match.winner]}`,
+                boxShadow: `0 0 25px 5px ${teamColors[match.winner]}80`, // El "80" al final añade 50% de opacidad hex
+                backgroundColor: 'white',
+              }}
+            />
+            <Typography variant="h5">
+              {teams[match.winner]} ha ganado el partido
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Marcador final: {match.setsWon.teamA} - {match.setsWon.teamB}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button
+            onClick={handleCloseWinnerDialog}
+            variant="contained"
+            color="primary"
+          >
+            Aceptar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

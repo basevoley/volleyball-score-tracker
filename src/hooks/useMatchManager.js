@@ -100,7 +100,6 @@ export const useMatchManager = (initialData, teams, maxSets) => {
 
         const matchWinner = checkMatchEnd(newSetsWon, maxSets);
         if (matchWinner) {
-            alert(`${teams[matchWinner]} ha ganado el partido!`);
             return {
                 ...state,
                 scores,
@@ -130,7 +129,7 @@ export const useMatchManager = (initialData, teams, maxSets) => {
             currentServer: null,
             ballPossession: null,
         };
-    }, [teams, maxSets]);
+    }, [maxSets]);
 
     // Simple actions
     const startMatch = useCallback(() => {
@@ -151,7 +150,7 @@ export const useMatchManager = (initialData, teams, maxSets) => {
             statistics: createEmptyStats(),
             currentSetStats: createEmptyStats(),
             currentSetHistory: [],
-            setStats: null,
+            setStats: [],
             winner: null,
             matchEvent: { type: null, details: null },
         });
