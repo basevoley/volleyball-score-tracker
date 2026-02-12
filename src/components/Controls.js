@@ -160,6 +160,29 @@ const Controls = ({ config, setConfig }) => {
                         </Select>
                     </FormControl>
                 </ControlSection>
+                <ControlSection
+                    title="Splash de Suscripción"
+                    enabled={config.subscribe.enabled}
+                    onToggle={() => handleToggle('subscribe', 'enabled')}
+                >
+                    <FormControl sx={{ m: 1, minWidth: 150 }} size="small">
+                        <InputLabel id="select-subscribe-pos">Posición</InputLabel>
+                        <Select
+                            labelId="select-subscribe-pos"
+                            label="Posición"
+                            value={config.subscribe.position}
+                            onChange={(e) => handleSelectChange('subscribe', 'position', e.target.value)}
+                        >
+                            <MenuItem value="top-left">Arriba Izquierda</MenuItem>
+                            <MenuItem value="top">Arriba</MenuItem>
+                            <MenuItem value="top-right">Arriba Derecha</MenuItem>
+                            <MenuItem value="center">Centro</MenuItem>
+                            <MenuItem value="bottom-left">Abajo Izquierda</MenuItem>
+                            <MenuItem value="bottom">Abajo</MenuItem>
+                            <MenuItem value="bottom-right">Abajo Derecha</MenuItem>
+                        </Select>
+                    </FormControl>
+                </ControlSection>
 
                 <ControlSection
                     title="Marcador"

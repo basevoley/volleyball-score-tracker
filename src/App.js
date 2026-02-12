@@ -54,6 +54,10 @@ const initialConfig = {
     ],
     displayTime: 5000,
   },
+  subscribe: {
+    enabled: false,
+    position: 'center',
+  },
 };
 
 const initialMatchDetails = {
