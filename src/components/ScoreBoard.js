@@ -212,7 +212,6 @@ function ScoreBoard({
                     sx={{
                       marginTop: '5px',
                       width: 'fit-content',
-                      minWidth: '60px',
                       color: contrastColor,
                       '& .MuiSelect-select': {
                         padding: '5px'
@@ -253,7 +252,6 @@ function ScoreBoard({
                     sx={{
                       marginTop: '5px',
                       width: 'fit-content',
-                      minWidth: '60px',
                       color: contrastColor,
                       '& .MuiSelect-select': {
                         padding: '5px'
