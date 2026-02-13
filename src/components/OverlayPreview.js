@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Button, Typography, Collapse, IconButton,
     //  Menu, MenuItem, 
-     Tooltip } from '@mui/material';
+     Tooltip, Snackbar, Alert } from '@mui/material';
 import CastIcon from '@mui/icons-material/Cast';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -12,7 +12,7 @@ import { SyncProblem } from '@mui/icons-material';
 const OverlayPreview = ({ overlayUrl }) => {
     const { socket } = useSocket();
     const [isExpanded, setIsExpanded] = useState(true);
-
+    const [openSnackbar, setOpenSnackbar] = useState(false);
     // const [anchorEl, setAnchorEl] = React.useState(null);
     // const open = Boolean(anchorEl);
     // const handleClick = (event) => {
@@ -24,7 +24,13 @@ const OverlayPreview = ({ overlayUrl }) => {
 
     const handleCopyUrl = () => {
         navigator.clipboard.writeText(overlayUrl);
-        alert("Output URL copied to clipboard");
+        // alert("Output URL copied to clipboard");
+        setOpenSnackbar(true);
+    };
+    
+    const handleCloseSnackbar = (event, reason) => {
+        if (reason === 'clickaway') return;
+        setOpenSnackbar(false);
     };
 
     const handleReloadOverlay = () => {
@@ -186,6 +192,20 @@ const OverlayPreview = ({ overlayUrl }) => {
             <Collapse in={isExpanded} timeout="auto" unmountOnExit sx={{ minHeight: '10px' }}>
                 <ResizablePreview src={overlayUrl} />
             </Collapse>
+            <Snackbar 
+                open={openSnackbar} 
+                autoHideDuration={3000} 
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+                <Alert 
+                    onClose={handleCloseSnackbar} 
+                    severity="success" 
+                    sx={{ minWidth: '250px', borderRadius: '8px' }}
+                >
+                    URL copiada al portapapeles
+                </Alert>
+            </Snackbar>
         </>
     );
 };
