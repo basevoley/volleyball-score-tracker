@@ -1,3 +1,11 @@
+# [0.58.0](https://github.com/dagarfol/volleyball-score-tracker/compare/v0.57.0...v0.58.0) (2026-02-13)
+
+
+### Features
+
+* change copy url alert for MUI snackbar ([4870fe5](https://github.com/dagarfol/volleyball-score-tracker/commit/4870fe5da60e8ffbff26286967e9333a5aca8d1f))
+* change status snackbar for slide-in panel ([2de0c81](https://github.com/dagarfol/volleyball-score-tracker/commit/2de0c8196e4d96caf6887aef9868673bdae71b17))
+
 # [0.57.0](https://github.com/dagarfol/volleyball-score-tracker/compare/v0.56.2...v0.57.0) (2026-02-12)
 
 
