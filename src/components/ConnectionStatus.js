@@ -1,71 +1,77 @@
-// components/ConnectionStatusCompact.js
 import React, { useState, useEffect } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import {
-  Snackbar,
   Alert,
   Button,
   CircularProgress,
+  Box,
+  Collapse,
+  IconButton,
 } from '@mui/material';
-import {
-  Refresh as RefreshIcon
-} from '@mui/icons-material';
+import { Refresh as RefreshIcon } from '@mui/icons-material';
 
 export const ConnectionStatus = () => {
   const { connectionStatus, reconnect } = useSocket();
-  const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (connectionStatus !== 'connected') {
-      setOpen(true);
+      setVisible(true);
     } else {
-      // Auto-close after 2 seconds when connected
-      const timer = setTimeout(() => setOpen(false), 2000);
+      const timer = setTimeout(() => setVisible(false), 2000);
       return () => clearTimeout(timer);
     }
   }, [connectionStatus]);
 
-  const handleClose = (event, reason) => {
-    if (reason === 'clickaway' && connectionStatus !== 'connected') {
-      return;
-    }
-    setOpen(false);
-  };
-
-  const getSeverity = () => {
-    if (connectionStatus === 'connected') return 'success';
-    if (connectionStatus === 'reconnecting') return 'warning';
-    return 'error';
-  };
-
-  const getMessage = () => {
-    if (connectionStatus === 'connected') return 'Conectado';
-    if (connectionStatus === 'reconnecting') return 'Reconectando...';
-    return 'Servicio de mensajería desconectado';
-  };
-
   return (
-    <Snackbar
-      open={open}
-      autoHideDuration={connectionStatus === 'connected' ? 2000 : null}
-      onClose={handleClose}
-      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-    >
-      <Alert
-        severity={getSeverity()}
-        variant="filled"
-        icon={connectionStatus === 'reconnecting' ? <CircularProgress size={20} color="inherit" /> : undefined}
-        action={
-          connectionStatus === 'disconnected' ? (
-            <Button color="inherit" size="small" onClick={reconnect}>
-              <RefreshIcon fontSize="small" />
-            </Button>
-          ) : undefined
-        }
-        sx={{ minWidth: '250px' }}
+    <Collapse in={visible}         sx={{
+          position: 'sticky', 
+      top: 0,
+      zIndex: (theme) => theme.zIndex.appBar + 1,
+      pointerEvents: 'none' 
+      }}>
+      <Box
+        sx={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          py: { xs: 0, md: 1 },
+        }}
       >
-        {getMessage()}
-      </Alert>
-    </Snackbar>
+        <Alert
+          severity={connectionStatus === 'connected' ? 'success' : connectionStatus === 'reconnecting' ? 'warning' : 'error'}
+          variant="filled"
+          icon={connectionStatus === 'reconnecting' ? <CircularProgress size={18} color="inherit" /> : undefined}
+          action={
+            connectionStatus === 'disconnected' ? (
+              <>
+                <Button color="inherit" size="small" onClick={reconnect} startIcon={<RefreshIcon />} sx={{ display: { xs: 'none', md: 'flex' } }}>
+                  Reintentar
+                </Button>
+                <IconButton color="inherit" size="small" onClick={reconnect} sx={{ display: { xs: 'flex', md: 'none' } }}><RefreshIcon /></IconButton>
+              </>
+            ) : undefined
+          }
+          sx={{
+            pointerEvents: 'auto', 
+            width: { xs: '100%', md: 'auto' },
+            minWidth: { md: '500px' },
+            borderRadius: {
+              xs: 0,   
+              md: '8px'
+            },
+            boxShadow: { xs: 0, md: 2 },
+            '& .MuiAlert-message': {
+              textAlign: 'center',
+              width: '100%',
+            }
+          }}
+        >
+          {connectionStatus === 'connected' ? 'Conexión restablecida' :
+            connectionStatus === 'reconnecting' ? 'Reconectando...' :
+              'Sin conexión con el servidor'}
+        </Alert>
+      </Box>
+    </Collapse>
   );
 };
