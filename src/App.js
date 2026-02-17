@@ -1,6 +1,6 @@
 // app.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Container, Box, Typography, Paper, Tabs, Tab } from '@mui/material';
+import { Container, Box, Typography, Paper, Tabs, Tab, useMediaQuery, useTheme } from '@mui/material';
 import PreMatch from './components/PreMatch';
 import Match from './components/Match';
 import Controls from './components/Controls';
@@ -181,6 +181,11 @@ function App() {
     setActiveTab(newValue);
   };
 
+  const theme = useTheme();
+
+  // Detecta si la pantalla es de tamaño mediano (md) o superior
+  const isUpMd = useMediaQuery(theme.breakpoints.up('md'));
+
   return (
     <SocketProvider url={SOCKET_SERVER_URL} socketKey={key} onHandshake={handleHandshake}>
       <ConnectionStatus />
@@ -220,7 +225,8 @@ function App() {
             <Tabs
               value={activeTab}
               onChange={handleTabChange}
-              variant="fullWidth"
+              variant={isUpMd ? 'standard' : 'fullWidth'}
+              centered={isUpMd}
               sx={{
                 '& .MuiTab-root': {
                   fontWeight: 500,
