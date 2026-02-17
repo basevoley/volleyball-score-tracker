@@ -189,9 +189,11 @@ const MatchReportDocument = ({ teams, teamColors, statistics, setScores, setStat
 // Simple SVG timeline renderer for PDFs using @react-pdf/renderer primitives
 const SetTimelineSVG = ({ history, teams, teamColors }) => {
     const width = 480;
-    const height = 140; // give more vertical room for icons
+    const height = 160; // reduced height
     const padding = 12;
     const iconArea = 18; // reserved space above the plot for event icons
+    const legendHeight = 30; // reduced legend space
+    const leftMargin = 25; // space for y-axis labels
 
     // Extract score arrays from history (history entries store a `scores` object)
     const pointsA = history.map(h => (h && h.scores && typeof h.scores.teamA === 'number' ? h.scores.teamA : 0));
@@ -202,16 +204,14 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
     const maxScore = Math.ceil(rawMax / 5) * 5 || 5;
     const n = Math.max(1, history.length);
 
-    const svgWidth = width - 120; // leave room for legend to the right
-    const legendWidth = 110;
-
+    const svgWidth = width; // use full width
     const topPadding = padding + iconArea; // start of plotting area
-    const bottomY = height - padding; // x axis position
+    const bottomY = height - legendHeight; // x axis position (leave room for legend)
 
     const yForValue = (v) => topPadding + ((maxScore - v) * (bottomY - topPadding)) / maxScore;
 
     // x coordinate function for the svg plotting width
-    const xForIndexSvg = (i) => padding + (i * (svgWidth - padding * 2)) / Math.max(1, n - 1);
+    const xForIndexSvg = (i) => leftMargin + (i * (svgWidth - leftMargin - padding)) / Math.max(1, n - 1);
 
     // ticks every 5 points
     const yTicks = [];
@@ -220,7 +220,7 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
     }
 
     return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+        <View style={{ flexDirection: 'column', alignItems: 'stretch' }}>
             <Svg width={svgWidth} height={height}>
                 {/* background */}
                 <Path d={`M0 0 H${svgWidth} V${height} H0 Z`} fill="#ffffff" stroke="#f0f0f0" />
@@ -230,16 +230,16 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
                     const y = yForValue(tick);
                     return (
                         <G key={`tick-${i}`}>
-                            <Path d={`M${padding} ${y} H${svgWidth - padding}`} stroke="#eeeeee" strokeWidth={0.5} />
-                            <Path d={`M${padding - 4} ${y} H${padding}`} stroke="#333" strokeWidth={0.6} />
-                            <SvgText x={padding - 10} y={y + 3} fontSize={8} fill="#333">{String(tick)}</SvgText>
+                            <Path d={`M${leftMargin} ${y} H${svgWidth - padding}`} stroke="#eeeeee" strokeWidth={0.5} />
+                            <Path d={`M${leftMargin - 4} ${y} H${leftMargin}`} stroke="#333" strokeWidth={0.6} />
+                            <SvgText x={leftMargin - 8} y={y + 3} fontSize={8} fill="#333" textAnchor="end">{String(tick)}</SvgText>
                         </G>
                     );
                 })}
 
                 {/* axes */}
-                <Path d={`M${padding} ${topPadding} V${bottomY}`} stroke="#333" strokeWidth={0.8} />
-                <Path d={`M${padding} ${bottomY} H${svgWidth - padding}`} stroke="#333" strokeWidth={0.8} />
+                <Path d={`M${leftMargin} ${topPadding} V${bottomY}`} stroke="#333" strokeWidth={0.8} />
+                <Path d={`M${leftMargin} ${bottomY} H${svgWidth - padding}`} stroke="#333" strokeWidth={0.8} />
 
                 {/* team lines */}
                 {(() => {
@@ -258,12 +258,9 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
                                 const yB = yForValue(pointsB[i]);
                                 const entry = history[i] || {};
                                 const eventColor = entry.event && entry.event.team === 'teamA' ? teamColors.teamA : teamColors.teamB;
+
                                 return (
                                     <G key={`pt-${i}`}>
-                                        {/* markers */}
-                                        <Circle cx={x} cy={yA} r={2.5} fill={teamColors.teamA} />
-                                        <Circle cx={x} cy={yB} r={2.5} fill={teamColors.teamB} />
-
                                         {/* event vertical dashed line */}
                                         {entry.event && (entry.event.type === 'fault' || entry.event.type === 'timeout' || entry.event.type === 'substitution') && (
                                             <Path d={`M${x} ${topPadding} V${bottomY}`} stroke={eventColor} strokeWidth={1} strokeDasharray="3,2" />
@@ -276,7 +273,7 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
                                         {entry.event && entry.event.type === 'timeout' && (
                                             <G>
                                                 <Rect x={x - 5} y={padding + 2} width={3} height={10} fill={eventColor} />
-                                                <Rect x={x - 1} y={padding + 2} width={3} height={10} fill={eventColor} />
+                                                <Rect x={x + 2} y={padding + 2} width={3} height={10} fill={eventColor} />
                                             </G>
                                         )}
                                         {entry.event && entry.event.type === 'substitution' && (
@@ -285,6 +282,12 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
                                                 <Polygon points={`${x + 6},${padding + 7} ${x + 1},${padding + 2} ${x + 1},${padding + 12}`} fill={eventColor} />
                                             </G>
                                         )}
+
+                                        {/* Team A marker - empty circle */}
+                                        <Circle cx={x} cy={yA} r={3} fill={teamColors.teamA} />
+
+                                        {/* Team B marker - empty circle */}
+                                        <Circle cx={x} cy={yB} r={3} fill={teamColors.teamB} />
                                     </G>
                                 );
                             })}
@@ -293,39 +296,55 @@ const SetTimelineSVG = ({ history, teams, teamColors }) => {
                 })()}
             </Svg>
 
-            {/* Legend placed to the right of the chart using SVG shapes to ensure consistent rendering */}
-            <View style={{ width: legendWidth, paddingLeft: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                    <Svg width={14} height={14}>
-                        <Circle cx={7} cy={7} r={6} fill={teamColors.teamA} />
-                    </Svg>
-                    <Text style={{ fontSize: 10, marginLeft: 6 }}>{teams && teams.teamA ? teams.teamA : 'Team A'}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                    <Svg width={14} height={14}>
-                        <Circle cx={7} cy={7} r={6} fill={teamColors.teamB} />
-                    </Svg>
-                    <Text style={{ fontSize: 10, marginLeft: 6 }}>{teams && teams.teamB ? teams.teamB : 'Team B'}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                    <Svg width={18} height={18}>
-                        <Path d={`M2 2 L16 16 M16 2 L2 16`} stroke="#444" strokeWidth={1.2} />
-                    </Svg>
-                    <Text style={{ fontSize: 10, marginLeft: 6 }}>Falta</Text>
-                </View>
+            {/* Legend placed below the chart - compact horizontal layout */}
+            <View style={{ 
+                flexDirection: 'row', 
+                flexWrap: 'wrap', 
+                paddingTop: 4,
+                paddingHorizontal: leftMargin,
+                gap: 12,
+                alignItems: 'center'
+            }}>
+                {/* Team A */}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Svg width={18} height={18}>
-                        <Rect x={3} y={3} width={3} height={12} fill="#666" />
-                        <Rect x={10} y={3} width={3} height={12} fill="#666" />
+                    <Svg width={12} height={12}>
+                        <Circle cx={6} cy={6} r={5} fill={teamColors.teamA} />
                     </Svg>
-                    <Text style={{ fontSize: 10, marginLeft: 6 }}>Tiempo muerto</Text>
+                    <Text style={{ fontSize: 9, marginLeft: 4 }}>{teams && teams.teamA ? teams.teamA : 'Team A'}</Text>
                 </View>
+
+                {/* Team B */}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Svg width={18} height={18}>
-                        <Polygon points="2,9 7,4 7,14" fill="#444" />
-                        <Polygon points="16,9 11,4 11,14" fill="#444" />
+                    <Svg width={12} height={12}>
+                        <Circle cx={6} cy={6} r={5} fill={teamColors.teamB} />
                     </Svg>
-                    <Text style={{ fontSize: 10, marginLeft: 6 }}>Cambio</Text>
+                    <Text style={{ fontSize: 9, marginLeft: 4 }}>{teams && teams.teamB ? teams.teamB : 'Team B'}</Text>
+                </View>
+
+                {/* Fault */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Svg width={14} height={14}>
+                        <Path d={`M2 2 L12 12 M12 2 L2 12`} stroke="#444" strokeWidth={1.2} />
+                    </Svg>
+                    <Text style={{ fontSize: 9, marginLeft: 4 }}>Falta</Text>
+                </View>
+
+                {/* Timeout */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Svg width={14} height={14}>
+                        <Rect x={3} y={2} width={2.5} height={10} fill="#666" />
+                        <Rect x={8.5} y={2} width={2.5} height={10} fill="#666" />
+                    </Svg>
+                    <Text style={{ fontSize: 9, marginLeft: 4 }}>Tiempo muerto</Text>
+                </View>
+
+                {/* Substitution */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Svg width={14} height={14}>
+                        <Polygon points="2,7 6,3 6,11" fill="#444" />
+                        <Polygon points="12,7 8,3 8,11" fill="#444" />
+                    </Svg>
+                    <Text style={{ fontSize: 9, marginLeft: 4 }}>Cambio</Text>
                 </View>
             </View>
         </View>
