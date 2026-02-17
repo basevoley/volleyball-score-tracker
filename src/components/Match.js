@@ -154,13 +154,15 @@ function Match({ matchDetails, matchData, setMatchData }) {
     const faultingTeam = lastAction?.action === 'fault' ? lastAction.team : null;
     const winner = rally.possession;
 
+    const willEndSet = matchManager.willRallyEndSet(winner);
+
     // End rally in parent
     endRally(winner, rally.stats, faultingTeam);
 
-    // Reset rally for next point
-    resetRally(winner);
-    setConfirmation(false);
-
+    if (!willEndSet) {
+      resetRally(winner);
+      setConfirmation(false);
+    }
   };
 
   const handleCancelConfirmation = () => { undoLastAction(); setConfirmation(false); };
@@ -176,6 +178,19 @@ function Match({ matchDetails, matchData, setMatchData }) {
     const teamName = teams[team] || team;
     return `${actionLabels_sp[action]} ${teamName}`;
   };
+
+  const handleEndSet = () => {
+    const winner = rally.possession;
+    matchManager.confirmSetEnd(true);
+    resetRally(winner);
+    setConfirmation(false);
+  }
+
+  const handleDiscardSetEnd = () => {
+    matchManager.confirmSetEnd(false); // Descarta la actualización del set
+    undoLastAction();                  // Deshace el último toque/falta en el rally
+    setConfirmation(false);
+  }
 
   const [winnerDialogOpen, setWinnerDialogOpen] = useState(false);
 
@@ -208,7 +223,7 @@ function Match({ matchDetails, matchData, setMatchData }) {
       >
         <Box
           sx={{
-            display: 'flex',
+            display: (!match.matchStarted || match.winner) ? 'flex' : 'none',
             flexDirection: 'column',
             alignItems: 'center',
             pt: 1,
@@ -280,6 +295,12 @@ function Match({ matchDetails, matchData, setMatchData }) {
             message="¿Finalizar rally y asignar punto?"
             onConfirm={handleEndRally}
             onCancel={handleCancelConfirmation}
+          />
+          <ConfirmationDialog
+            open={matchManager.pendingSetEnd}
+            message="Este punto finaliza el set, lo cual no se puede deshacer. ¿Seguro que desea terminar el set?"
+            onConfirm={handleEndSet}
+            onCancel={handleDiscardSetEnd}
           />
           <ConfirmationDialog
             message="¿Seguro que desea descartar el rally y repetir el punto?"

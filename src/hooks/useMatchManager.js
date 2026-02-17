@@ -84,6 +84,16 @@ export const useMatchManager = (initialData, teams, maxSets) => {
 
     const matchEventRef = useRef(null);
 
+
+    const [pendingSetUpdate, setPendingSetUpdate] = useState(null);
+
+    const confirmSetEnd = useCallback((confirm) => {
+        if (confirm && pendingSetUpdate) {
+            setMatch(pendingSetUpdate);
+        }
+        setPendingSetUpdate(null); // Limpiamos el diálogo
+    }, [pendingSetUpdate]);
+
     // Helper to handle set/match end logic
     const handleGameEnd = useCallback((state, scores, currentSetStats, history) => {
         const setWinner = checkSetEnd(scores, state.setsWon, maxSets);
@@ -189,6 +199,21 @@ export const useMatchManager = (initialData, teams, maxSets) => {
                 ? { type: 'referee-call', details: { text: 'Falta', team: teams[faultingTeam] } }
                 : prev.matchEvent;
 
+            const setWinner = checkSetEnd(newScores, prev.setsWon, maxSets);
+
+            if (setWinner) {
+                // Calculamos el estado final pero NO lo aplicamos aún, lo guardamos en el ref/state temporal
+                const nextState = handleGameEnd(
+                    { ...prev, currentServer: winner, statistics: updatedStatistics },
+                    newScores,
+                    updatedSetStats,
+                    newHistory
+                );
+
+                setPendingSetUpdate(nextState);
+                return prev; // No actualizamos el match todavía
+            }
+
             return handleGameEnd(
                 { ...prev, currentServer: winner, matchEvent, statistics: updatedStatistics },
                 newScores,
@@ -197,7 +222,7 @@ export const useMatchManager = (initialData, teams, maxSets) => {
             );
         });
         matchEventRef.current = { type: 'RALLY_END' };
-    }, [teams, handleGameEnd]);
+    }, [teams, maxSets, handleGameEnd]);
 
     const callTimeout = useCallback((team) => {
         setMatch(prev => ({
@@ -264,7 +289,18 @@ export const useMatchManager = (initialData, teams, maxSets) => {
 
     const getLastAction = useCallback(() => matchEventRef.current, []); const clearLastAction = useCallback(() => { matchEventRef.current = null; }, []);
 
-    return useMemo(() => ({ 
-        match, startMatch, resetMatch, setServer, updateBallPossession, endRally, callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, 
-    }), [match, startMatch, resetMatch, setServer, updateBallPossession, endRally, callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction,]);
+    const willRallyEndSet = useCallback((winner) => {
+        const newScores = { ...match.scores, [winner]: match.scores[winner] + 1 };
+        return checkSetEnd(newScores, match.setsWon, maxSets);
+    }, [match.scores, match.setsWon, maxSets]);
+
+    return useMemo(() => ({
+        match, startMatch, resetMatch, setServer, updateBallPossession, endRally,
+        pendingSetEnd: !!pendingSetUpdate, // Para saber si mostrar el diálogo
+        confirmSetEnd,
+        callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, willRallyEndSet,
+    }), [match, startMatch, resetMatch, setServer, updateBallPossession, endRally,
+        pendingSetUpdate,
+        confirmSetEnd,
+        callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, willRallyEndSet,]);
 };

@@ -366,7 +366,22 @@ export const useRallyManager = (initialServer, onPossessionChange, onRallyStageC
     }, [handleAttack, handleBlock, handleContinue, handleDig, handleError, handleFault, handlePoint, handleReception, handleServe]);
     
     // RESET RALLY 
-    const resetRally = useCallback((newServer) => { const server = newServer !== undefined ? newServer : initialPossession.current; setRally({ id: Date.now(), stage: 'start', possession: server, actionHistory: [], stats: createEmptyStats(), showConfirmation: false, showDiscardConfirmation: false, }); if (server !== null) { initialPossession.current = server; previousPossession.current = server; } }, []);
+    const resetRally = useCallback((newServer) => { 
+        const server = newServer !== undefined ? newServer : initialPossession.current; 
+        setRally({ 
+            id: Date.now(), 
+            stage: 'start', 
+            possession: server, 
+            actionHistory: [], 
+            stats: createEmptyStats(), 
+            showConfirmation: false, 
+            showDiscardConfirmation: false, 
+        }); 
+        if (server !== null) { 
+            initialPossession.current = server; 
+            previousPossession.current = server; 
+        } 
+    }, []);
 
     // DISCARD RALLY 
     const discardRally = useCallback(() => { setRally(prev => ({ ...prev, stage: 'start', possession: initialPossession.current, actionHistory: [], stats: createEmptyStats(), showConfirmation: false, showDiscardConfirmation: false, })); }, []);
