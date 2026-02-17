@@ -3,7 +3,6 @@ import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, L
 
 // Per-set timeline chart with event labels and optimized mobile layout
 function PointEvolutionChart({ history = [], teams, teamColors }) {
-  if (!history || history.length === 0) return null;
   let data = history.map((h, i) =>({ 
         rally: i+1,
         teamA: h.scores.teamA,
