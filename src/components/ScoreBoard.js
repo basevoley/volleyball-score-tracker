@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Button, Typography, Select, MenuItem, Avatar, Card, CardContent, IconButton, Tooltip, CardActions, Badge, ButtonGroup } from '@mui/material';
 import { getContrastColor, isTooSimilar } from '../utils/colorUtils';
 import { Add, Remove, TimerOutlined, SwapHoriz, Flag } from '@mui/icons-material';
+import ConfirmationDialog from './ConfirmationDialog';
 
 function ScoreBoard({
   teams,
@@ -20,7 +21,8 @@ function ScoreBoard({
   timeouts,
   substitutions,
   rallyStage,
-  handleAction
+  handleAction,
+  willRallyEndSet
 }) {
   const handleSetsWonChange = (team, event) => {
     const newSetsWon = parseInt(event.target.value, 10);
@@ -61,6 +63,42 @@ function ScoreBoard({
       return '1px solid #ffff';
     }
     return 'none';
+  };
+
+  const [confirmSetOpen, setConfirmSetOpen] = useState(false);
+  const [adjustSetWinner, setAdjustSetWinner] = useState(null);
+
+  const handleAdjustScore = (team, adjustment) => {
+    const willEndSet = willRallyEndSet(team);
+    if (willEndSet) {
+      setAdjustSetWinner(team);
+      setConfirmSetOpen(true);
+    } else {
+      onAdjustScore(team, adjustment);
+    }
+  }
+
+  const performAdjustSetEnd = () => {
+    onAdjustScore(adjustSetWinner, 1);
+    setConfirmSetOpen(false);
+  }
+
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+
+  const requestConfirm = (type, teamKey) => {
+    setPendingAction({ type, teamKey });
+    setConfirmOpen(true);
+  };
+
+  const handleConfirm = () => {
+    if (pendingAction.type === 'timeout') {
+      onTimeout(pendingAction.teamKey);
+    } else if (pendingAction.type === 'substitution') {
+      onSubstitution(pendingAction.teamKey);
+    }
+    setConfirmOpen(false);
   };
 
   const renderTeamScore = (teamKey) => {
@@ -139,7 +177,7 @@ function ScoreBoard({
                   <Button
                     size="small"
                     disabled={!matchStarted}
-                    onClick={() => onAdjustScore(teamKey, 1)}
+                    onClick={() => handleAdjustScore(teamKey, 1)}
                     sx={{
                       margin: '2px',
                       padding: '5px 10px',
@@ -288,7 +326,7 @@ function ScoreBoard({
                   <Button
                     size="small"
                     disabled={!matchStarted}
-                    onClick={() => onAdjustScore(teamKey, 1)}
+                    onClick={() => handleAdjustScore(teamKey, 1)}
                     sx={{
                       margin: '2px',
                       padding: '5px 10px',
@@ -339,7 +377,7 @@ function ScoreBoard({
             <span>
               <Badge badgeContent={`${timeouts?.[teamKey] || 0}/2`} invisible={!matchStarted} color={((timeouts?.[teamKey] || 0) >= 2) ? 'error' : 'primary'}>
                 <IconButton
-                  onClick={() => onTimeout?.(teamKey)}
+                  onClick={() => requestConfirm('timeout', teamKey)}
                   disabled={!matchStarted || (timeouts?.[teamKey] || 0) >= 2 || rallyStage !== 'start'}
                   sx={{
                     backgroundColor: 'rgba(255, 152, 0, 0.9)',
@@ -367,7 +405,7 @@ function ScoreBoard({
             <span>
               <Badge badgeContent={`${substitutions?.[teamKey] || 0}/6`} invisible={!matchStarted} color={((substitutions?.[teamKey] || 0) >= 6) ? 'error' : 'primary'}>
                 <IconButton
-                  onClick={() => onSubstitution?.(teamKey)}
+                  onClick={() => requestConfirm('substitution', teamKey)}
                   disabled={!matchStarted || (substitutions?.[teamKey] || 0) >= 6 || rallyStage !== 'start'}
                   sx={{
                     backgroundColor: 'rgba(76, 175, 80, 0.9)',
@@ -430,9 +468,23 @@ function ScoreBoard({
               borderRadius: '50%',
               border: getPossessionIndicatorBorder(color)
             }}
-            
+
           />
         )}
+
+        <ConfirmationDialog
+          open={confirmSetOpen}
+          message={<Typography align='center'>¿Asignar el set para <br /><b>{teams[adjustSetWinner]}</b>?</Typography>}
+          onConfirm={performAdjustSetEnd}
+          onCancel={() => setConfirmSetOpen(false)}
+        />
+        <ConfirmationDialog
+          open={confirmOpen}
+          message={<Typography align='center'>¿Solicitar un <b>{pendingAction?.type === 'timeout' ? 'Tiempo Muerto' : 'Cambio'}</b> para <br /><b>{teams[pendingAction?.teamKey]}</b>?</Typography>}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmOpen(false)}
+        />
+
       </Card>
     );
   };

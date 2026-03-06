@@ -13,9 +13,9 @@ function ConfirmationDialog({ open, message, onConfirm, onCancel }) {
       aria-describedby="confirmation-dialog-description"
     >
       <DialogContent>
-        <DialogContentText id="confirmation-dialog-description">
+        {/* <DialogContentText id="confirmation-dialog-description"> */}
           {message}
-        </DialogContentText>
+        {/* </DialogContentText> */}
       </DialogContent>
       <DialogActions sx={{justifyContent: 'center'}}>
         <Button 

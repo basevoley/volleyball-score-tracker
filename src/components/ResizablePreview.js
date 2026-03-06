@@ -4,8 +4,8 @@ import { Box } from '@mui/material';
 import { ResizableBox } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 
-const NATIVE_WIDTH = 1280;
-const NATIVE_HEIGHT = 720;
+const NATIVE_WIDTH = 2560;//1280;
+const NATIVE_HEIGHT = 1440;//720;
 
 const ResizablePreview = ({ src }) => {
   const [size, setSize] = useState({ width: 400, height: 225 });
