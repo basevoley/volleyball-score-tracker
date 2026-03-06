@@ -1,3 +1,18 @@
+# [0.59.0](https://github.com/basevoley/volleyball-score-tracker/compare/v0.58.0...v0.59.0) (2026-03-06)
+
+
+### Bug Fixes
+
+* adapt tabs style on bigger screens ([101cabe](https://github.com/basevoley/volleyball-score-tracker/commit/101cabea28b75ec1c4462b5429f94b950de1b4c4))
+* change graph legend position on pdf export ([06ba96c](https://github.com/basevoley/volleyball-score-tracker/commit/06ba96c147512cf7c61e138ce98e495d02ed1b07))
+* ensure point chart is always displayed ([2966872](https://github.com/basevoley/volleyball-score-tracker/commit/2966872d534a795dbee1384ac9ce4a0b9283dab7))
+
+
+### Features
+
+* added double confirmation on set end ([f84de45](https://github.com/basevoley/volleyball-score-tracker/commit/f84de45b76f194070a763f7db067937bbd311b05))
+* refactor Match into smaller components ([9f963e7](https://github.com/basevoley/volleyball-score-tracker/commit/9f963e7621f7a3482acd641abfd299297b4dfb4f))
+
 # [0.58.0](https://github.com/dagarfol/volleyball-score-tracker/compare/v0.57.0...v0.58.0) (2026-02-13)
 
 
