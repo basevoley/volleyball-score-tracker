@@ -11,7 +11,6 @@ import MatchHeader from './MatchHeader';
 
 function Match({ matchDetails, matchData, setMatchData }) {
   const { teams, teamLogos, teamColors, maxSets } = matchDetails;
-  const [rallyStage, setRallyStage] = useState('start');
   const didInitRef = useRef(false);
   const [expandedSetIndex, setExpandedSetIndex] = useState(
     matchData?.setStats?.length > 0 ? matchData.setStats.length - 1 : null
@@ -22,24 +21,15 @@ function Match({ matchDetails, matchData, setMatchData }) {
   const matchManager = useMatchManager(matchData, teams, maxSets);
   const { 
     match, 
-    startMatch, 
-    resetMatch, 
-    setServer, 
     updateBallPossession, 
-    callTimeout, 
-    callSubstitution, 
-    adjustScore, 
-    updateSetsWon, 
     clearMatchEvent, 
     getLastAction, 
     clearLastAction,
-    willRallyEndSet 
   } = matchManager;
 
   // Rally manager hook
-  const rallyManager = useRallyManager(match.currentServer, updateBallPossession, setRallyStage);
+  const rallyManager = useRallyManager(match.currentServer, updateBallPossession);//, setRallyStage);
   const {
-    handleAction,
     resetRally,
     updateInitialServer,
   } = rallyManager;
@@ -137,14 +127,6 @@ function Match({ matchDetails, matchData, setMatchData }) {
       >
         {/* Match Header Component */}
         <MatchHeader
-          // matchStarted={match.matchStarted}
-          // winner={match.winner}
-          // currentServer={match.currentServer}
-          // rallyStage={rallyStage}
-          // teams={teams}
-          // onStartMatch={startMatch}
-          // onResetMatch={resetMatch}
-          // onSetServer={setServer}
           teams={teams}
           matchManager={matchManager}
           rallyManager={rallyManager}
@@ -162,24 +144,27 @@ function Match({ matchDetails, matchData, setMatchData }) {
 
           {/* ScoreBoard */}
           <ScoreBoard
-            teams={teams}
-            teamLogos={teamLogos}
-            teamColors={teamColors}
-            scores={match.scores}
-            setsWon={match.setsWon}
-            currentServer={match.currentServer}
-            ballPossession={match.ballPossession}
-            matchStarted={match.matchStarted}
-            onAdjustScore={adjustScore}
-            maxSets={maxSets}
-            onSetsWonChange={updateSetsWon}
-            timeouts={match.timeouts}
-            substitutions={match.substitutions}
-            onTimeout={callTimeout}
-            onSubstitution={callSubstitution}
-            rallyStage={rallyStage}
-            handleAction={handleAction}
-            willRallyEndSet={willRallyEndSet}
+            // teams={teams}
+            // teamLogos={teamLogos}
+            // teamColors={teamColors}
+            // scores={match.scores}
+            // setsWon={match.setsWon}
+            // currentServer={match.currentServer}
+            // ballPossession={match.ballPossession}
+            // matchStarted={match.matchStarted}
+            // onAdjustScore={adjustScore}
+            // maxSets={maxSets}
+            // onSetsWonChange={updateSetsWon}
+            // timeouts={match.timeouts}
+            // substitutions={match.substitutions}
+            // onTimeout={callTimeout}
+            // onSubstitution={callSubstitution}
+            // rallyStage={rallyStage}
+            // handleAction={handleAction}
+            // willRallyEndSet={willRallyEndSet}
+            matchDetails={matchDetails}
+            matchManager={matchManager}
+            rallyManager={rallyManager}
           />
 
           {/* Rally Controller Component */}

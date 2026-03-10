@@ -5,28 +5,40 @@ import { Add, Remove, TimerOutlined, SwapHoriz, Flag } from '@mui/icons-material
 import ConfirmationDialog from './ConfirmationDialog';
 
 function ScoreBoard({
-  teams,
-  teamLogos,
-  teamColors,
-  scores,
-  setsWon,
-  currentServer,
-  ballPossession,
-  matchStarted,
-  onAdjustScore,
-  maxSets,
-  onSetsWonChange,
-  onTimeout,
-  onSubstitution,
-  timeouts,
-  substitutions,
-  rallyStage,
-  handleAction,
-  willRallyEndSet
+  matchDetails,
+  matchManager,
+  rallyManager
 }) {
+
+  const { teams, teamLogos, teamColors, maxSets } = matchDetails;
+
+  const {
+    match,
+    callTimeout,
+    callSubstitution,
+    adjustScore,
+    updateSetsWon,
+    willRallyEndSet
+  } = matchManager;
+
+  const {
+    scores,
+    setsWon,
+    currentServer,
+    ballPossession,
+    matchStarted,
+    timeouts,
+    substitutions,
+  } = match;
+
+  const {
+    rally,
+    handleAction,
+  } = rallyManager;
+
   const handleSetsWonChange = (team, event) => {
     const newSetsWon = parseInt(event.target.value, 10);
-    onSetsWonChange(team, newSetsWon);
+    updateSetsWon(team, newSetsWon);
   };
 
   const renderSetsWonOptions = () => {
@@ -74,12 +86,12 @@ function ScoreBoard({
       setAdjustSetWinner(team);
       setConfirmSetOpen(true);
     } else {
-      onAdjustScore(team, adjustment);
+      adjustScore(team, adjustment);
     }
   }
 
   const performAdjustSetEnd = () => {
-    onAdjustScore(adjustSetWinner, 1);
+    adjustScore(adjustSetWinner, 1);
     setConfirmSetOpen(false);
   }
 
@@ -94,9 +106,9 @@ function ScoreBoard({
 
   const handleConfirm = () => {
     if (pendingAction.type === 'timeout') {
-      onTimeout(pendingAction.teamKey);
+      callTimeout(pendingAction.teamKey);
     } else if (pendingAction.type === 'substitution') {
-      onSubstitution(pendingAction.teamKey);
+      callSubstitution(pendingAction.teamKey);
     }
     setConfirmOpen(false);
   };
@@ -199,7 +211,7 @@ function ScoreBoard({
                   <Button
                     size="small"
                     disabled={!matchStarted}
-                    onClick={() => onAdjustScore(teamKey, -1)}
+                    onClick={() => adjustScore(teamKey, -1)}
                     sx={{
                       margin: '2px',
                       padding: '5px 10px',
@@ -348,7 +360,7 @@ function ScoreBoard({
                   <Button
                     size="small"
                     disabled={!matchStarted}
-                    onClick={() => onAdjustScore(teamKey, -1)}
+                    onClick={() => adjustScore(teamKey, -1)}
                     sx={{
                       margin: '2px',
                       padding: '5px 10px',
@@ -378,7 +390,7 @@ function ScoreBoard({
               <Badge badgeContent={`${timeouts?.[teamKey] || 0}/2`} invisible={!matchStarted} color={((timeouts?.[teamKey] || 0) >= 2) ? 'error' : 'primary'}>
                 <IconButton
                   onClick={() => requestConfirm('timeout', teamKey)}
-                  disabled={!matchStarted || (timeouts?.[teamKey] || 0) >= 2 || rallyStage !== 'start'}
+                  disabled={!matchStarted || (timeouts?.[teamKey] || 0) >= 2 || rally.stage !== 'start'}
                   sx={{
                     backgroundColor: 'rgba(255, 152, 0, 0.9)',
                     // color: 'rgba(255, 152, 0, 0.9)',
@@ -406,7 +418,7 @@ function ScoreBoard({
               <Badge badgeContent={`${substitutions?.[teamKey] || 0}/6`} invisible={!matchStarted} color={((substitutions?.[teamKey] || 0) >= 6) ? 'error' : 'primary'}>
                 <IconButton
                   onClick={() => requestConfirm('substitution', teamKey)}
-                  disabled={!matchStarted || (substitutions?.[teamKey] || 0) >= 6 || rallyStage !== 'start'}
+                  disabled={!matchStarted || (substitutions?.[teamKey] || 0) >= 6 || rally.stage !== 'start'}
                   sx={{
                     backgroundColor: 'rgba(76, 175, 80, 0.9)',
                     color: 'white',

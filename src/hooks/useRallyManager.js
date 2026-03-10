@@ -35,7 +35,7 @@ const createEmptyStats = () => ({
     },
 });
 
-export const useRallyManager = (initialServer, onPossessionChange, onRallyStageChange) => {
+export const useRallyManager = (initialServer, onPossessionChange) => {
     const [rally, setRally] = useState(() => ({
         id: Date.now(),
         stage: 'start',
@@ -63,14 +63,6 @@ export const useRallyManager = (initialServer, onPossessionChange, onRallyStageC
             }
         }
     }, [rally.possession, onPossessionChange]);
-
-    // Sync stage changes to parent 
-    useEffect(() => {
-        if (onRallyStageChange) {
-            onRallyStageChange(rally.stage);
-        }
-    }, [rally.stage, onRallyStageChange]);
-
 
     // SERVE ACTION
     const handleServe = useCallback(() => {
