@@ -1,6 +1,5 @@
 # [0.59.0](https://github.com/basevoley/volleyball-score-tracker/compare/v0.58.0...v0.59.0) (2026-03-06)
 
-
 ### Bug Fixes
 
 * adapt tabs style on bigger screens ([101cabe](https://github.com/basevoley/volleyball-score-tracker/commit/101cabea28b75ec1c4462b5429f94b950de1b4c4))
