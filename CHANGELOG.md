@@ -1,3 +1,10 @@
+## [0.59.1](https://github.com/basevoley/volleyball-score-tracker/compare/v0.59.0...v0.59.1) (2026-03-10)
+
+
+### Bug Fixes
+
+* empty commit to force deployment ([529d88d](https://github.com/basevoley/volleyball-score-tracker/commit/529d88d228826547c5e73b2c886b260c4ebee378))
+
 # [0.59.0](https://github.com/basevoley/volleyball-score-tracker/compare/v0.58.0...v0.59.0) (2026-03-06)
 
 ### Bug Fixes
