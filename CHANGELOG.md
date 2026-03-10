@@ -1,3 +1,10 @@
+## [0.59.2](https://github.com/basevoley/volleyball-score-tracker/compare/v0.59.1...v0.59.2) (2026-03-10)
+
+
+### Bug Fixes
+
+* solved import issues and adjusted props passing between components ([f208b47](https://github.com/basevoley/volleyball-score-tracker/commit/f208b47d2c624e59de723eb4bbded54bea18e9d9))
+
 ## [0.59.1](https://github.com/basevoley/volleyball-score-tracker/compare/v0.59.0...v0.59.1) (2026-03-10)
 
 
