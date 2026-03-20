@@ -144,24 +144,6 @@ function Match({ matchDetails, matchData, setMatchData }) {
 
           {/* ScoreBoard */}
           <ScoreBoard
-            // teams={teams}
-            // teamLogos={teamLogos}
-            // teamColors={teamColors}
-            // scores={match.scores}
-            // setsWon={match.setsWon}
-            // currentServer={match.currentServer}
-            // ballPossession={match.ballPossession}
-            // matchStarted={match.matchStarted}
-            // onAdjustScore={adjustScore}
-            // maxSets={maxSets}
-            // onSetsWonChange={updateSetsWon}
-            // timeouts={match.timeouts}
-            // substitutions={match.substitutions}
-            // onTimeout={callTimeout}
-            // onSubstitution={callSubstitution}
-            // rallyStage={rallyStage}
-            // handleAction={handleAction}
-            // willRallyEndSet={willRallyEndSet}
             matchDetails={matchDetails}
             matchManager={matchManager}
             rallyManager={rallyManager}

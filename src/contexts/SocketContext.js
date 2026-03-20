@@ -18,6 +18,7 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }) => {
   const reconnectTimeoutRef = useRef(null);
   const heartbeatIntervalRef = useRef(null);
   const mountedRef = useRef(true);
+  const outgoingListenersRef = useRef(new Map());
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -45,6 +46,16 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }) => {
       forceNew: false,
     });
 
+    // Wrap emit to notify outgoing event subscribers
+    const originalEmit = socketInstance.emit.bind(socketInstance);
+    socketInstance.emit = (event, ...args) => {
+      const listeners = outgoingListenersRef.current.get(event);
+      if (listeners?.size > 0) {
+        listeners.forEach(handler => handler(...args));
+      }
+      return originalEmit(event, ...args);
+    };
+
     // Connection established
     socketInstance.on('connect', () => {
       console.log(`✅ Socket.io connected - client id: ${socketInstance.id}`);
@@ -54,7 +65,7 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }) => {
       setConnectionStatus('connected');
 
       // Start heartbeat to keep connection alive
-      startHeartbeat(socketInstance);
+      // startHeartbeat(socketInstance);
     });
 
     // Attempting to reconnect
@@ -164,20 +175,30 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }) => {
   }, [url, socketKey, onHandshake, cleanup]);
 
   // Heartbeat to keep connection alive and detect server cold starts
-  const startHeartbeat = (socketInstance) => {
-    // Clear existing interval
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-    }
+  // const startHeartbeat = (socketInstance) => {
+  //   // Clear existing interval
+  //   if (heartbeatIntervalRef.current) {
+  //     clearInterval(heartbeatIntervalRef.current);
+  //   }
 
-    // Send ping every 25 seconds (Render timeout is ~30s)
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (socketInstance.connected) {
-        socketInstance.emit('ping');
-        console.log('💓 Heartbeat ping sent');
-      }
-    }, 25000); // 25 seconds
-  };
+  //   // Send ping every 25 seconds (Render timeout is ~30s)
+  //   heartbeatIntervalRef.current = setInterval(() => {
+  //     if (socketInstance.connected) {
+  //       socketInstance.emit('ping');
+  //       console.log('💓 Heartbeat ping sent');
+  //     }
+  //   }, 25000); // 25 seconds
+  // };
+
+  // Subscribe to an outgoing socket event. Returns an unsubscribe function.
+  const onSocketEmit = useCallback((event, handler) => {
+    const listeners = outgoingListenersRef.current;
+    if (!listeners.has(event)) {
+      listeners.set(event, new Set());
+    }
+    listeners.get(event).add(handler);
+    return () => listeners.get(event)?.delete(handler);
+  }, []);
 
   // Manual reconnect function
   const reconnect = useCallback(() => {
@@ -190,11 +211,12 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }) => {
 
   return (
     <SocketContext.Provider 
-      value={{ 
-        socket, 
-        isConnected, 
+      value={{
+        socket,
+        isConnected,
         connectionStatus,
-        reconnect 
+        reconnect,
+        onSocketEmit,
       }}
     >
       {children}
