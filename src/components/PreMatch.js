@@ -11,12 +11,17 @@ import {
   Grid,
   InputLabel,
   Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CustomCombobox from './CustomCombobox';
 import MatchSelector from './MatchSelector';
 import ModalOverlay from './ModalOverlay';
 import { useSocket } from '../contexts/SocketContext';
 import { TeamColorSelector } from './TeamColorSelector';
+import TeamPlayerList from './EditablePlayerList';
 
 function PreMatch({ setMatchDetails, matchDetails }) {
   const [teamA, setTeamA] = useState(matchDetails.teams.teamA);
@@ -38,27 +43,37 @@ function PreMatch({ setMatchDetails, matchDetails }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    const updatedMatchDetails = {
-      teams: { teamA, teamB },
-      teamLogos: { teamA: teamALogo, teamB: teamBLogo },
-      teamColors: { teamA: teamAColor, teamB: teamBColor },
-      matchHeader,
-      stadium,
-      extendedInfo,
-      competitionLogo,
-      maxSets,
-      stats: {
-        teamA: statsA,
-        teamB: statsB,
-      },
-    };
+    setMatchDetails(prevDetails => {
+      const updated = {
+        ...prevDetails,
+        teams: { teamA, teamB },
+        teamLogos: { teamA: teamALogo, teamB: teamBLogo },
+        teamColors: { teamA: teamAColor, teamB: teamBColor },
+        matchHeader,
+        stadium,
+        extendedInfo,
+        competitionLogo,
+        maxSets,
+        stats: {
+          teamA: statsA,
+          teamB: statsB,
+        },
+      };
 
-    setMatchDetails(updatedMatchDetails);
+      return updated;
+    });
 
+  }, [teamA, teamB, teamALogo, teamBLogo, teamAColor, teamBColor,
+    matchHeader, stadium, extendedInfo, competitionLogo,
+    maxSets, statsA, statsB, socket, setMatchDetails]);
+
+  useEffect(() => {
     if (socket) {
-      socket.emit('matchDetails', updatedMatchDetails);
+      socket.emit('matchDetails', matchDetails);
     }
-  }, [teamA, teamB, teamALogo, teamBLogo, teamAColor, teamBColor, matchHeader, stadium, extendedInfo, competitionLogo, maxSets, statsA, statsB, setMatchDetails, socket]);
+  }, [matchDetails, socket])
+
+
 
   const handleStatChange = (team, stat, value) => {
     const intValue = parseInt(value, 10);
@@ -103,6 +118,9 @@ function PreMatch({ setMatchDetails, matchDetails }) {
     { label: 'Total Puntos Anotados', key: 'totalPointsScored' },
     { label: 'Total Puntos Recibidos', key: 'totalPointsReceived' },
   ];
+
+  const hasStats = [...Object.values(statsA), ...Object.values(statsB)].some(val => Number(val) > 0);
+  const hasPlayers = (matchDetails.players.teamA?.length > 0) || (matchDetails.players.teamB?.length > 0);
 
   const renderStatInputs = (statsA, statsB) => (
     <Box sx={{ width: '100%', mt: 2 }}>
@@ -209,7 +227,7 @@ function PreMatch({ setMatchDetails, matchDetails }) {
         }}>
           <Button
             variant="contained"
-            onClick={() => setIsModalOpen(true)} 
+            onClick={() => setIsModalOpen(true)}
             sx={{
               gap: '8px',
             }}
@@ -373,14 +391,37 @@ function PreMatch({ setMatchDetails, matchDetails }) {
         <Box sx={{ width: '100%', mt: 1 }}>
           <CustomCombobox label={"URL del escudo del Equipo B"} placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} />
         </Box>
-        <Divider sx={{ mt: 1 }} />
-        <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
-          Comparativa
-        </Typography>
-        <Box sx={{ width: '100%', mt: 1 }}>
 
-          {renderStatInputs(statsA, statsB)}
-        </Box>
+        <Accordion defaultExpanded={hasStats} sx={{ mt: 1, mb: 0, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="h6" >Comparativa de Equipos</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Box sx={{ width: '100%', mt: 1 }}>
+
+              {renderStatInputs(statsA, statsB)}
+            </Box>
+
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion defaultExpanded={hasPlayers} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="h6">Jugadores</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Box sx={{ width: '100%', mt: 1 }}>
+              <Typography variant="subtitle2" fontWeight="bold">
+                {teamA}
+              </Typography>
+              <TeamPlayerList teamId="teamA" matchDetails={matchDetails} setMatchDetails={setMatchDetails} />
+              <Typography variant="subtitle2" fontWeight="bold">
+                {teamB}
+              </Typography>
+              <TeamPlayerList teamId="teamB" matchDetails={matchDetails} setMatchDetails={setMatchDetails} />
+            </Box>
+          </AccordionDetails>
+        </Accordion>
       </Paper>
     </Box>
   );

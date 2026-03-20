@@ -7,6 +7,7 @@ import Controls from './components/Controls';
 import Cookies from 'js-cookie';
 import ShortUUID from 'short-uuid';
 import { SocketProvider } from './contexts/SocketContext';
+import { AutomationProvider } from './contexts/AutomationContext';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import OverlayPreview from './components/OverlayPreview';
 import PackageJson from '../package.json';
@@ -58,6 +59,10 @@ const initialConfig = {
     enabled: false,
     position: 'center',
   },
+  lineup: {
+    enabled: false,
+    showStats: true,
+  }
 };
 
 const initialMatchDetails = {
@@ -102,6 +107,22 @@ const initialMatchDetails = {
       totalPointsScored: 0,
       totalPointsReceived: 0,
     }
+  },
+  players: {
+    teamA: [
+      // {
+      //   number: 0,
+      //   name: "",
+      //   roles: [""]
+      // },
+    ],
+    teamB: [
+      // {
+      //   number: 0,
+      //   name: "",
+      //   roles: [""]
+      // },
+    ],
   },
 };
 
@@ -188,6 +209,7 @@ function App() {
 
   return (
     <SocketProvider url={SOCKET_SERVER_URL} socketKey={key} onHandshake={handleHandshake}>
+      <AutomationProvider config={config} setConfig={setConfig} matchDetails={matchDetails} matchData={matchData}>
       <ConnectionStatus />
       <Container
         maxWidth="lg"
@@ -252,7 +274,7 @@ function App() {
           </Box>
           {activeTab === 0 && <PreMatch setMatchDetails={setMatchDetails} matchDetails={matchDetails} />}
           {activeTab === 1 && <Match matchDetails={matchDetails} matchData={matchData} setMatchData={setMatchData} />}
-          {activeTab === 2 && <Controls config={config} setConfig={setConfig} />}
+          {activeTab === 2 && <Controls config={config} setConfig={setConfig} matchDetails={matchDetails} matchData={matchData} />}
 
           <Box
             component="footer"
@@ -306,6 +328,7 @@ function App() {
           </Box>
         </Paper>
       </Container>
+      </AutomationProvider>
     </SocketProvider>
   );
 }
