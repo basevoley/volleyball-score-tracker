@@ -6,6 +6,8 @@ import {
     Select,
     MenuItem
 } from '@mui/material';
+import { getBestBadge } from '../utils/badgeUtils';
+
 
 const MatchSelector = ({ onSelectMatch }) => {
     const [competitionTypes, setCompetitionTypes] = useState([]);
@@ -148,11 +150,14 @@ const MatchSelector = ({ onSelectMatch }) => {
         const division = divisions.find(type => type.id === selectedDivision);
         const phase = phases.find(comp => comp.id === selectedPhase);
 
+        const teamABadge = getBestBadge(teamAData.nombre)
+        const teamBBadge = getBestBadge(teamBData.nombre)
+
         const matchDetails = {
             teamA: teamAData.nombre,
             teamB: teamBData.nombre,
-            teamALogo: teamAData.imagen,
-            teamBLogo: teamBData.imagen,
+            teamALogo: teamABadge? teamABadge : teamAData.imagen,
+            teamBLogo: teamBBadge? teamBBadge : teamBData.imagen,
             matchHeader: `${category.categoria_sexo} - ${division.nombre}`,
             extendedInfo: `Fase ${phase.nombre} - Jornada ${journeyData.numero}`,
             stadium: `Pabellón ${selectedMatch.pabellon}`,

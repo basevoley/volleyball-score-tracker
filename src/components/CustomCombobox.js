@@ -1,199 +1,159 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Box,
     TextField,
-    Paper,
-    List,
-    ListItem,
-    ListItemButton,
-    ListItemText,
+    Autocomplete,
     Avatar,
-    Popper,
-    ClickAwayListener
+    Typography,
 } from '@mui/material';
 import staticImages from './badges';
 
 const CustomCombobox = ({ label, placeholderText, inputValue, onInputChange }) => {
-    const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
-    const inputRef = useRef(null);
+    // Buscamos el objeto que coincida con la URL actual para que el Autocomplete lo resalte
+    const selectedOption = staticImages.find(img => img.url === inputValue) || null;
+    const [hasImageError, setHasImageError] = useState(false);
+    const [localText, setLocalText] = useState(inputValue || "");
 
-    const suggestions = useMemo(() => {
-        if (inputValue.length > 0) {
-            let options = staticImages.filter(image =>
-                image.name.toLowerCase().includes(inputValue.toLowerCase()) || 
-                image.path.toLowerCase().includes(inputValue.toLowerCase())
-            );
-            if (options.length > 0) {
-                return options;
-            }
-            return staticImages;
-        }
-        return staticImages;
+    useEffect(() => {
+                setLocalText(inputValue || "");
+
+        setHasImageError(false);
     }, [inputValue]);
 
-    const handleSelect = (path) => {
-        onInputChange(path);
-        setIsSuggestionsOpen(false);
+    const commitChange = (value) => {
+        if (value !== inputValue) {
+            onInputChange(value);
+        }
     };
 
-    const handleChange = (e) => {
-        onInputChange(e.target.value);
-        setIsSuggestionsOpen(true);
-    };
-
-    const handleClickAway = () => {
-        setIsSuggestionsOpen(false);
+    const renderOptions = (props, option) => {
+        const { key, ...optionProps } = props;
+        return (
+            <Box
+                component="li"
+                key={key}
+                {...optionProps}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 2,
+                    px: 2,
+                    py: 1,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                }}
+            >
+                <Typography variant="body2" noWrap sx={{ flexGrow: 1 }}>
+                    {option.name}
+                </Typography>
+                <Avatar
+                    src={option.url}
+                    variant="square"
+                    sx={{ width: '3rem', height: '3rem', flexShrink: 0, borderRadius: 0.5, border: '1px solid', borderColor: 'divider' }}
+                />
+            </Box>
+        );
     };
 
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                width: '100%',
-                gap: '5px',
-                alignItems: 'center'
-            }}
-        >
-            <ClickAwayListener onClickAway={handleClickAway}>
-                <Box
-                    sx={{
-                        position: 'relative',
-                        flexGrow: 1,
-                        boxSizing: 'border-box'
-                    }}
-                >
+        <Box sx={{ display: 'flex', width: '100%', gap: 2, alignItems: 'center' }}>
+            <Autocomplete
+                size="small"
+                freeSolo
+                options={staticImages}
+
+                // value={selectedOption || inputValue || null}
+                value={selectedOption || localText || null}
+                // inputValue={localText}
+
+                getOptionLabel={(option) => (typeof option === 'string' ? option : option.url)}
+
+                isOptionEqualToValue={(option, value) => {
+                    const compare = typeof value === 'string' ? value : value?.url;
+                    return option.url === compare;
+                }}
+
+                // onChange={(event, newValue) => {
+                //     // Si seleccionas de la lista, extraemos la URL; si es texto manual, el string
+                //     const valueToEmit = typeof newValue === 'object' ? newValue?.url : newValue;
+                //     onInputChange(valueToEmit || "");
+                // }}
+                onChange={(event, newValue) => {
+                    const val = typeof newValue === 'object' ? newValue?.url : newValue;
+                    const finalValue = val || "";
+                    setLocalText(finalValue);
+                    commitChange(finalValue); // Selección instantánea
+                }}
+
+
+                onInputChange={(event, newInputValue) => {
+                    // Solo actualizamos si el cambio viene de teclear (evita loops en selecciones)
+                    if (event?.type === 'change') {
+                        // onInputChange(newInputValue);
+                        setLocalText(newInputValue);
+                    }
+                }}
+                // onInputChange={(event, newInputValue) => {
+                //     setLocalText(newInputValue);
+                // }}
+
+                filterOptions={(options, { inputValue }) => {
+                    const cleanQuery = inputValue.toLowerCase();
+                    return options.filter(opt =>
+                        opt.name.toLowerCase().includes(cleanQuery) ||
+                        opt.url.toLowerCase().includes(cleanQuery)
+                    );
+                }}
+
+                renderOption={renderOptions}
+                renderInput={(params) => (
                     <TextField
-                        ref={inputRef}
-                        fullWidth
-                        size="small"
-                        value={inputValue}
-                        onChange={handleChange}
-                        onFocus={() => suggestions.length > 0 && setIsSuggestionsOpen(true)}
+                        {...params}
                         label={label}
                         placeholder={placeholderText}
-                        sx={{
-                            '& .MuiInputBase-input': {
-                                padding: '8px'
+                        onBlur={() => commitChange(localText)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                commitChange(localText);
                             }
                         }}
+                    // En v7 puedes usar slotProps.input para estilos específicos si lo deseas
                     />
+                )}
+                sx={{ flexGrow: 1 }}
+            />
 
-                    <Popper
-                        open={isSuggestionsOpen && suggestions.length > 0}
-                        anchorEl={inputRef.current}
-                        placement="bottom-start"
-                        style={{ width: inputRef.current?.offsetWidth, zIndex: 1300 }}
-                    >
-                        <Paper
-                            elevation={3}
-                            sx={{
-                                maxHeight: 200,
-                                overflowY: 'auto',
-                                mt: 0.5
-                            }}
-                        >
-                            <List disablePadding>
-                                {suggestions.map((image) => (
-                                    <ListItem
-                                        key={image.id}
-                                        disablePadding
-                                        sx={{
-                                            borderBottom: '1px solid #eee',
-                                            '&:last-child': {
-                                                borderBottom: 'none'
-                                            }
-                                        }}
-                                    >
-                                        <ListItemButton
-                                            onClick={() => handleSelect(image.path)}
-                                            sx={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                gap: 1,
-                                                py: 1,
-                                                '&:hover': {
-                                                    backgroundColor: '#f0f0f0'
-                                                }
-                                            }}
-                                        >
-                                            <ListItemText
-                                                primary={image.name}
-                                                primaryTypographyProps={{
-                                                    fontSize: '0.875rem'
-                                                }}
-                                            />
-                                            <Avatar
-                                                src={image.path}
-                                                alt={image.name}
-                                                variant="square"
-                                                sx={{
-                                                    width: 40,
-                                                    height: 40
-                                                }}
-                                            />
-                                        </ListItemButton>
-                                    </ListItem>
-                                ))}
-                            </List>
-                        </Paper>
-                    </Popper>
-                </Box>
-            </ClickAwayListener>
-
-            {inputValue ? (
-                <Box
-                    component="img"
-                    src={inputValue}
-                    alt="Preview"
-                    sx={{
-                        width: 100,
-                        height: 100,
-                        objectFit: 'contain'
-                    }}
-                />
-            ) : (
-                <Box
-                    sx={{
-                        width: 100,
-                        height: 100,
-                        border: '1px solid #ccc',
-                        backgroundColor: '#f9f9f9',
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        '&::before': {
-                            content: '"No Image"',
-                            fontSize: '10px',
-                            color: '#888',
-                            textAlign: 'center',
-                            lineHeight: 1.2,
-                            zIndex: 1
-                        },
-                        '&::after': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: `
-                                linear-gradient(to top right, 
-                                    transparent calc(50% - 1px), 
-                                    #ccc calc(50% - 1px), 
-                                    #ccc calc(50% + 1px), 
-                                    transparent calc(50% + 1px)),
-                                linear-gradient(to bottom right, 
-                                    transparent calc(50% - 1px), 
-                                    #ccc calc(50% - 1px), 
-                                    #ccc calc(50% + 1px), 
-                                    transparent calc(50% + 1px))
-                            `
-                        }
-                    }}
-                />
-            )}
+            {/* Cuadro de Previsualización */}
+            <Box
+                sx={{
+                    width: 80,
+                    height: 80,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid',
+                    borderColor: hasImageError ? 'error.main' : 'divider',
+                    borderRadius: 1,
+                    bgcolor: hasImageError ? 'error.light' : 'background.paper',
+                    overflow: 'hidden',
+                    flexShrink: 0
+                }}
+            >
+                {inputValue && !hasImageError ? (
+                    <Box
+                        component="img"
+                        src={inputValue}
+                        alt="Badge Preview"
+                        sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        onError={() => setHasImageError(true)}
+                    />
+                ) : (
+                    <Typography variant="caption" align="center" sx={{ color: hasImageError ? 'white' : 'text.disabled', p: 0.5 }}>
+                        {hasImageError ? 'URL Inválida' : 'Sin Imagen'}
+                    </Typography>
+                )}
+            </Box>
         </Box>
     );
 };
