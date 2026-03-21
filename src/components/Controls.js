@@ -100,7 +100,6 @@ const SequenceRow = ({ seq, isRunning, activeSequenceId, currentStepIndex, activ
                     </Button>
                 ) : (
                     <Switch
-                        size="small"
                         checked={automationsEnabled[seq.id] ?? true}
                         onChange={() => toggleAutomation(seq.id)}
                     />
