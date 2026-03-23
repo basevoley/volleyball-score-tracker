@@ -126,7 +126,7 @@ const SequenceRow = ({ seq, isRunning, activeSequenceId, currentStepIndex, activ
     );
 };
 
-const Controls = ({ config, setConfig, matchDetails, matchData }) => {
+const Controls = ({ config, setConfig, matchDetails, matchData, noStats }) => {
     const { socket } = useSocket();
     const hasStats = [...Object.values(matchDetails.stats.teamA), ...Object.values(matchDetails.stats.teamB)].some(val => Number(val) > 0);
     const hasPlayers = (matchDetails.players.teamA?.length > 0) || (matchDetails.players.teamB?.length > 0);
@@ -449,7 +449,7 @@ const Controls = ({ config, setConfig, matchDetails, matchData }) => {
                                         </Typography>
                                     </Box>
                                     <FormControlLabel control={
-                                        <Switch size="small" checked={config.afterMatch.showStats} onChange={() => handleToggle('afterMatch', 'showStats')} />
+                                        <Switch size="small" checked={!noStats && config.afterMatch.showStats} disabled={noStats} onChange={() => handleToggle('afterMatch', 'showStats')} />
                                     }
                                         label={
                                             <Typography variant="body2">

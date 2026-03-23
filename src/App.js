@@ -4,6 +4,7 @@ import { Container, Box, Typography, Paper, Tabs, Tab, useMediaQuery, useTheme }
 import PreMatch from './components/PreMatch';
 import Match from './components/Match';
 import Controls from './components/Controls';
+import Settings from './components/Settings';
 import Cookies from 'js-cookie';
 import ShortUUID from 'short-uuid';
 import { SocketProvider } from './contexts/SocketContext';
@@ -157,6 +158,7 @@ function App() {
   const [matchData, setMatchData] = useState(initialMatchData);
   const [config, setConfig] = useState(initialConfig);
   const [activeTab, setActiveTab] = useState(0);
+  const [noStats, setNoStats] = useState(() => Cookies.get('no-stats') === 'true');
 
   const matchDetailsRef = useRef(matchDetails);
   const matchDataRef = useRef(matchData);
@@ -174,6 +176,17 @@ function App() {
   useEffect(() => {
     configRef.current = config;
   }, [config]);
+
+  useEffect(() => {
+    Cookies.set('no-stats', noStats, { expires: 365 });
+    if (noStats && config.afterMatch.showStats) {
+      const updatedConfig = {
+        ...config,
+        afterMatch: { ...config.afterMatch, showStats: false },
+      };
+      setConfig(updatedConfig);
+    }
+  }, [noStats]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [key] = useState(() => {
     // Load the key from a cookie or generate a new short UUID
@@ -270,11 +283,13 @@ function App() {
               <Tab label="Datos del partido" />
               <Tab label="Partido" />
               <Tab label="Controles de vídeo" />
+              <Tab label="Ajustes" />
             </Tabs>
           </Box>
           {activeTab === 0 && <PreMatch setMatchDetails={setMatchDetails} matchDetails={matchDetails} />}
-          {activeTab === 1 && <Match matchDetails={matchDetails} matchData={matchData} setMatchData={setMatchData} />}
-          {activeTab === 2 && <Controls config={config} setConfig={setConfig} matchDetails={matchDetails} matchData={matchData} />}
+          {activeTab === 1 && <Match matchDetails={matchDetails} matchData={matchData} setMatchData={setMatchData} noStats={noStats} />}
+          {activeTab === 2 && <Controls config={config} setConfig={setConfig} matchDetails={matchDetails} matchData={matchData} noStats={noStats} />}
+          {activeTab === 3 && <Settings noStats={noStats} setNoStats={setNoStats} />}
 
           <Box
             component="footer"

@@ -9,7 +9,7 @@ import WinnerDialog from './WinnerDialog';
 import RallyControl from './RallyControl';
 import MatchHeader from './MatchHeader';
 
-function Match({ matchDetails, matchData, setMatchData }) {
+function Match({ matchDetails, matchData, setMatchData, noStats }) {
   const { teams, teamLogos, teamColors, maxSets } = matchDetails;
   const didInitRef = useRef(false);
   const [expandedSetIndex, setExpandedSetIndex] = useState(
@@ -150,21 +150,25 @@ function Match({ matchDetails, matchData, setMatchData }) {
           />
 
           {/* Rally Controller Component */}
-          <RallyControl
-            teams={teams}
-            matchManager={matchManager}
-            rallyManager={rallyManager}
-          />
+          {!noStats && (
+            <RallyControl
+              teams={teams}
+              matchManager={matchManager}
+              rallyManager={rallyManager}
+            />
+          )}
         </Card>
 
         {/* Stats Handler */}
-        <StatsHandler
+        {!noStats && (
+          <StatsHandler
           teams={teams}
           teamColors={teamColors}
           localMatchData={match}
           expandedSetIndex={expandedSetIndex}
           setExpandedSetIndex={setExpandedSetIndex}
-        />
+          />
+        )}
       </Paper>
 
       {/* Winner Dialog */}
