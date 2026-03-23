@@ -64,7 +64,7 @@ const useAutomationRunner = ({ config, setConfig, socket }) => {
         }
     }, [applySnapshot, setConfig, socket]);
 
-    const run = useCallback((sequence, ctx = {}) => {
+    const run = useCallback((sequence, getCtx = () => ({})) => {
         // Interrupt any running sequence cleanly
         if (isRunningRef.current) {
             isRunningRef.current = false;
@@ -73,9 +73,7 @@ const useAutomationRunner = ({ config, setConfig, socket }) => {
             activeSequenceRef.current = null;
         }
 
-        const steps = sequence.steps.filter(
-            step => !step.condition || step.condition(ctx)
-        );
+        const steps = sequence.steps;
         if (steps.length === 0) return;
 
         // Take snapshot before starting
@@ -95,34 +93,41 @@ const useAutomationRunner = ({ config, setConfig, socket }) => {
         const runStep = (index) => {
             if (!isRunningRef.current) return;
 
-            setCurrentStepIndex(index);
+            // Past the end — check for loop or end naturally
+            if (index >= steps.length) {
+                const loopStartIndex = steps.findIndex(s => s.loopStart);
+                if (loopStartIndex >= 0) {
+                    runStep(loopStartIndex);
+                } else {
+                    isRunningRef.current = false;
+                    activeSequenceRef.current = null;
+                    setIsRunning(false);
+                    setActiveSequenceId(null);
+                    setCurrentStepIndex(null);
+                    setActiveSteps([]);
+                    if (snapshotRef.current) {
+                        applySnapshot();
+                    }
+                }
+                return;
+            }
+
             const step = steps[index];
+            const ctx = typeof getCtx === 'function' ? getCtx() : getCtx;
+
+            // Skip step if condition evaluates to false at this moment
+            if (step.condition && !step.condition(ctx)) {
+                runStep(index + 1);
+                return;
+            }
+
+            setCurrentStepIndex(index);
             const updatedConfig = applyChanges(configRef.current, step.changes);
             configRef.current = updatedConfig;
             setConfig(updatedConfig);
             socket.emit('updateConfig', updatedConfig);
 
-            if (index < steps.length - 1) {
-                timeoutRef.current = setTimeout(() => runStep(index + 1), step.duration);
-                return;
-            }
-
-            // Last step: loop back if a loopStart marker exists, otherwise end naturally
-            const loopStartIndex = steps.findIndex(s => s.loopStart);
-            if (loopStartIndex >= 0) {
-                timeoutRef.current = setTimeout(() => runStep(loopStartIndex), step.duration);
-            } else {
-                isRunningRef.current = false;
-                activeSequenceRef.current = null;
-                setIsRunning(false);
-                setActiveSequenceId(null);
-                setCurrentStepIndex(null);
-                setActiveSteps([]);
-                // Restore snapshot on natural end
-                if (snapshotRef.current) {
-                    applySnapshot();
-                }
-            }
+            timeoutRef.current = setTimeout(() => runStep(index + 1), step.duration);
         };
 
         runStep(0);

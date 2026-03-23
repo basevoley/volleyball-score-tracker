@@ -66,7 +66,7 @@ export const AutomationProvider = ({ children, config, setConfig, matchDetails, 
                 for (const seq of sequences) {
                     if (!automationsEnabledRef.current[seq.id]) continue;
                     if (seq.trigger.condition(data, triggerStates[seq.id])) {
-                        runnerRunRef.current(seq, ctxRef.current);
+                        runnerRunRef.current(seq, () => ctxRef.current);
                     }
                 }
             })
@@ -76,7 +76,7 @@ export const AutomationProvider = ({ children, config, setConfig, matchDetails, 
     }, [onSocketEmit]);
 
     const runSequence = useCallback((sequence) => {
-        runnerRunRef.current(sequence, ctxRef.current);
+        runnerRunRef.current(sequence, () => ctxRef.current);
     }, []);
 
     const value = {
