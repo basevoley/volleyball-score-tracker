@@ -51,7 +51,7 @@ export const PRE_MATCH_SEQUENCE = {
         {
             label: 'Mostrar lower third',
             changes: [{ section: 'lowerThird', key: 'enabled', value: true }],
-            duration: 5000,
+            duration: 1500,
         },
         {
             label: 'Mostrar redes sociales',
@@ -59,7 +59,7 @@ export const PRE_MATCH_SEQUENCE = {
                 { section: 'socialMedia', key: 'position', value: 'top-left' },
                 { section: 'socialMedia', key: 'enabled', value: true },
             ],
-            duration: 5000,
+            duration: 12000,
         },
         {
             label: 'Mostrar patrocinadores',
@@ -78,7 +78,8 @@ export const PRE_MATCH_SEQUENCE = {
                 { section: 'subscribe', key: 'position', value: 'center' },
                 { section: 'subscribe', key: 'enabled', value: true }
             ],
-            duration: 7000,
+            duration: 15000,
+            condition: () => Math.random() >= 0.5,
         },
         {
             label: 'Ocultar splash de subscripción',
@@ -101,11 +102,11 @@ export const PRE_MATCH_SEQUENCE = {
                 { section: 'teamComparison', key: 'enabled', value: false },
                 { section: 'lowerThird', key: 'enabled', value: true },
             ],
-            duration: 1500,
+            duration: 10000,
             condition: ctx => ctx.hasStats,
         },
         // ******************************************************* BLOQUE COMPARACIÓN EQUIPOS
-        // ******************************************************* BLOQUE LISTADO JUGADORES
+        // ******************************************************* TRANSICION SI HAY COMPARACION Y JUGADORES
         {
             label: 'Mostrar patrocinadores (2)',
             changes: [{ section: 'sponsors', key: 'enabled', value: true }],
@@ -114,19 +115,46 @@ export const PRE_MATCH_SEQUENCE = {
         },
         {
             label: 'Ocultar patrocinadores',
-            changes: [{ section: 'sponsors', key: 'enabled', value: false }],
+            changes: [
+                { section: 'sponsors', key: 'enabled', value: false },
+            ],
             duration: 2000,
             condition: ctx => ctx.hasStats && ctx.hasPlayers,
         },
+        // ******************************************************* TRANSICION SI HAY COMPARACION Y JUGADORES
+        // ******************************************************* BLOQUE LISTADO JUGADORES
+        {
+            label: 'Configurar listado de jugadores',
+            changes: [
+                { section: 'lowerThird', key: 'enabled', value: false },
+                { section: 'lineup', key: 'showStats', value: false }
+
+            ],
+            duration: 100,
+            condition: ctx => ctx.hasPlayers,
+        },
         {
             label: 'Mostrar listado de jugadores',
-            changes: [{ section: 'lineup', key: 'enabled', value: true }],
+            changes: [
+                { section: 'lineup', key: 'enabled', value: true },
+            ],
+            duration: 100,
+            condition: ctx => ctx.hasPlayers,
+        },
+        {
+            label: 'Mostrar listado de jugadores',
+            changes: [
+                { section: 'lineup', key: 'showStats', value: true }
+                ],
             duration: 30000,
             condition: ctx => ctx.hasPlayers,
         },
         {
             label: 'Ocultar listado de jugadores',
-            changes: [{ section: 'lineup', key: 'enabled', value: false }],
+            changes: [
+                { section: 'lineup', key: 'showStats', value: false },
+                { section: 'lineup', key: 'enabled', value: false }
+            ],
             duration: 1500,
             condition: ctx => ctx.hasPlayers,
         },
