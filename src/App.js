@@ -1,6 +1,6 @@
 // app.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Container, Box, Typography, Paper, Tabs, Tab, useMediaQuery, useTheme } from '@mui/material';
+import { Container, Box, Typography, Paper, Tabs, Tab, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider } from '@mui/material';
 import PreMatch from './components/PreMatch';
 import Match from './components/Match';
 import Controls from './components/Controls';
@@ -12,6 +12,8 @@ import { AutomationProvider } from './contexts/AutomationContext';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import OverlayPreview from './components/OverlayPreview';
 import PackageJson from '../package.json';
+
+const STORAGE_KEY = 'vb_tracker_session';
 
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3005';
 const OVERLAY_URL = process.env.REACT_APP_OVERLAY_URL || 'http://localhost:3001';
@@ -153,12 +155,62 @@ const initialMatchData = {
   },
 };
 
+function RestoreSessionDialog({ session, onRestore, onDiscard }) {
+  const { matchData, matchDetails } = session;
+  const { teams } = matchDetails;
+  const { scores, setsWon, winner, matchStarted } = matchData;
+  const matchProgress = matchStarted || (matchData.setsWon.teamA > 0 || matchData.setsWon.teamB > 0)
+
+  const statusLabel = winner
+    ? 'Partido finalizado'
+    : !matchProgress
+    ? 'Partido no iniciado'
+    : 'Partido en curso';
+
+  return (
+    <Dialog open maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ textAlign: 'center', fontWeight: 700 }}>
+        Partido en curso detectado
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mb: 2 }}>
+          La página se recargó con un partido en progreso. ¿Deseas continuar?
+        </Typography>
+        <Box sx={{ bgcolor: 'grey.100', borderRadius: 2, p: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="subtitle1" fontWeight={600}>{teams.teamA}</Typography>
+            <Typography variant="h5" fontWeight={800} sx={{ mx: 1 }}>
+              {scores.teamA} – {scores.teamB}
+            </Typography>
+            <Typography variant="subtitle1" fontWeight={600}>{teams.teamB}</Typography>
+          </Box>
+          <Divider sx={{ my: 1 }} />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">Sets: {setsWon.teamA}</Typography>
+            <Typography variant="caption" color="text.secondary" fontStyle="italic">{statusLabel}</Typography>
+            <Typography variant="body2" color="text.secondary">Sets: {setsWon.teamB}</Typography>
+          </Box>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ flexDirection: 'column', gap: 1, p: 2, pt: 0 }}>
+        <Button variant="contained" fullWidth onClick={onRestore}>
+          Continuar partido
+        </Button>
+        <Button variant="outlined" fullWidth color="error" onClick={onDiscard}>
+          Partido nuevo
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 function App() {
   const [matchDetails, setMatchDetails] = useState(initialMatchDetails);
   const [matchData, setMatchData] = useState(initialMatchData);
   const [config, setConfig] = useState(initialConfig);
   const [activeTab, setActiveTab] = useState(0);
   const [noStats, setNoStats] = useState(() => Cookies.get('no-stats') === 'true');
+  const [savedSession, setSavedSession] = useState(null);
 
   const matchDetailsRef = useRef(matchDetails);
   const matchDataRef = useRef(matchData);
@@ -176,6 +228,34 @@ function App() {
   useEffect(() => {
     configRef.current = config;
   }, [config]);
+
+  // Check for a saved session on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const md = parsed.matchData;
+        const det = parsed.matchDetails;
+        const hasMatchProgress = md && (md.matchStarted || md.scores?.teamA > 0 || md.scores?.teamB > 0 || md.setsWon?.teamA > 0 || md.setsWon?.teamB > 0);
+        const hasCustomSetup = det && (det.teams?.teamA !== initialMatchDetails.teams.teamA || det.teams?.teamB !== initialMatchDetails.teams.teamB);
+        if (hasMatchProgress || hasCustomSetup) {
+          setSavedSession(parsed);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist everything together whenever any piece changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ matchData, matchDetails, config }));
+    } catch { /* storage unavailable or quota exceeded */ }
+  }, [matchData, matchDetails, config]);
 
   useEffect(() => {
     Cookies.set('no-stats', noStats, { expires: 365 });
@@ -203,6 +283,19 @@ function App() {
 
   const overlayUrl = `${OVERLAY_URL}?key=${key}`;
 
+  const handleRestoreSession = () => {
+    setMatchData(savedSession.matchData);
+    setMatchDetails(savedSession.matchDetails);
+    setConfig(savedSession.config);
+    setSavedSession(null);
+    setActiveTab(savedSession.matchData?.matchStarted ? 1 : 0);
+  };
+
+  const handleDiscardSession = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setSavedSession(null);
+  };
+
   const handleHandshake = useCallback(() => {
     return {
       matchDetails: matchDetailsRef.current,
@@ -223,6 +316,13 @@ function App() {
   return (
     <SocketProvider url={SOCKET_SERVER_URL} socketKey={key} onHandshake={handleHandshake}>
       <AutomationProvider config={config} setConfig={setConfig} matchDetails={matchDetails} matchData={matchData}>
+      {savedSession && (
+        <RestoreSessionDialog
+          session={savedSession}
+          onRestore={handleRestoreSession}
+          onDiscard={handleDiscardSession}
+        />
+      )}
       <ConnectionStatus />
       <Container
         maxWidth="lg"
