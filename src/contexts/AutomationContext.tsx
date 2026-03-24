@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { useSocket } from './SocketContext';
+import { useSocket } from '../services/socket/SocketContext';
 import useAutomationRunner from '../hooks/useAutomationRunner';
-import { ALL_SEQUENCES } from '../automation/sequences';
+import { ALL_SEQUENCES } from '../domain/automation/sequences';
 import type { Config, Sequence, SequenceTrigger, MatchDetails, MatchData } from '../types';
 
 type SocketEventTrigger = Extract<SequenceTrigger, { type: 'socketEvent' }>;
