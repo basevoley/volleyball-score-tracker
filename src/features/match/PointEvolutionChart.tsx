@@ -1,6 +1,15 @@
 import React from 'react';
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Line, Customized } from 'recharts';
-import type { HistoryEntry, TeamRecord } from '../../types';
+import type { HistoryEntry, TeamKey, TeamRecord } from '../../types';
+
+type ChartEvent = { type: 'rally' } | { type: 'fault' | 'timeout' | 'substitution'; team: TeamKey };
+
+const toChartEvent = (entry: HistoryEntry): ChartEvent => {
+    if (entry.entryType === 'timeout') return { type: 'timeout', team: entry.team };
+    if (entry.entryType === 'substitution') return { type: 'substitution', team: entry.team };
+    if (entry.entryType === 'rally' && entry.faultingTeam) return { type: 'fault', team: entry.faultingTeam };
+    return { type: 'rally' };
+};
 
 interface Props {
   history?: HistoryEntry[];
@@ -10,18 +19,18 @@ interface Props {
 
 // Per-set timeline chart with event labels and optimized mobile layout
 function PointEvolutionChart({ history = [], teams, teamColors }: Props) {
-  let data = history.map((h, i) =>({ 
-        rally: i+1,
+  let data = history.map((h, i) => ({
+        rally: i + 1,
         teamA: h.scores.teamA,
         teamB: h.scores.teamB,
-        event: h.event,
+        event: toChartEvent(h),
         timestamp: h.timestamp,
       }));
   data.unshift({
         rally: 0,
         teamA: 0,
         teamB: 0,
-        event: { type: 'rally' },
+        event: { type: 'rally' } as ChartEvent,
         timestamp: 0,
       });
 
@@ -35,7 +44,7 @@ function PointEvolutionChart({ history = [], teams, teamColors }: Props) {
         <div>{teams.teamA}: {p.teamA}</div>
         <div>{teams.teamB}: {p.teamB}</div>
         {p.event && p.event.type !== 'rally' && (
-          <div style={{ marginTop: 6 }}><strong>{eventLabel}</strong> {p.event.team ? teams[p.event.team as 'teamA' | 'teamB'] : ''}</div>
+          <div style={{ marginTop: 6 }}><strong>{eventLabel}</strong> {teams[(p.event as { type: string; team: TeamKey }).team]}</div>
         )}
       </div>
     );
@@ -44,7 +53,7 @@ function PointEvolutionChart({ history = [], teams, teamColors }: Props) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderDot = (props: any) => {
     const { cx, cy, payload, dataKey } = props;
-    const hasEvent = payload && payload.event && payload.event.type && payload.event.type !== 'rally' && payload.event.team === dataKey;
+    const hasEvent = payload && payload.event && payload.event.type !== 'rally' && (payload.event as { type: string; team: TeamKey }).team === dataKey;
     const fill = teamColors[dataKey as 'teamA' | 'teamB'];// === 'teamA' ? '#1976d2' : '#d32f2f';
     return (
       <circle cx={cx} cy={cy} r={hasEvent ? 5 : 2.5} fill={fill} stroke={hasEvent ? '#333' : 'none'} strokeWidth={1} />

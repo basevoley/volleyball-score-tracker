@@ -55,7 +55,7 @@ const RallyControl = ({
     const winner = rally.possession!;
     const willEndSet = matchManager.willRallyEndSet(winner);
 
-    endRally(winner, rally.stats, faultingTeam);
+    endRally(winner, rally.stats, faultingTeam, rally);
 
     if (!willEndSet) {
       resetRally(winner);

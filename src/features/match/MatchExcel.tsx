@@ -97,12 +97,12 @@ const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<T
             ];
             const rallyEvolutionData = set.history.map((entry, idx) => {
                 let eventDescription = 'Rally';
-                if (entry.event?.type === 'fault') {
-                    eventDescription = `Falta (${entry.event.team === 'teamA' ? teams.teamA : teams.teamB})`;
-                } else if (entry.event?.type === 'timeout') {
-                    eventDescription = `Tiempo muerto (${entry.event.team === 'teamA' ? teams.teamA : teams.teamB})`;
-                } else if (entry.event?.type === 'referee-call') {
-                    eventDescription = 'Llamada del árbitro';
+                if (entry.entryType === 'rally' && entry.faultingTeam) {
+                    eventDescription = `Falta (${entry.faultingTeam === 'teamA' ? teams.teamA : teams.teamB})`;
+                } else if (entry.entryType === 'timeout') {
+                    eventDescription = `Tiempo muerto (${entry.team === 'teamA' ? teams.teamA : teams.teamB})`;
+                } else if (entry.entryType === 'substitution') {
+                    eventDescription = `Cambio (${entry.team === 'teamA' ? teams.teamA : teams.teamB})`;
                 }
                 return {
                     rally: idx + 1,

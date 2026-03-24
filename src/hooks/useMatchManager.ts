@@ -1,69 +1,10 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
-import type { TeamKey, TeamRecord, TeamStats, RallyTeamStats, MatchData, MatchScores } from '../types';
-
-type StatsUpdate = { teamA?: Partial<RallyTeamStats>; teamB?: Partial<RallyTeamStats> };
-
-// --- Helper Functions ---
-const calculatePercentage = (value: number, total: number): string =>
-    total === 0 ? '0%' : `${((value / total) * 100).toFixed(2)}%`;
-
-const calculateComputedStats = (stats: TeamRecord<TeamStats>, team: TeamKey): TeamRecord<TeamStats> => {
-    const opp = team === 'teamA' ? 'teamB' : 'teamA';
-    return {
-        ...stats,
-        [team]: {
-            ...stats[team],
-            serviceEffectiveness: calculatePercentage(stats[team].ace - stats[team].serveError, stats[team].serve),
-            receptionEffectiveness: calculatePercentage(stats[team].reception - stats[team].receptionError, stats[opp].serve),
-            attackEffectiveness: calculatePercentage(stats[team].attackPoint - stats[team].attackError, stats[team].attack),
-            defenseEffectiveness: calculatePercentage(stats[team].dig - stats[team].digError, stats[opp].attack),
-            selfErrors: stats[team].serveError + stats[team].receptionError + stats[team].digError +
-                stats[team].attackError + stats[team].blockOut + stats[team].fault || 0,
-        },
-    };
-};
-
-const mergeStats = (current: TeamRecord<TeamStats>, update: StatsUpdate, team: TeamKey): TeamStats =>
-    Object.keys(current[team]).reduce((acc, key) => ({
-        ...acc,
-        [key]: (current[team] as unknown as Record<string, number>)[key] + ((update[team] as unknown as Record<string, number> | undefined)?.[key] || 0),
-    }), {} as TeamStats);
-
-const calculateUpdatedStatistics = (current: TeamRecord<TeamStats>, update: StatsUpdate): TeamRecord<TeamStats> => {
-    const stats: TeamRecord<TeamStats> = {
-        teamA: mergeStats(current, update, 'teamA'),
-        teamB: mergeStats(current, update, 'teamB'),
-    };
-    return calculateComputedStats(calculateComputedStats(stats, 'teamA'), 'teamB');
-};
-
-const createEmptyStats = (): TeamRecord<TeamStats> => ({
-    teamA: {
-        serve: 0, ace: 0, serveError: 0, reception: 0, receptionError: 0, dig: 0, digError: 0,
-        attack: 0, attackPoint: 0, attackError: 0, block: 0, blockPoint: 0, blockOut: 0, fault: 0,
-        selfErrors: 0, serviceEffectiveness: '0%', receptionEffectiveness: '0%',
-        attackEffectiveness: '0%', defenseEffectiveness: '0%'
-    },
-    teamB: {
-        serve: 0, ace: 0, serveError: 0, reception: 0, receptionError: 0, dig: 0, digError: 0,
-        attack: 0, attackPoint: 0, attackError: 0, block: 0, blockPoint: 0, blockOut: 0, fault: 0,
-        selfErrors: 0, serviceEffectiveness: '0%', receptionEffectiveness: '0%',
-        attackEffectiveness: '0%', defenseEffectiveness: '0%'
-    },
-});
-
-const checkSetEnd = (scores: MatchScores, setsWon: MatchScores, maxSets: number): TeamKey | null => {
-    const diff = Math.abs(scores.teamA - scores.teamB);
-    const required = (setsWon.teamA + setsWon.teamB === maxSets - 1) ? 15 : 25;
-    if (scores.teamA >= required && diff >= 2) return 'teamA';
-    if (scores.teamB >= required && diff >= 2) return 'teamB';
-    return null;
-};
-
-const checkMatchEnd = (setsWon: MatchScores, maxSets: number): TeamKey | null => {
-    const needed = Math.ceil(maxSets / 2);
-    return setsWon.teamA >= needed ? 'teamA' : setsWon.teamB >= needed ? 'teamB' : null;
-};
+import type {
+    TeamKey, TeamRecord, TeamStats, RallyTeamStats, MatchData, MatchScores,
+    RallySnapshot, RallyHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry, AdjustHistoryEntry,
+} from '../types';
+import { checkSetEnd, checkMatchEnd } from '../domain/match/rules';
+import { calculateUpdatedStatistics, createEmptyMatchStats } from '../domain/match/stats';
 
 // --- Hook ---
 export const useMatchManager = (
@@ -80,8 +21,8 @@ export const useMatchManager = (
         matchStarted: false,
         timeouts: { teamA: 0, teamB: 0 },
         substitutions: { teamA: 0, teamB: 0 },
-        statistics: createEmptyStats(),
-        currentSetStats: createEmptyStats(),
+        statistics: createEmptyMatchStats(),
+        currentSetStats: createEmptyMatchStats(),
         currentSetHistory: [],
         setStats: [],
         winner: null,
@@ -97,7 +38,7 @@ export const useMatchManager = (
         if (confirm && pendingSetUpdate) {
             setMatch(pendingSetUpdate);
         }
-        setPendingSetUpdate(null); // Limpiamos el diálogo
+        setPendingSetUpdate(null);
     }, [pendingSetUpdate]);
 
     // Helper to handle set/match end logic
@@ -142,7 +83,7 @@ export const useMatchManager = (
             setsWon: newSetsWon,
             setScores: newSetScores,
             setStats: newSetStats,
-            currentSetStats: createEmptyStats(),
+            currentSetStats: createEmptyMatchStats(),
             currentSetHistory: [],
             timeouts: { teamA: 0, teamB: 0 },
             substitutions: { teamA: 0, teamB: 0 },
@@ -168,8 +109,8 @@ export const useMatchManager = (
             matchStarted: false,
             timeouts: { teamA: 0, teamB: 0 },
             substitutions: { teamA: 0, teamB: 0 },
-            statistics: createEmptyStats(),
-            currentSetStats: createEmptyStats(),
+            statistics: createEmptyMatchStats(),
+            currentSetStats: createEmptyMatchStats(),
             currentSetHistory: [],
             setStats: [],
             winner: null,
@@ -192,17 +133,27 @@ export const useMatchManager = (
         matchEventRef.current = { type: 'UPDATE_BALL_POSSESSION' };
     }, []);
 
-    const endRally = useCallback((winner: TeamKey, statsUpdate: StatsUpdate = {}, faultingTeam: TeamKey | null = null) => {
+    const endRally = useCallback((
+        winner: TeamKey,
+        statsUpdate: TeamRecord<RallyTeamStats>,
+        faultingTeam: TeamKey | null = null,
+        rallySnapshot: RallySnapshot
+    ) => {
         setMatch(prev => {
             const newScores = { ...prev.scores, [winner]: prev.scores[winner] + 1 };
             const updatedStatistics = calculateUpdatedStatistics(prev.statistics, statsUpdate);
             const updatedSetStats = calculateUpdatedStatistics(prev.currentSetStats, statsUpdate);
 
-            const newHistoryEntry = {
+            const newHistoryEntry: RallyHistoryEntry = {
+                entryType: 'rally',
                 index: (prev.currentSetHistory?.length || 0) + 1,
                 timestamp: Date.now(),
                 scores: newScores,
-                event: faultingTeam ? { type: 'fault', team: faultingTeam } : { type: 'rally', details: statsUpdate },
+                server: winner,
+                faultingTeam,
+                prevServer: prev.currentServer,
+                rallySnapshot,
+                statsUpdate,
             };
 
             const newHistory = [...(prev.currentSetHistory || []), newHistoryEntry];
@@ -213,16 +164,14 @@ export const useMatchManager = (
             const setWinner = checkSetEnd(newScores, prev.setsWon, maxSets);
 
             if (setWinner) {
-                // Calculamos el estado final pero NO lo aplicamos aún, lo guardamos en el ref/state temporal
                 const nextState = handleGameEnd(
                     { ...prev, currentServer: winner, statistics: updatedStatistics },
                     newScores,
                     updatedSetStats,
                     newHistory
                 );
-
                 setPendingSetUpdate(nextState);
-                return prev; // No actualizamos el match todavía
+                return prev;
             }
 
             return handleGameEnd(
@@ -236,45 +185,55 @@ export const useMatchManager = (
     }, [teams, maxSets, handleGameEnd]);
 
     const callTimeout = useCallback((team: TeamKey) => {
-        setMatch(prev => ({
-            ...prev,
-            timeouts: { ...prev.timeouts, [team]: prev.timeouts[team] + 1 },
-            currentSetHistory: [...(prev.currentSetHistory || []), {
+        setMatch(prev => {
+            const newEntry: TimeoutHistoryEntry = {
+                entryType: 'timeout',
                 index: (prev.currentSetHistory?.length || 0) + 1,
                 timestamp: Date.now(),
                 scores: { ...prev.scores },
-                event: { type: 'timeout', team },
-            }],
-            matchEvent: { type: 'timeout', details: { text: 'Tiempo muerto', team: teams[team] } },
-        }));
+                team,
+            };
+            return {
+                ...prev,
+                timeouts: { ...prev.timeouts, [team]: prev.timeouts[team] + 1 },
+                currentSetHistory: [...(prev.currentSetHistory || []), newEntry],
+                matchEvent: { type: 'timeout', details: { text: 'Tiempo muerto', team: teams[team] } },
+            };
+        });
         matchEventRef.current = { type: 'TIMEOUT' };
     }, [teams]);
 
     const callSubstitution = useCallback((team: TeamKey) => {
-        setMatch(prev => ({
-            ...prev,
-            substitutions: { ...prev.substitutions, [team]: prev.substitutions[team] + 1 },
-            currentSetHistory: [...(prev.currentSetHistory || []), {
+        setMatch(prev => {
+            const newEntry: SubstitutionHistoryEntry = {
+                entryType: 'substitution',
                 index: (prev.currentSetHistory?.length || 0) + 1,
                 timestamp: Date.now(),
                 scores: { ...prev.scores },
-                event: { type: 'substitution', team },
-            }],
-            matchEvent: { type: 'substitution', details: { text: 'Cambio', team: teams[team] } },
-        }));
-        matchEventRef.current = { type: 'TIMEOUT' };
+                team,
+            };
+            return {
+                ...prev,
+                substitutions: { ...prev.substitutions, [team]: prev.substitutions[team] + 1 },
+                currentSetHistory: [...(prev.currentSetHistory || []), newEntry],
+                matchEvent: { type: 'substitution', details: { text: 'Cambio', team: teams[team] } },
+            };
+        });
+        matchEventRef.current = { type: 'SUBSTITUTION' };
     }, [teams]);
 
     const adjustScore = useCallback((team: TeamKey, adjustment: number) => {
         setMatch(prev => {
             const adjustedScores = { ...prev.scores, [team]: Math.max(0, prev.scores[team] + adjustment) };
-            const newHistory = [...(prev.currentSetHistory || []), {
+            const newEntry: AdjustHistoryEntry = {
+                entryType: 'adjust',
                 index: (prev.currentSetHistory?.length || 0) + 1,
                 timestamp: Date.now(),
                 scores: adjustedScores,
-                event: { type: 'rally' },
-            }];
-
+                team,
+                delta: adjustment,
+            };
+            const newHistory = [...(prev.currentSetHistory || []), newEntry];
             return handleGameEnd(prev, adjustedScores, prev.currentSetStats, newHistory);
         });
         matchEventRef.current = { type: 'ADJUST_SCORE' };
@@ -287,18 +246,20 @@ export const useMatchManager = (
 
             if (matchWinner) {
                 alert(`${teams[matchWinner]} ha ganado el partido!`);
-                return { ...prev, setsWon: updatedSetsWon, winner: matchWinner, matchStarted: false, currentServer: null, ballPossession: null, };
+                return { ...prev, setsWon: updatedSetsWon, winner: matchWinner, matchStarted: false, currentServer: null, ballPossession: null };
             }
 
             return { ...prev, setsWon: updatedSetsWon };
         });
         matchEventRef.current = { type: 'UPDATE_SETS_WON' };
-
     }, [teams, maxSets]);
 
-    const clearMatchEvent = useCallback(() => { setMatch(prev => ({ ...prev, matchEvent: { type: null, details: null } })); }, []);
+    const clearMatchEvent = useCallback(() => {
+        setMatch(prev => ({ ...prev, matchEvent: { type: null, details: null } }));
+    }, []);
 
-    const getLastAction = useCallback(() => matchEventRef.current, []); const clearLastAction = useCallback(() => { matchEventRef.current = null; }, []);
+    const getLastAction = useCallback(() => matchEventRef.current, []);
+    const clearLastAction = useCallback(() => { matchEventRef.current = null; }, []);
 
     const willRallyEndSet = useCallback((winner: TeamKey) => {
         const newScores = { ...match.scores, [winner]: match.scores[winner] + 1 };
@@ -307,11 +268,12 @@ export const useMatchManager = (
 
     return useMemo(() => ({
         match, startMatch, resetMatch, setServer, updateBallPossession, endRally,
-        pendingSetEnd: !!pendingSetUpdate, // Para saber si mostrar el diálogo
+        pendingSetEnd: !!pendingSetUpdate,
         confirmSetEnd,
         callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, willRallyEndSet,
     }), [match, startMatch, resetMatch, setServer, updateBallPossession, endRally,
         pendingSetUpdate,
         confirmSetEnd,
-        callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, willRallyEndSet,]);
+        callTimeout, callSubstitution, adjustScore, updateSetsWon, clearMatchEvent, getLastAction, clearLastAction, willRallyEndSet,
+    ]);
 };

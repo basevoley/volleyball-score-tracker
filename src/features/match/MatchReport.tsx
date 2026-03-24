@@ -1,7 +1,16 @@
 import React from 'react';
 import { pdf, Svg, Path, Circle, Rect, G, Text as SvgText, Polygon } from '@react-pdf/renderer';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import type { TeamRecord, TeamStats, SetStats, HistoryEntry } from '../../types';
+import type { TeamKey, TeamRecord, TeamStats, SetStats, HistoryEntry } from '../../types';
+
+type ReportEvent = { type: 'rally' } | { type: 'fault' | 'timeout' | 'substitution'; team: TeamKey };
+
+const toReportEvent = (entry: HistoryEntry): ReportEvent => {
+    if (entry.entryType === 'timeout') return { type: 'timeout', team: entry.team };
+    if (entry.entryType === 'substitution') return { type: 'substitution', team: entry.team };
+    if (entry.entryType === 'rally' && entry.faultingTeam) return { type: 'fault', team: entry.faultingTeam };
+    return { type: 'rally' };
+};
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFilePdf } from '@fortawesome/free-solid-svg-icons';
 
@@ -272,27 +281,28 @@ const SetTimelineSVG = ({ history, teams, teamColors }: TimelineSVGProps) => {
                                 const x = xForIndexSvg(i);
                                 const yA = yForValue(pointsA[i]);
                                 const yB = yForValue(pointsB[i]);
-                                const entry = history[i] || {};
-                                const eventColor = entry.event && entry.event.team === 'teamA' ? teamColors.teamA : teamColors.teamB;
+                                const entry = history[i];
+                                const ev = entry ? toReportEvent(entry) : ({ type: 'rally' } as ReportEvent);
+                                const eventColor = ev.type !== 'rally' && (ev as { team: TeamKey }).team === 'teamA' ? teamColors.teamA : teamColors.teamB;
 
                                 return (
                                     <G key={`pt-${i}`}>
                                         {/* event vertical dashed line */}
-                                        {entry.event && (entry.event.type === 'fault' || entry.event.type === 'timeout' || entry.event.type === 'substitution') && (
+                                        {(ev.type === 'fault' || ev.type === 'timeout' || ev.type === 'substitution') && (
                                             <Path d={`M${x} ${topPadding} V${bottomY}`} stroke={eventColor} strokeWidth={1} strokeDasharray="3,2" />
                                         )}
 
                                         {/* event icon placed in the reserved icon area above the chart */}
-                                        {entry.event && entry.event.type === 'fault' && (
+                                        {ev.type === 'fault' && (
                                             <Path d={`M${x - 6} ${padding + 2} L${x + 6} ${padding + 14} M${x + 6} ${padding + 2} L${x - 6} ${padding + 14}`} stroke={eventColor} strokeWidth={1.2} />
                                         )}
-                                        {entry.event && entry.event.type === 'timeout' && (
+                                        {ev.type === 'timeout' && (
                                             <G>
                                                 <Rect x={x - 5} y={padding + 2} width={3} height={10} fill={eventColor} />
                                                 <Rect x={x + 2} y={padding + 2} width={3} height={10} fill={eventColor} />
                                             </G>
                                         )}
-                                        {entry.event && entry.event.type === 'substitution' && (
+                                        {ev.type === 'substitution' && (
                                             <G>
                                                 <Polygon points={`${x - 6},${padding + 7} ${x - 1},${padding + 2} ${x - 1},${padding + 12}`} fill={eventColor} />
                                                 <Polygon points={`${x + 6},${padding + 7} ${x + 1},${padding + 2} ${x + 1},${padding + 12}`} fill={eventColor} />

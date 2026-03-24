@@ -58,17 +58,38 @@ export interface MatchEvent {
   details: Record<string, unknown> | null;
 }
 
-export interface HistoryEntry {
+interface BaseHistoryEntry {
   index: number;
   timestamp: number;
   scores: MatchScores;
-  event: {
-    type: string;
-    team?: string;
-    details?: unknown;
-    text?: string;
-  };
 }
+
+export interface RallyHistoryEntry extends BaseHistoryEntry {
+  entryType: 'rally';
+  server: TeamKey;
+  faultingTeam: TeamKey | null;
+  prevServer: TeamKey | null;
+  rallySnapshot: RallySnapshot;
+  statsUpdate: TeamRecord<RallyTeamStats>;
+}
+
+export interface TimeoutHistoryEntry extends BaseHistoryEntry {
+  entryType: 'timeout';
+  team: TeamKey;
+}
+
+export interface SubstitutionHistoryEntry extends BaseHistoryEntry {
+  entryType: 'substitution';
+  team: TeamKey;
+}
+
+export interface AdjustHistoryEntry extends BaseHistoryEntry {
+  entryType: 'adjust';
+  team: TeamKey;
+  delta: number;
+}
+
+export type HistoryEntry = RallyHistoryEntry | TimeoutHistoryEntry | SubstitutionHistoryEntry | AdjustHistoryEntry;
 
 export interface SetStats {
   setNumber: number;
@@ -222,12 +243,15 @@ export interface RallyActionHistoryEntry {
   previousPossession: TeamKey | null;
 }
 
-export interface RallyState {
+export interface RallySnapshot {
   id: number;
   stage: RallyStage;
   possession: TeamKey | null;
   actionHistory: RallyActionHistoryEntry[];
   stats: TeamRecord<RallyTeamStats>;
+}
+
+export interface RallyState extends RallySnapshot {
   showConfirmation: boolean;
   showDiscardConfirmation: boolean;
 }
