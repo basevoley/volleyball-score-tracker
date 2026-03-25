@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { Socket } from 'socket.io-client';
 import type { Config, ConfigChange, Sequence, SequenceStep, AutomationCtx } from '../types';
 
 const applyChanges = (config: Config, changes: ConfigChange[]): Config =>
@@ -14,10 +13,9 @@ const applyChanges = (config: Config, changes: ConfigChange[]): Config =>
 interface UseAutomationRunnerParams {
     config: Config;
     setConfig: (config: Config) => void;
-    socket: Socket;
 }
 
-const useAutomationRunner = ({ config, setConfig, socket }: UseAutomationRunnerParams) => {
+const useAutomationRunner = ({ config, setConfig }: UseAutomationRunnerParams) => {
     const [isRunning, setIsRunning] = useState(false);
     const [activeSequenceId, setActiveSequenceId] = useState<string | null>(null);
     const [currentStepIndex, setCurrentStepIndex] = useState<number | null>(null);
@@ -42,8 +40,7 @@ const useAutomationRunner = ({ config, setConfig, socket }: UseAutomationRunnerP
         snapshotRef.current = null;
         configRef.current = restored;
         setConfig(restored);
-        socket.emit('updateConfig', restored);
-    }, [setConfig, socket]);
+    }, [setConfig]);
 
     const stop = useCallback(() => {
         const sequence = activeSequenceRef.current;
@@ -68,9 +65,8 @@ const useAutomationRunner = ({ config, setConfig, socket }: UseAutomationRunnerP
             );
             configRef.current = resetConfig;
             setConfig(resetConfig);
-            socket.emit('updateConfig', resetConfig);
         }
-    }, [applySnapshot, setConfig, socket]);
+    }, [applySnapshot, setConfig]);
 
     const run = useCallback((sequence: Sequence, getCtx: () => AutomationCtx = () => ({ hasStats: false, hasPlayers: false, hasMatchStats: false })) => {
         // Interrupt any running sequence cleanly
@@ -133,13 +129,12 @@ const useAutomationRunner = ({ config, setConfig, socket }: UseAutomationRunnerP
             const updatedConfig = applyChanges(configRef.current, step.changes);
             configRef.current = updatedConfig;
             setConfig(updatedConfig);
-            socket.emit('updateConfig', updatedConfig);
 
             timeoutRef.current = setTimeout(() => runStep(index + 1), step.duration);
         };
 
         runStep(0);
-    }, [applySnapshot, setConfig, socket]);
+    }, [applySnapshot, setConfig]);
 
     return { run, stop, isRunning, activeSequenceId, currentStepIndex, activeSteps };
 };

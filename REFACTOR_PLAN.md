@@ -107,13 +107,13 @@ Move all shared state out of `App.tsx` into dedicated contexts.
 
 Single hook owns all overlay emissions.
 
-- [ ] Create `services/socket/useBroadcast.ts`
-- [ ] Move `matchData` payload shaping logic (currently in `Match.tsx`) into `useBroadcast`
-- [ ] Emit `matchData` in response to `MatchDomainEvent`s (not on every render)
-- [ ] Emit `updateConfig` whenever config changes
-- [ ] Expose `syncAll()` — emits all current state at once; called on session restore and overlay reconnect
-- [ ] Remove direct `socket.emit` calls from `Match.tsx` and `Controls.tsx`
-- [ ] Remove `Socket` parameter from `useAutomationRunner` (Phase 7 dependency)
+- [x] Create `services/socket/useBroadcast.ts`
+- [x] Move `matchData` payload shaping logic (currently in `Match.tsx`) into `useBroadcast`
+- [x] Emit `matchData` in response to `MatchDomainEvent`s (not on every render)
+- [x] Emit `updateConfig` whenever config changes
+- [x] Expose `syncAll()` — emits all current state at once; called on session restore and overlay reconnect
+- [x] Remove direct `socket.emit` calls from `Match.tsx` and `Controls.tsx`
+- [x] Remove `Socket` parameter from `useAutomationRunner` (Phase 7 dependency)
 
 ---
 

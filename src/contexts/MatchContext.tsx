@@ -9,7 +9,7 @@ interface MatchContextValue {
     matchManager: MatchManager;
     matchDetails: MatchDetails;
     setMatchDetails: React.Dispatch<React.SetStateAction<MatchDetails>>;
-    setOnMatchEvent: (fn: ((e: MatchDomainEvent) => void) | null) => void;
+    addMatchEventListener: (fn: (e: MatchDomainEvent) => void) => () => void;
     restoreSession: (data: { matchData: MatchData; matchDetails: MatchDetails }) => void;
 }
 
@@ -18,13 +18,15 @@ const MatchContext = createContext<MatchContextValue | null>(null);
 export const MatchProvider = ({ children }: { children: React.ReactNode }) => {
     const [matchDetails, setMatchDetails] = useState<MatchDetails>(initialMatchDetails);
 
-    // Stable ref for onEvent delegation — Match.tsx registers its socket emission handler here
-    const onMatchEventRef = useRef<((e: MatchDomainEvent) => void) | null>(null);
+    // Fan-out to all registered event listeners
+    const listenersRef = useRef<Set<(e: MatchDomainEvent) => void>>(new Set());
     const stableOnEvent = useCallback((event: MatchDomainEvent) => {
-        onMatchEventRef.current?.(event);
+        listenersRef.current.forEach(fn => fn(event));
     }, []);
-    const setOnMatchEvent = useCallback((fn: ((e: MatchDomainEvent) => void) | null) => {
-        onMatchEventRef.current = fn;
+
+    const addMatchEventListener = useCallback((fn: (e: MatchDomainEvent) => void) => {
+        listenersRef.current.add(fn);
+        return () => { listenersRef.current.delete(fn); };
     }, []);
 
     const matchManager = useMatchManager(
@@ -44,7 +46,7 @@ export const MatchProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     return (
-        <MatchContext.Provider value={{ matchManager, matchDetails, setMatchDetails, setOnMatchEvent, restoreSession }}>
+        <MatchContext.Provider value={{ matchManager, matchDetails, setMatchDetails, addMatchEventListener, restoreSession }}>
             {children}
         </MatchContext.Provider>
     );

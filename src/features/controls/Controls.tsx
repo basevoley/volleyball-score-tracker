@@ -176,7 +176,6 @@ const Controls = () => {
             },
         };
         setConfig(updatedConfig);
-        socket?.emit('updateConfig', updatedConfig);
     };
 
     const handleSelectChange = (section: string, key: string, value: unknown) => {
@@ -189,7 +188,6 @@ const Controls = () => {
             },
         };
         setConfig(updatedConfig);
-        socket?.emit('updateConfig', updatedConfig);
     };
 
     const handleReloadOverlay = () => {

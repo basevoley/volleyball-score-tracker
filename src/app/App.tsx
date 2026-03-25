@@ -15,6 +15,7 @@ import { AppProviders } from './providers';
 import { useMatchContext } from '../contexts/MatchContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { useSession } from '../services/session/useSession';
+import { useBroadcast } from '../services/socket/useBroadcast';
 import type { MatchData, MatchDetails, Config } from '../types';
 
 const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3005';
@@ -83,6 +84,7 @@ function AppContent({ overlayUrl }: { overlayUrl: string }) {
 
   const { matchManager, matchDetails, restoreSession } = useMatchContext();
   const { config, setConfig } = useConfig();
+  const { syncAll } = useBroadcast();
 
   const { savedSession, clearSavedSession, discardSession } = useSession(
     matchManager.match, matchDetails, config
@@ -93,6 +95,7 @@ function AppContent({ overlayUrl }: { overlayUrl: string }) {
     setConfig(savedSession!.config);
     clearSavedSession();
     setActiveTab(savedSession!.matchData?.matchStarted ? 1 : 0);
+    syncAll();
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {

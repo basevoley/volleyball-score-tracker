@@ -32,7 +32,7 @@ export const AutomationProvider = ({ children }: { children: React.ReactNode }) 
     const { config, setConfig } = useConfig();
     const { matchManager, matchDetails } = useMatchContext();
 
-    const runner = useAutomationRunner({ config, setConfig, socket: socket! });
+    const runner = useAutomationRunner({ config, setConfig });
 
     const hasStats = [...Object.values(matchDetails.stats.teamA), ...Object.values(matchDetails.stats.teamB)]
         .some(val => Number(val) > 0);
