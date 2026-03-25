@@ -141,10 +141,10 @@ Automation reacts to match events directly, not via socket intercept.
 
 ## Phase 9 — Session versioning
 
-- [ ] Add `version: number` field to persisted payload (start at `1`)
-- [ ] Write `migrate(raw, fromVersion)` function for known shape changes
-- [ ] Graceful handling on load: migrate if possible, discard if not, never throw
-- [ ] Document schema version history in `services/session/sessionStorage.ts`
+- [x] Add `version: number` field to persisted payload (start at `1`)
+- [x] Write `migrate(raw, fromVersion)` function for known shape changes
+- [x] Graceful handling on load: migrate if possible, discard if not, never throw
+- [x] Document schema version history in `services/session/sessionStorage.ts`
 
 ---
 
