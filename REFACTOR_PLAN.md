@@ -121,10 +121,10 @@ Single hook owns all overlay emissions.
 
 Automation reacts to match events directly, not via socket intercept.
 
-- [ ] `AutomationContext` subscribes to `MatchDomainEvent`s directly via Phase 3 callback
-- [ ] Remove `onSocketEmit` from `SocketContext` entirely
-- [ ] `useAutomationRunner` accepts `onConfigChange: (config: Config) => void` instead of `Socket`
-- [ ] `ALL_SEQUENCES` injected into `AutomationProvider` as a prop
+- [x] `AutomationContext` subscribes to `MatchDomainEvent`s directly via Phase 3 callback
+- [x] Remove `onSocketEmit` from `SocketContext` entirely
+- [x] `useAutomationRunner` no longer depends on `Socket` (completed in Phase 6; config changes propagate via `useBroadcast`)
+- [x] `ALL_SEQUENCES` injected into `AutomationProvider` as a prop
 
 ---
 

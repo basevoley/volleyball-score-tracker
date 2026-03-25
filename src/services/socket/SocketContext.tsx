@@ -7,7 +7,6 @@ interface SocketContextValue {
   isConnected: boolean;
   connectionStatus: ConnectionStatus;
   reconnect: () => void;
-  onSocketEmit: (event: string, handler: (...args: unknown[]) => void) => () => void;
 }
 
 interface SocketProviderProps {
@@ -34,7 +33,6 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }: Socket
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
-  const outgoingListenersRef = useRef<Map<string, Set<(...args: unknown[]) => void>>>(new Map());
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -61,17 +59,6 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }: Socket
       autoConnect: true,
       forceNew: false,
     });
-
-    // Wrap emit to notify outgoing event subscribers
-    const originalEmit = socketInstance.emit.bind(socketInstance);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (socketInstance as any).emit = (event: string, ...args: unknown[]) => {
-      const listeners = outgoingListenersRef.current.get(event);
-      if (listeners && listeners.size > 0) {
-        listeners.forEach(handler => handler(...args));
-      }
-      return originalEmit(event, ...args);
-    };
 
     // Connection established
     socketInstance.on('connect', () => {
@@ -207,16 +194,6 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }: Socket
   //   }, 25000); // 25 seconds
   // };
 
-  // Subscribe to an outgoing socket event. Returns an unsubscribe function.
-  const onSocketEmit = useCallback((event: string, handler: (...args: unknown[]) => void) => {
-    const listeners = outgoingListenersRef.current;
-    if (!listeners.has(event)) {
-      listeners.set(event, new Set());
-    }
-    listeners.get(event)!.add(handler);
-    return () => listeners.get(event)?.delete(handler);
-  }, []);
-
   // Manual reconnect function
   const reconnect = useCallback(() => {
     if (socket && !socket.connected) {
@@ -233,7 +210,6 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }: Socket
         isConnected,
         connectionStatus,
         reconnect,
-        onSocketEmit,
       }}
     >
       {children}

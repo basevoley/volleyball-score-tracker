@@ -1,36 +1,23 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { useSocket } from '../services/socket/SocketContext';
 import useAutomationRunner from '../hooks/useAutomationRunner';
-import { ALL_SEQUENCES } from '../domain/automation/sequences';
 import type { Sequence, SequenceTrigger } from '../types';
 import { useConfig } from './ConfigContext';
 import { useMatchContext } from './MatchContext';
 
-type SocketEventTrigger = Extract<SequenceTrigger, { type: 'socketEvent' }>;
-type AutoSequence = Sequence & { trigger: SocketEventTrigger };
+type DomainEventTrigger = Extract<SequenceTrigger, { type: 'domainEvent' }>;
+type DomainEventSequence = Sequence & { trigger: DomainEventTrigger };
 
 const AutomationContext = createContext<ReturnType<typeof useAutomationRunner> & {
     runSequence: (sequence: Sequence) => void;
     automationsEnabled: Record<string, boolean>;
     toggleAutomation: (id: string) => void;
     manualSequences: Sequence[];
-    autoSequences: AutoSequence[];
+    autoSequences: DomainEventSequence[];
 } | null>(null);
 
-const MANUAL_SEQUENCES = ALL_SEQUENCES.filter(s => s.trigger.type === 'manual');
-const AUTO_SEQUENCES = ALL_SEQUENCES.filter(
-    (s): s is AutoSequence => s.trigger.type === 'socketEvent'
-);
-
-const initialAutomationsEnabled = AUTO_SEQUENCES.reduce<Record<string, boolean>>((acc, seq) => {
-    acc[seq.id] = seq.defaultEnabled ?? true;
-    return acc;
-}, {});
-
-export const AutomationProvider = ({ children }: { children: React.ReactNode }) => {
-    const { socket, onSocketEmit } = useSocket();
+export const AutomationProvider = ({ children, sequences }: { children: React.ReactNode; sequences: Sequence[] }) => {
     const { config, setConfig } = useConfig();
-    const { matchManager, matchDetails } = useMatchContext();
+    const { matchManager, matchDetails, addMatchEventListener } = useMatchContext();
 
     const runner = useAutomationRunner({ config, setConfig });
 
@@ -50,7 +37,15 @@ export const AutomationProvider = ({ children }: { children: React.ReactNode }) 
         runnerRunRef.current = runner.run;
     }, [runner.run]);
 
-    const [automationsEnabled, setAutomationsEnabled] = useState(initialAutomationsEnabled);
+    const manualSequences = sequences.filter(s => s.trigger.type === 'manual');
+    const autoSequences = sequences.filter((s): s is DomainEventSequence => s.trigger.type === 'domainEvent');
+
+    const [automationsEnabled, setAutomationsEnabled] = useState(() =>
+        autoSequences.reduce<Record<string, boolean>>((acc, seq) => {
+            acc[seq.id] = seq.defaultEnabled ?? true;
+            return acc;
+        }, {})
+    );
     const automationsEnabledRef = useRef(automationsEnabled);
     useEffect(() => {
         automationsEnabledRef.current = automationsEnabled;
@@ -60,33 +55,23 @@ export const AutomationProvider = ({ children }: { children: React.ReactNode }) 
         setAutomationsEnabled(prev => ({ ...prev, [id]: !prev[id] }));
     }, []);
 
-    // Set up socket event subscriptions for all auto-triggered sequences.
+    // Subscribe to domain events for all auto-triggered sequences
     useEffect(() => {
-        const triggerStates = AUTO_SEQUENCES.reduce<Record<string, Record<string, unknown>>>((acc, seq) => {
-            acc[seq.id] = { ...(seq.trigger.initialState ?? {}) };
-            return acc;
-        }, {});
-
-        const byEvent = AUTO_SEQUENCES.reduce<Record<string, AutoSequence[]>>((acc, seq) => {
+        const byEvent = autoSequences.reduce<Record<string, DomainEventSequence[]>>((acc, seq) => {
             const { event } = seq.trigger;
             if (!acc[event]) acc[event] = [];
             acc[event].push(seq);
             return acc;
         }, {});
 
-        const unsubscribes = Object.entries(byEvent).map(([event, sequences]) =>
-            onSocketEmit(event, (data) => {
-                for (const seq of sequences) {
-                    if (!automationsEnabledRef.current[seq.id]) continue;
-                    if (seq.trigger.condition(data as Record<string, unknown>, triggerStates[seq.id])) {
-                        runnerRunRef.current(seq, () => ctxRef.current);
-                    }
-                }
-            })
-        );
-
-        return () => unsubscribes.forEach(fn => fn());
-    }, [onSocketEmit]);
+        return addMatchEventListener((event) => {
+            const matching = byEvent[event.type] ?? [];
+            for (const seq of matching) {
+                if (!automationsEnabledRef.current[seq.id]) continue;
+                runnerRunRef.current(seq, () => ctxRef.current);
+            }
+        });
+    }, [addMatchEventListener]); // autoSequences is derived from stable prop
 
     const runSequence = useCallback((sequence: Sequence) => {
         runnerRunRef.current(sequence, () => ctxRef.current);
@@ -97,8 +82,8 @@ export const AutomationProvider = ({ children }: { children: React.ReactNode }) 
         runSequence,
         automationsEnabled,
         toggleAutomation,
-        manualSequences: MANUAL_SEQUENCES,
-        autoSequences: AUTO_SEQUENCES,
+        manualSequences,
+        autoSequences,
     };
 
     return (

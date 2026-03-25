@@ -169,17 +169,7 @@ export const MATCH_START_SEQUENCE: Sequence = {
     id: 'MATCH_START',
     label: 'Inicio de partido',
     description: 'Oculta paneles de presentación y configura el marcador al iniciar el partido.',
-    trigger: {
-        type: 'socketEvent',
-        event: 'matchData',
-        initialState: { prevMatchStarted: false },
-        condition: (data, state) => {
-            const d = data as { matchStarted: boolean };
-            const shouldTrigger = d.matchStarted && !(state['prevMatchStarted'] as boolean);
-            state['prevMatchStarted'] = d.matchStarted;
-            return shouldTrigger;
-        },
-    },
+    trigger: { type: 'domainEvent', event: 'MatchStarted' },
     defaultEnabled: true,
     steps: [
         {
@@ -216,11 +206,7 @@ export const TIMEOUT_SEQUENCE: Sequence = {
     id: 'TIMEOUT',
     label: 'Tiempo muerto',
     description: 'Oculta el marcador y muestra patrocinadores durante 30 segundos. Restaura el marcador al finalizar.',
-    trigger: {
-        type: 'socketEvent',
-        event: 'matchData',
-        condition: (data) => (data['matchEvent'] as { type?: string } | undefined)?.type === 'timeout',
-    },
+    trigger: { type: 'domainEvent', event: 'TimeoutCalled' },
     defaultEnabled: true,
     snapshotSections: ['scoreboard', 'socialMedia'],
     steps: [
@@ -270,19 +256,9 @@ export const SET_END_SEQUENCE: Sequence = {
     id: 'SET_END',
     label: 'Fin de set',
     description: 'Al acabar un set, oculta todos los paneles, muestra el panel de resultados durante 1 minuto, y luego muestra patrocinadores y el marcador con historial de sets.',
-    trigger: {
-        type: 'socketEvent',
-        event: 'matchData',
-        initialState: { prevMatchStarted: false },
-        condition: (data, state) => {
-            const d = data as { matchStarted: boolean; winner: string | null };
-            const isFallingEdge = (state['prevMatchStarted'] as boolean) && !d.matchStarted;
-            state['prevMatchStarted'] = d.matchStarted;
-            return isFallingEdge && !d.winner;
-        },
-    },
+    trigger: { type: 'domainEvent', event: 'SetEnded' },
     defaultEnabled: true,
-    resetOnStop: ['afterMatch', 'sponsors',],
+    resetOnStop: ['afterMatch', 'sponsors'],
     steps: [
         {
             label: 'Establecer estado inicial',
@@ -348,17 +324,7 @@ export const MATCH_END_SEQUENCE: Sequence = {
     id: 'MATCH_END',
     label: 'Fin de partido',
     description: 'Al terminar el partido, oculta todos los paneles, muestra el panel de resultados durante 1 minuto, y luego muestra patrocinadores.',
-    trigger: {
-        type: 'socketEvent',
-        event: 'matchData',
-        initialState: { prevMatchStarted: false },
-        condition: (data, state) => {
-            const d = data as { matchStarted: boolean; winner: string | null };
-            const isFallingEdge = (state['prevMatchStarted'] as boolean) && !d.matchStarted;
-            state['prevMatchStarted'] = d.matchStarted;
-            return isFallingEdge && !!d.winner;
-        },
-    },
+    trigger: { type: 'domainEvent', event: 'MatchEnded' },
     defaultEnabled: true,
     resetOnStop: ['afterMatch'],
     steps: [

@@ -199,16 +199,9 @@ export interface SequenceStep {
   condition?: (ctx: AutomationCtx) => boolean;
 }
 
-export type SequenceTriggerState = Record<string, unknown>;
-
 export type SequenceTrigger =
   | { type: 'manual' }
-  | {
-      type: 'socketEvent';
-      event: string;
-      condition: (data: Record<string, unknown>, state: SequenceTriggerState) => boolean;
-      initialState?: SequenceTriggerState;
-    };
+  | { type: 'domainEvent'; event: MatchDomainEvent['type'] };
 
 export interface Sequence {
   id: string;
