@@ -306,9 +306,16 @@ export const useMatchManager = (
                 delta: adjustment,
             };
             const newHistory = [...(prev.currentSetHistory || []), newEntry];
-            return handleGameEnd(prev, adjustedScores, prev.currentSetStats, newHistory);
+            const newState = handleGameEnd(prev, adjustedScores, prev.currentSetStats, newHistory);
+            if (newState.winner) {
+                pendingEventRef.current = { type: 'MatchEnded', winner: newState.winner };
+            } else if (newState.setsWon.teamA + newState.setsWon.teamB > prev.setsWon.teamA + prev.setsWon.teamB) {
+                pendingEventRef.current = { type: 'SetEnded' };
+            } else {
+                pendingEventRef.current = { type: 'ScoreAdjusted' };
+            }
+            return newState;
         });
-        pendingEventRef.current = { type: 'ScoreAdjusted' };
     }, [handleGameEnd]);
 
     const updateSetsWon = useCallback((team: TeamKey, newSetsWon: number) => {
