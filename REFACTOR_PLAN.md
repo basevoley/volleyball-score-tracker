@@ -130,12 +130,12 @@ Automation reacts to match events directly, not via socket intercept.
 
 ## Phase 8 — Code quality and SOLID cleanups
 
-- [ ] Rally action registry already done via Phase 2/4 — verify switch/case blocks are gone
-- [ ] Reassess `useMatchManager` size after Phase 4; split timeout/substitution if warranted
-- [ ] Remove `alert()` from match logic; replace with `onEvent` callback
-- [ ] `badgeUtils` — accept `Badge[]` and Fuse options as parameters instead of module-level singleton
-- [ ] Unroll compressed undo code (now in `domain/rally/actionHandlers.ts`)
-- [ ] Move `ControlSection` inline component from `Controls.tsx` → `shared/components/`
+- [x] Rally action registry already done via Phase 2/4 — verified, no switch/case blocks remain
+- [x] Reassess `useMatchManager` size after Phase 4 — not warranted; hook is well-organized at ~410 lines
+- [x] Remove `alert()` from match logic; `MatchEnded` event fires via `onEvent` callback
+- [x] `badgeUtils` — accept `Badge[]` and Fuse options as parameters instead of module-level singleton
+- [x] Unroll compressed undo code (now in `domain/rally/actionHandlers.ts`)
+- [x] Move `ControlSection` inline component from `Controls.tsx` → `shared/components/`
 
 ---
 

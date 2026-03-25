@@ -4,6 +4,7 @@ import type { Sequence, SequenceStep } from '../../types';
 import { useConfig } from '../../contexts/ConfigContext';
 import { useMatchContext } from '../../contexts/MatchContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
+import ControlSection from '../../shared/components/ControlSection';
 import {
     Switch,
     FormControlLabel,
@@ -15,7 +16,6 @@ import {
     Box,
     Typography,
     Paper,
-    Divider,
     Accordion,
     AccordionSummary,
     AccordionDetails,
@@ -31,39 +31,6 @@ import StopIcon from '@mui/icons-material/Stop';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useAutomation } from '../../contexts/AutomationContext';
 
-interface ControlSectionProps {
-    title: string;
-    disabled?: boolean;
-    checked: boolean;
-    checkedLabel?: string;
-    unCheckedLabel?: string;
-    onToggle: () => void;
-    children?: React.ReactNode;
-}
-
-const ControlSection = ({ title, disabled = false, checked, checkedLabel = 'Mostrar', unCheckedLabel = 'Ocultar', onToggle, children }: ControlSectionProps) => (
-    <Box sx={{ paddingY: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-            <Typography variant="body2">
-                {title}
-            </Typography>
-            <FormControlLabel
-                control={
-                    <Switch
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={(e) => {
-                            onToggle();
-                        }}
-                    />
-                }
-                label={<Typography variant="caption">{checked ? checkedLabel : unCheckedLabel}</Typography>}
-            />
-        </Box>
-        {children}
-        <Divider sx={{ mt: 1 }} />
-    </Box>
-);
 
 interface SequenceRowProps {
     seq: Sequence;

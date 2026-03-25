@@ -19,6 +19,20 @@ export interface RallyActionHandler {
     undo: (entry: RallyActionHistoryEntry, stats: TeamRecord<RallyTeamStats>) => TeamRecord<RallyTeamStats>;
 }
 
+const ERROR_FIELDS: Partial<Record<RallyStage, keyof RallyTeamStats>> = {
+    afterServe: 'serveError',
+    afterReception: 'receptionError',
+    afterAttack: 'attackError',
+    afterDig: 'digError',
+    afterBlock: 'blockOut',
+};
+
+const POINT_FIELDS: Partial<Record<RallyStage, keyof RallyTeamStats>> = {
+    afterServe: 'ace',
+    afterBlock: 'blockPoint',
+    afterAttack: 'attackPoint',
+};
+
 export const RALLY_ACTION_HANDLERS: Record<RallyActionType, RallyActionHandler> = {
     serve: {
         apply: (state) => {
@@ -75,26 +89,12 @@ export const RALLY_ACTION_HANDLERS: Record<RallyActionType, RallyActionHandler> 
     error: {
         apply: (state) => {
             const team = state.possession!;
-            const errorField: Partial<Record<RallyStage, keyof RallyTeamStats>> = {
-                afterServe: 'serveError',
-                afterReception: 'receptionError',
-                afterAttack: 'attackError',
-                afterDig: 'digError',
-                afterBlock: 'blockOut',
-            };
-            const field = errorField[state.stage];
+            const field = ERROR_FIELDS[state.stage];
             const newStats = field ? inc(state.stats, team, field) : state.stats;
             return { stats: newStats, stage: state.stage, possession: opp(team), team };
         },
         undo: (entry, stats) => {
-            const errorField: Partial<Record<RallyStage, keyof RallyTeamStats>> = {
-                afterServe: 'serveError',
-                afterReception: 'receptionError',
-                afterAttack: 'attackError',
-                afterDig: 'digError',
-                afterBlock: 'blockOut',
-            };
-            const field = errorField[entry.rallyStage];
+            const field = ERROR_FIELDS[entry.rallyStage];
             return field ? inc(stats, entry.team, field, -1) : stats;
         },
     },
@@ -108,22 +108,12 @@ export const RALLY_ACTION_HANDLERS: Record<RallyActionType, RallyActionHandler> 
     point: {
         apply: (state) => {
             const team = state.possession!;
-            const pointField: Partial<Record<RallyStage, keyof RallyTeamStats>> = {
-                afterServe: 'ace',
-                afterBlock: 'blockPoint',
-                afterAttack: 'attackPoint',
-            };
-            const field = pointField[state.stage];
+            const field = POINT_FIELDS[state.stage];
             const newStats = field ? inc(state.stats, team, field) : state.stats;
             return { stats: newStats, stage: state.stage, team };
         },
         undo: (entry, stats) => {
-            const pointField: Partial<Record<RallyStage, keyof RallyTeamStats>> = {
-                afterServe: 'ace',
-                afterBlock: 'blockPoint',
-                afterAttack: 'attackPoint',
-            };
-            const field = pointField[entry.rallyStage];
+            const field = POINT_FIELDS[entry.rallyStage];
             return field ? inc(stats, entry.team, field, -1) : stats;
         },
     },

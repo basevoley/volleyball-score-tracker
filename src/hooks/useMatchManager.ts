@@ -316,7 +316,6 @@ export const useMatchManager = (
             const updatedSetsWon = { ...prev.setsWon, [team]: newSetsWon };
             const matchWinner = checkMatchEnd(updatedSetsWon, maxSets);
             if (matchWinner) {
-                alert(`${teams[matchWinner]} ha ganado el partido!`);
                 pendingEventRef.current = { type: 'MatchEnded', winner: matchWinner };
                 return { ...prev, setsWon: updatedSetsWon, winner: matchWinner, matchStarted: false, currentServer: null, ballPossession: null };
             }

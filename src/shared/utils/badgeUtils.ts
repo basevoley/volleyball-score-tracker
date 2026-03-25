@@ -1,13 +1,13 @@
-import Fuse from 'fuse.js';
+import Fuse, { type IFuseOptions } from 'fuse.js';
 import staticImages from './badges';
 import { Badge } from '../../types';
 
-const fuse = new Fuse<Badge>(staticImages, {
+const DEFAULT_FUSE_OPTIONS: IFuseOptions<Badge> = {
     keys: ['name'],
     threshold: 0.4,
     includeScore: true,
     ignoreLocation: true,
-});
+};
 
 function normalize(str: string): string {
   return str
@@ -18,11 +18,16 @@ function normalize(str: string): string {
     .trim();
 }
 
-export const getBestBadge = (teamName: string | null): string | null => {
+export const getBestBadge = (
+    teamName: string | null,
+    badges: Badge[] = staticImages,
+    fuseOptions: IFuseOptions<Badge> = DEFAULT_FUSE_OPTIONS
+): string | null => {
     if (!teamName) return null;
     const normalized = normalize(teamName);
     console.group(`Fuzzy Match: ${teamName}`);
     console.log(`Nombre normalizado: ${normalized}`);
+    const fuse = new Fuse<Badge>(badges, fuseOptions);
     const results = fuse.search(normalized);
 
     if (results.length > 0) {
