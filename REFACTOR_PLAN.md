@@ -51,16 +51,16 @@ src/
 
 Pull all pure business logic out of hooks into `domain/`. Nothing in this layer may import React or reference I/O.
 
-- [ ] Extract `checkSetEnd`, `checkMatchEnd` → `domain/match/rules.ts`
-- [ ] Extract `calculateComputedStats`, `mergeStats`, `calculateUpdatedStatistics` → `domain/match/stats.ts`
-- [ ] Move `initialMatchData`, `initialMatchDetails`, `initialConfig` → `domain/match/defaults.ts`
-- [ ] Create rally action handler map with do/undo pairs → `domain/rally/actionHandlers.ts`
-- [ ] **Design and implement reversible `HistoryEntry`** — each entry must carry enough data to reverse the action:
+- [x] Extract `checkSetEnd`, `checkMatchEnd` → `domain/match/rules.ts`
+- [x] Extract `calculateComputedStats`, `mergeStats`, `calculateUpdatedStatistics` → `domain/match/stats.ts`
+- [x] Move `initialMatchData`, `initialMatchDetails`, `initialConfig` → `domain/match/defaults.ts`
+- [x] Create rally action handler map with do/undo pairs → `domain/rally/actionHandlers.ts`
+- [x] **Design and implement reversible `HistoryEntry`** — each entry must carry enough data to reverse the action:
   - Confirmed rally entries store full `RallyState` at confirmation
   - Timeout/substitution entries store team + counter delta
   - Set-end entries store previous scores, stats, and history snapshot
-- [ ] Update `useMatchManager` and `useRallyManager` to import from domain (thin React wrappers)
-- [ ] Ensure all domain functions are covered by unit tests
+- [x] Update `useMatchManager` and `useRallyManager` to import from domain (thin React wrappers)
+- [x] Ensure all domain functions are covered by unit tests
 
 ---
 
@@ -68,11 +68,11 @@ Pull all pure business logic out of hooks into `domain/`. Nothing in this layer 
 
 Replace `matchEvent` embedded in `MatchData` with a proper discriminated union and callback.
 
-- [ ] Define `MatchDomainEvent` discriminated union: `RallyEndedEvent`, `TimeoutCalledEvent`, `SubstitutionCalledEvent`, `SetEndedEvent`, `MatchEndedEvent`, `MatchStartedEvent`, `MatchResetEvent`
-- [ ] Remove `matchEvent`, `matchEventRef`, `getLastAction`, `clearLastAction`, `clearMatchEvent` from `useMatchManager` and `MatchData`
-- [ ] `useMatchManager` accepts `onEvent?: (event: MatchDomainEvent) => void` callback
-- [ ] `Match.tsx` uses events to drive socket emission and rally reset instead of watching `lastAction` ref
-- [ ] Update types/index.ts
+- [x] Define `MatchDomainEvent` discriminated union: `RallyEndedEvent`, `TimeoutCalledEvent`, `SubstitutionCalledEvent`, `SetEndedEvent`, `MatchEndedEvent`, `MatchStartedEvent`, `MatchResetEvent`
+- [x] Remove `matchEvent`, `matchEventRef`, `getLastAction`, `clearLastAction`, `clearMatchEvent` from `useMatchManager` and `MatchData`
+- [x] `useMatchManager` accepts `onEvent?: (event: MatchDomainEvent) => void` callback
+- [x] `Match.tsx` uses events to drive socket emission and rally reset instead of watching `lastAction` ref
+- [x] Update types/index.ts
 
 ---
 

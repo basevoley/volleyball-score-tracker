@@ -53,10 +53,17 @@ export interface MatchScores {
   teamB: number;
 }
 
-export interface MatchEvent {
-  type: string | null;
-  details: Record<string, unknown> | null;
-}
+export type MatchDomainEvent =
+  | { type: 'MatchStarted' }
+  | { type: 'MatchReset' }
+  | { type: 'ServerSet'; server: TeamKey }
+  | { type: 'RallyEnded'; winner: TeamKey; faultingTeam: TeamKey | null }
+  | { type: 'RallyDiscarded' }
+  | { type: 'TimeoutCalled'; team: TeamKey }
+  | { type: 'SubstitutionCalled'; team: TeamKey }
+  | { type: 'SetEnded' }
+  | { type: 'MatchEnded'; winner: TeamKey }
+  | { type: 'ScoreAdjusted' };
 
 interface BaseHistoryEntry {
   index: number;
@@ -112,7 +119,6 @@ export interface MatchData {
   currentSetHistory: HistoryEntry[];
   setStats: SetStats[];
   winner: TeamKey | null;
-  matchEvent: MatchEvent;
 }
 
 // ── Match details (pre-match setup) ─────────────────────────────────────────

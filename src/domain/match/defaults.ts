@@ -15,7 +15,6 @@ export const initialMatchData: MatchData = {
     currentSetHistory: [],
     setStats: [],
     winner: null,
-    matchEvent: { type: null, details: null },
 };
 
 export const initialMatchDetails: MatchDetails = {
