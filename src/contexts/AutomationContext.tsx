@@ -2,7 +2,9 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { useSocket } from '../services/socket/SocketContext';
 import useAutomationRunner from '../hooks/useAutomationRunner';
 import { ALL_SEQUENCES } from '../domain/automation/sequences';
-import type { Config, Sequence, SequenceTrigger, MatchDetails, MatchData } from '../types';
+import type { Sequence, SequenceTrigger } from '../types';
+import { useConfig } from './ConfigContext';
+import { useMatchContext } from './MatchContext';
 
 type SocketEventTrigger = Extract<SequenceTrigger, { type: 'socketEvent' }>;
 type AutoSequence = Sequence & { trigger: SocketEventTrigger };
@@ -25,25 +27,18 @@ const initialAutomationsEnabled = AUTO_SEQUENCES.reduce<Record<string, boolean>>
     return acc;
 }, {});
 
-interface AutomationProviderProps {
-    children: React.ReactNode;
-    config: Config;
-    setConfig: (config: Config) => void;
-    matchDetails: MatchDetails;
-    matchData: MatchData | null;
-}
-
-export const AutomationProvider = ({ children, config, setConfig, matchDetails, matchData }: AutomationProviderProps) => {
+export const AutomationProvider = ({ children }: { children: React.ReactNode }) => {
     const { socket, onSocketEmit } = useSocket();
+    const { config, setConfig } = useConfig();
+    const { matchManager, matchDetails } = useMatchContext();
+
     const runner = useAutomationRunner({ config, setConfig, socket: socket! });
 
     const hasStats = [...Object.values(matchDetails.stats.teamA), ...Object.values(matchDetails.stats.teamB)]
         .some(val => Number(val) > 0);
     const hasPlayers = (matchDetails.players.teamA?.length > 0) || (matchDetails.players.teamB?.length > 0);
-    const hasMatchStats = matchData
-        ? [...Object.values(matchData.statistics.teamA), ...Object.values(matchData.statistics.teamB)]
-            .some(val => typeof val === 'number' && val > 0)
-        : false;
+    const hasMatchStats = [...Object.values(matchManager.match.statistics.teamA), ...Object.values(matchManager.match.statistics.teamB)]
+        .some(val => typeof val === 'number' && val > 0);
 
     const ctxRef = useRef({ hasStats, hasPlayers, hasMatchStats });
     useEffect(() => {
@@ -66,8 +61,6 @@ export const AutomationProvider = ({ children, config, setConfig, matchDetails, 
     }, []);
 
     // Set up socket event subscriptions for all auto-triggered sequences.
-    // Sequences are grouped by socket event so a single listener handles multiple triggers per event.
-    // triggerStates holds per-sequence mutable state for stateful conditions (e.g. rising-edge detection).
     useEffect(() => {
         const triggerStates = AUTO_SEQUENCES.reduce<Record<string, Record<string, unknown>>>((acc, seq) => {
             acc[seq.id] = { ...(seq.trigger.initialState ?? {}) };

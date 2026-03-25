@@ -2,10 +2,11 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type {
     TeamKey, TeamRecord, TeamStats, RallyTeamStats, MatchData, MatchScores,
     RallySnapshot, RallyHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry, AdjustHistoryEntry,
-    MatchDomainEvent,
+    MatchDomainEvent, RallyActionType,
 } from '../types';
 import { checkSetEnd, checkMatchEnd } from '../domain/match/rules';
-import { calculateUpdatedStatistics, createEmptyMatchStats } from '../domain/match/stats';
+import { calculateUpdatedStatistics, createEmptyMatchStats, createEmptyRallyStats } from '../domain/match/stats';
+import { RALLY_ACTION_HANDLERS } from '../domain/rally/actionHandlers';
 
 // --- Hook ---
 export const useMatchManager = (
@@ -31,6 +32,56 @@ export const useMatchManager = (
         ...(initialData || {}),
     }));
 
+    // Always-current ref to match state — lets callbacks read it without stale closures
+    const matchRef = useRef<MatchData>(match);
+    matchRef.current = match;
+
+    // ── Rally state ──────────────────────────────────────────────────────────
+
+    const [rally, setRally] = useState<RallySnapshot>(() => ({
+        id: Date.now(),
+        stage: 'start',
+        possession: initialData?.currentServer || null,
+        actionHistory: [],
+        stats: createEmptyRallyStats(),
+    }));
+
+    // Always-current ref to rally state
+    const rallyRef = useRef<RallySnapshot>(rally);
+    rallyRef.current = rally;
+
+    // Tracks the initial server for the current rally (used by discardRally to restore)
+    const initialPossessionRef = useRef<TeamKey | null>(initialData?.currentServer || null);
+    // Tracks previous rally possession to detect changes for match.ballPossession sync
+    const prevRallyPossessionRef = useRef<TeamKey | null>(initialData?.currentServer || null);
+    // When a set end is pending, stores the rally winner so confirmSetEnd can reset rally correctly
+    const pendingRallyResetServerRef = useRef<TeamKey | null>(null);
+
+    // Sync rally.possession → match.ballPossession after each render
+    useEffect(() => {
+        if (rally.possession !== prevRallyPossessionRef.current && rally.possession !== null) {
+            prevRallyPossessionRef.current = rally.possession;
+            setMatch(prev => ({ ...prev, ballPossession: rally.possession }));
+        }
+    }, [rally.possession]);
+
+    // Reset rally to a new server — internal helper
+    const resetRallyInternal = useCallback((newServer: TeamKey | null) => {
+        setRally({
+            id: Date.now(),
+            stage: 'start',
+            possession: newServer,
+            actionHistory: [],
+            stats: createEmptyRallyStats(),
+        });
+        if (newServer !== null) {
+            initialPossessionRef.current = newServer;
+            prevRallyPossessionRef.current = newServer;
+        }
+    }, []);
+
+    // ── Event machinery ──────────────────────────────────────────────────────
+
     // Always-current ref to onEvent callback (avoids stale closure)
     const onEventRef = useRef(onEvent);
     onEventRef.current = onEvent;
@@ -47,6 +98,8 @@ export const useMatchManager = (
         }
     }, [match]);
 
+    // ── Set-end machinery ────────────────────────────────────────────────────
+
     const [pendingSetUpdate, setPendingSetUpdate] = useState<MatchData | null>(null);
 
     const confirmSetEnd = useCallback((confirm: boolean) => {
@@ -55,9 +108,11 @@ export const useMatchManager = (
             pendingEventRef.current = pendingSetUpdate.winner
                 ? { type: 'MatchEnded', winner: pendingSetUpdate.winner }
                 : { type: 'SetEnded' };
+            resetRallyInternal(pendingRallyResetServerRef.current);
         }
+        pendingRallyResetServerRef.current = null;
         setPendingSetUpdate(null);
-    }, [pendingSetUpdate]);
+    }, [pendingSetUpdate, resetRallyInternal]);
 
     // Helper to handle set/match end logic
     const handleGameEnd = useCallback((
@@ -111,6 +166,8 @@ export const useMatchManager = (
         };
     }, [maxSets]);
 
+    // ── Match actions ────────────────────────────────────────────────────────
+
     const startMatch = useCallback(() => {
         setMatch(prev => ({ ...prev, matchStarted: true }));
         pendingEventRef.current = { type: 'MatchStarted' };
@@ -132,52 +189,52 @@ export const useMatchManager = (
             setStats: [],
             winner: null,
         });
+        resetRallyInternal(null);
         pendingEventRef.current = { type: 'MatchReset' };
-    }, []);
+    }, [resetRallyInternal]);
 
     const setServer = useCallback((server: TeamKey) => {
         setMatch(prev => ({ ...prev, currentServer: server, ballPossession: server }));
+        resetRallyInternal(server);
         pendingEventRef.current = { type: 'ServerSet', server };
-    }, []);
+    }, [resetRallyInternal]);
 
-    const updateBallPossession = useCallback((newPossession: TeamKey, rallyDiscarded = false) => {
-        setMatch(prev => ({ ...prev, ballPossession: newPossession }));
-        if (rallyDiscarded) {
-            pendingEventRef.current = { type: 'RallyDiscarded' };
+    const endRally = useCallback((winner: TeamKey, faultingTeam: TeamKey | null = null) => {
+        const currentRally = rallyRef.current;
+
+        // Pre-compute set-end using current match state (same snapshot setMatch updater sees as `prev`)
+        const currentMatch = matchRef.current;
+        const newScores = { ...currentMatch.scores, [winner]: currentMatch.scores[winner] + 1 };
+        const willEndSet = !!checkSetEnd(newScores, currentMatch.setsWon, maxSets);
+
+        if (willEndSet) {
+            pendingRallyResetServerRef.current = winner;
         }
-        // No event for normal possession changes — they are rally-internal
-    }, []);
 
-    const endRally = useCallback((
-        winner: TeamKey,
-        statsUpdate: TeamRecord<RallyTeamStats>,
-        faultingTeam: TeamKey | null = null,
-        rallySnapshot: RallySnapshot
-    ) => {
         setMatch(prev => {
-            const newScores = { ...prev.scores, [winner]: prev.scores[winner] + 1 };
-            const updatedStatistics = calculateUpdatedStatistics(prev.statistics, statsUpdate);
-            const updatedSetStats = calculateUpdatedStatistics(prev.currentSetStats, statsUpdate);
+            const updatedScores = { ...prev.scores, [winner]: prev.scores[winner] + 1 };
+            const updatedStatistics = calculateUpdatedStatistics(prev.statistics, currentRally.stats);
+            const updatedSetStats = calculateUpdatedStatistics(prev.currentSetStats, currentRally.stats);
 
             const newHistoryEntry: RallyHistoryEntry = {
                 entryType: 'rally',
                 index: (prev.currentSetHistory?.length || 0) + 1,
                 timestamp: Date.now(),
-                scores: newScores,
+                scores: updatedScores,
                 server: winner,
                 faultingTeam,
                 prevServer: prev.currentServer,
-                rallySnapshot,
-                statsUpdate,
+                rallySnapshot: currentRally,
+                statsUpdate: currentRally.stats,
             };
 
             const newHistory = [...(prev.currentSetHistory || []), newHistoryEntry];
-            const setWinner = checkSetEnd(newScores, prev.setsWon, maxSets);
+            const setWinner = checkSetEnd(updatedScores, prev.setsWon, maxSets);
 
             if (setWinner) {
                 const nextState = handleGameEnd(
                     { ...prev, currentServer: winner, statistics: updatedStatistics },
-                    newScores,
+                    updatedScores,
                     updatedSetStats,
                     newHistory
                 );
@@ -189,12 +246,17 @@ export const useMatchManager = (
             pendingEventRef.current = { type: 'RallyEnded', winner, faultingTeam };
             return handleGameEnd(
                 { ...prev, currentServer: winner, statistics: updatedStatistics },
-                newScores,
+                updatedScores,
                 updatedSetStats,
                 newHistory
             );
         });
-    }, [maxSets, handleGameEnd]);
+
+        // Reset rally immediately for non-set-end case
+        if (!willEndSet) {
+            resetRallyInternal(winner);
+        }
+    }, [maxSets, handleGameEnd, resetRallyInternal]);
 
     const callTimeout = useCallback((team: TeamKey) => {
         setMatch(prev => {
@@ -268,14 +330,80 @@ export const useMatchManager = (
         return checkSetEnd(newScores, match.setsWon, maxSets);
     }, [match.scores, match.setsWon, maxSets]);
 
+    const restoreMatch = useCallback((data: MatchData) => {
+        setMatch(data);
+        resetRallyInternal(data.currentServer);
+    }, [resetRallyInternal]);
+
+    // ── Rally actions ────────────────────────────────────────────────────────
+
+    const handleAction = useCallback((action: string, faultingTeam: TeamKey | null = null) => {
+        const handler = RALLY_ACTION_HANDLERS[action as RallyActionType];
+        if (!handler) return;
+
+        setRally(prev => {
+            const result = handler.apply(prev, faultingTeam ?? undefined);
+            return {
+                ...prev,
+                stats: result.stats,
+                stage: result.stage,
+                ...(result.possession !== undefined ? { possession: result.possession } : {}),
+                actionHistory: [
+                    ...prev.actionHistory,
+                    { action: action as RallyActionType, team: result.team, rallyStage: prev.stage, previousPossession: prev.possession },
+                ],
+            };
+        });
+    }, []);
+
+    const undoLastAction = useCallback(() => {
+        setRally(prev => {
+            if (prev.actionHistory.length === 0) return prev;
+
+            const lastEntry = prev.actionHistory[prev.actionHistory.length - 1];
+            const handler = RALLY_ACTION_HANDLERS[lastEntry.action];
+            const newStats = handler.undo(lastEntry, prev.stats);
+
+            return {
+                ...prev,
+                stats: newStats,
+                stage: lastEntry.rallyStage,
+                possession: lastEntry.previousPossession || prev.possession,
+                actionHistory: prev.actionHistory.slice(0, -1),
+            };
+        });
+    }, []);
+
+    const discardRally = useCallback(() => {
+        const server = initialPossessionRef.current;
+        setRally({
+            id: Date.now(),
+            stage: 'start',
+            possession: server,
+            actionHistory: [],
+            stats: createEmptyRallyStats(),
+        });
+        if (server !== null) {
+            prevRallyPossessionRef.current = server;
+            setMatch(prev => ({ ...prev, ballPossession: server }));
+        }
+        pendingEventRef.current = { type: 'RallyDiscarded' };
+    }, []);
+
     return useMemo(() => ({
-        match, startMatch, resetMatch, setServer, updateBallPossession, endRally,
+        match,
+        startMatch, resetMatch, restoreMatch, setServer, endRally,
         pendingSetEnd: !!pendingSetUpdate,
         confirmSetEnd,
         callTimeout, callSubstitution, adjustScore, updateSetsWon, willRallyEndSet,
-    }), [match, startMatch, resetMatch, setServer, updateBallPossession, endRally,
+        rally,
+        handleAction, undoLastAction, discardRally,
+        canUndo: rally.actionHistory.length > 0,
+    }), [match, startMatch, resetMatch, restoreMatch, setServer, endRally,
         pendingSetUpdate,
         confirmSetEnd,
         callTimeout, callSubstitution, adjustScore, updateSetsWon, willRallyEndSet,
+        rally,
+        handleAction, undoLastAction, discardRally,
     ]);
 };

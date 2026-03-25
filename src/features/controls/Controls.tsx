@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useSocket } from '../../services/socket/SocketContext';
-import type { Config, Sequence, SequenceStep, MatchDetails, MatchData } from '../../types';
+import type { Sequence, SequenceStep } from '../../types';
+import { useConfig } from '../../contexts/ConfigContext';
+import { useMatchContext } from '../../contexts/MatchContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import {
     Switch,
     FormControlLabel,
@@ -150,16 +153,13 @@ const SequenceRow = ({ seq, isRunning, activeSequenceId, currentStepIndex, activ
     );
 };
 
-interface ControlsProps {
-    config: Config;
-    setConfig: (config: Config) => void;
-    matchDetails: MatchDetails;
-    matchData: MatchData;
-    noStats: boolean;
-}
-
-const Controls = ({ config, setConfig, matchDetails, matchData, noStats }: ControlsProps) => {
+const Controls = () => {
     const { socket } = useSocket();
+    const { config, setConfig } = useConfig();
+    const { matchManager, matchDetails } = useMatchContext();
+    const { noStats } = usePreferences();
+    const { match: matchData } = matchManager;
+
     const hasStats = [...Object.values(matchDetails.stats.teamA), ...Object.values(matchDetails.stats.teamB)].some(val => Number(val) > 0);
     const hasPlayers = (matchDetails.players.teamA?.length > 0) || (matchDetails.players.teamB?.length > 0);
     const isPreMatch = !matchData.matchStarted && matchData.setStats.length === 0;

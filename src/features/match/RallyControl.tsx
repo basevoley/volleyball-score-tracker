@@ -2,43 +2,65 @@
 
 import { Box, Button, IconButton, TextField, Tooltip, Typography } from "@mui/material";
 import type { useMatchManager } from '../../hooks/useMatchManager';
-import type { useRallyManager } from '../../hooks/useRallyManager';
 import type { TeamRecord } from '../../types';
 
 type MatchManager = ReturnType<typeof useMatchManager>;
-type RallyManager = ReturnType<typeof useRallyManager>;
 
 interface Props {
   teams: TeamRecord<string>;
   matchManager: MatchManager;
-  rallyManager: RallyManager;
 }
 import ActionButtons from "./ActionButtons";
 import ConfirmationDialog from "../../shared/components/ConfirmationDialog";
 import { RestartAlt, Undo } from "@mui/icons-material";
+import { useState, useEffect, useRef } from "react";
 
 const RallyControl = ({
   teams,
   matchManager,
-  rallyManager
 }: Props) => {
 
-    const { 
-    match, 
-    updateBallPossession, 
-    endRally, 
-  } = matchManager;
-
   const {
+    match,
     rally,
     handleAction,
     undoLastAction,
-    resetRally,
     discardRally,
-    setConfirmation,
-    setDiscardConfirmation,
     canUndo,
-  } = rallyManager;
+    endRally,
+    confirmSetEnd,
+    pendingSetEnd,
+  } = matchManager;
+
+  // Local confirmation dialog state (was previously in RallyState)
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showDiscardConfirmation, setShowDiscardConfirmation] = useState(false);
+
+  // Open rally confirmation when a terminal action (error/fault/point) is added
+  const prevActionCountRef = useRef(rally.actionHistory.length);
+  useEffect(() => {
+    const { actionHistory } = rally;
+    if (actionHistory.length > prevActionCountRef.current) {
+      const lastAction = actionHistory[actionHistory.length - 1];
+      if (['error', 'fault', 'point'].includes(lastAction.action)) {
+        setShowConfirmation(true);
+      }
+    } else if (actionHistory.length < prevActionCountRef.current || actionHistory.length === 0) {
+      // Action undone or rally reset
+      setShowConfirmation(false);
+    }
+    prevActionCountRef.current = actionHistory.length;
+  }, [rally.actionHistory]);
+
+  // Close confirmation when rally resets (new rally id)
+  const prevRallyIdRef = useRef(rally.id);
+  useEffect(() => {
+    if (rally.id !== prevRallyIdRef.current) {
+      prevRallyIdRef.current = rally.id;
+      setShowConfirmation(false);
+      setShowDiscardConfirmation(false);
+    }
+  }, [rally.id]);
 
   const renderPreviousActionText = () => {
     if (!canUndo) return 'Ninguna';
@@ -53,42 +75,33 @@ const RallyControl = ({
     const lastAction = rally.actionHistory[rally.actionHistory.length - 1];
     const faultingTeam = lastAction?.action === 'fault' ? lastAction.team : null;
     const winner = rally.possession!;
-    const willEndSet = matchManager.willRallyEndSet(winner);
-
-    endRally(winner, rally.stats, faultingTeam, rally);
-
-    if (!willEndSet) {
-      resetRally(winner);
-      setConfirmation(false);
-    }
+    endRally(winner, faultingTeam);
+    setShowConfirmation(false);
   };
 
-  const handleCancelConfirmation = () => { 
-    undoLastAction(); 
-    setConfirmation(false); 
+  const handleCancelConfirmation = () => {
+    undoLastAction();
+    setShowConfirmation(false);
   };
 
-  const handleDiscardRally = () => { 
-    setDiscardConfirmation(true); 
+  const handleDiscardRally = () => {
+    setShowDiscardConfirmation(true);
   };
 
-  const confirmDiscardRally = () => { 
-    discardRally(); 
-    updateBallPossession(match.currentServer!, true);
-    setDiscardConfirmation(false); 
+  const confirmDiscardRally = () => {
+    discardRally();
+    setShowDiscardConfirmation(false);
   };
 
   const handleEndSet = () => {
-    const winner = rally.possession!;
-    matchManager.confirmSetEnd(true);
-    resetRally(winner);
-    setConfirmation(false);
+    confirmSetEnd(true);
+    setShowConfirmation(false);
   };
 
   const handleDiscardSetEnd = () => {
-    matchManager.confirmSetEnd(false);
+    confirmSetEnd(false);
     undoLastAction();
-    setConfirmation(false);
+    setShowConfirmation(false);
   };
 
   return (
@@ -103,7 +116,7 @@ const RallyControl = ({
 
       {/* Rally End Confirmation */}
       <ConfirmationDialog
-        open={rally.showConfirmation}
+        open={showConfirmation}
         message="¿Finalizar rally y asignar punto?"
         onConfirm={handleEndRally}
         onCancel={handleCancelConfirmation}
@@ -111,7 +124,7 @@ const RallyControl = ({
 
       {/* Set End Confirmation */}
       <ConfirmationDialog
-        open={matchManager.pendingSetEnd}
+        open={pendingSetEnd}
         message={<Typography align='center'>Este punto finaliza el set, lo cual <b>NO</b> se puede deshacer.<br/> ¿Seguro que desea terminar el set?</Typography>}
         onConfirm={handleEndSet}
         onCancel={handleDiscardSetEnd}
@@ -120,9 +133,9 @@ const RallyControl = ({
       {/* Rally Discard Confirmation */}
       <ConfirmationDialog
         message="¿Seguro que desea descartar el rally y repetir el punto?"
-        open={rally.showDiscardConfirmation}
+        open={showDiscardConfirmation}
         onConfirm={confirmDiscardRally}
-        onCancel={() => setDiscardConfirmation(false)}
+        onCancel={() => setShowDiscardConfirmation(false)}
       />
 
       {/* Action History and Controls */}
@@ -144,8 +157,8 @@ const RallyControl = ({
           {/* Undo Button - Responsive */}
           <Tooltip title={'Deshacer última acción'}>
             <span>
-              <IconButton 
-                onClick={undoLastAction} 
+              <IconButton
+                onClick={undoLastAction}
                 disabled={!canUndo}
                 sx={{
                   display: { xs: 'flex', md: 'none' },
@@ -179,8 +192,8 @@ const RallyControl = ({
           {/* Discard Button - Responsive */}
           <Tooltip title={'Descartar y repetir el punto'}>
             <span>
-              <IconButton 
-                onClick={handleDiscardRally} 
+              <IconButton
+                onClick={handleDiscardRally}
                 disabled={!canUndo}
                 sx={{
                   display: { xs: 'flex', md: 'none' },
@@ -192,8 +205,8 @@ const RallyControl = ({
               >
                 <RestartAlt />
               </IconButton>
-              <Button 
-                onClick={handleDiscardRally} 
+              <Button
+                onClick={handleDiscardRally}
                 disabled={!canUndo}
                 variant="contained"
                 startIcon={<RestartAlt />}

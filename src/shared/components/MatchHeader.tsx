@@ -3,16 +3,13 @@
 import { Box, Button, ToggleButton, ToggleButtonGroup, styled } from '@mui/material';
 import { ArrowLeft, ArrowRight } from '@mui/icons-material';
 import type { useMatchManager } from '../../hooks/useMatchManager';
-import type { useRallyManager } from '../../hooks/useRallyManager';
 import type { TeamRecord } from '../../types';
 
 type MatchManager = ReturnType<typeof useMatchManager>;
-type RallyManager = ReturnType<typeof useRallyManager>;
 
 interface Props {
   teams: TeamRecord<string>;
   matchManager: MatchManager;
-  rallyManager: RallyManager;
 }
 
 const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
@@ -42,19 +39,15 @@ const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
 const MatchHeader = ({
   teams: _teams,
   matchManager,
-  rallyManager
 }: Props) => {
 
   const {
     match,
+    rally,
     startMatch,
     resetMatch,
     setServer
   } = matchManager;
-
-  const {
-    rally
-  } = rallyManager;
 
   return (
     <>
@@ -67,16 +60,16 @@ const MatchHeader = ({
           pt: 1,
         }}
       >
-        <Button 
-          onClick={startMatch} 
-          variant='contained' 
+        <Button
+          onClick={startMatch}
+          variant='contained'
           sx={{ display: (match.matchStarted || match.winner) ? 'none' : undefined }}
         >
           {match.setStats.length === 0? "Iniciar" : "Reanudar"} partido
         </Button>
-        <Button 
-          onClick={resetMatch} 
-          variant='contained' 
+        <Button
+          onClick={resetMatch}
+          variant='contained'
           sx={{ display: match.winner ? undefined : 'none' }}
         >
           Reiniciar partido

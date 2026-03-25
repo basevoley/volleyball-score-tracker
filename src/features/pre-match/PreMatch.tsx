@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import type { MatchDetails, TeamCompetitionStats } from '../../types';
+import type { TeamCompetitionStats } from '../../types';
+import { useMatchContext } from '../../contexts/MatchContext';
 import {
   Paper,
   Box,
@@ -24,12 +25,8 @@ import { useSocket } from '../../services/socket/SocketContext';
 import { TeamColorSelector } from './TeamColorSelector';
 import TeamPlayerList from './EditablePlayerList';
 
-interface Props {
-  matchDetails: MatchDetails;
-  setMatchDetails: React.Dispatch<React.SetStateAction<MatchDetails>>;
-}
-
-function PreMatch({ setMatchDetails, matchDetails }: Props) {
+function PreMatch() {
+  const { matchDetails, setMatchDetails } = useMatchContext();
   const [teamA, setTeamA] = useState(matchDetails.teams.teamA);
   const [teamB, setTeamB] = useState(matchDetails.teams.teamB);
   const [teamALogo, setTeamALogo] = useState(matchDetails.teamLogos.teamA);

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import {
     Box,
     Paper,
@@ -64,12 +65,8 @@ const SettingRow = ({ title, description, checked, onChange }: SettingRowProps) 
     );
 };
 
-interface SettingsProps {
-  noStats: boolean;
-  setNoStats: (val: boolean) => void;
-}
-
-const Settings = ({ noStats, setNoStats }: SettingsProps) => {
+const Settings = () => {
+  const { noStats, setNoStats } = usePreferences();
     return (
         <Box sx={{ width: '100%', p: { xs: 1, sm: 2 }, boxSizing: 'border-box' }}>
             <Paper

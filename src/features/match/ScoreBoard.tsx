@@ -5,27 +5,25 @@ import { Add, Remove, TimerOutlined, SwapHoriz, Flag } from '@mui/icons-material
 import ConfirmationDialog from '../../shared/components/ConfirmationDialog';
 import type { TeamKey, MatchDetails } from '../../types';
 import type { useMatchManager } from '../../hooks/useMatchManager';
-import type { useRallyManager } from '../../hooks/useRallyManager';
 
 type MatchManager = ReturnType<typeof useMatchManager>;
-type RallyManager = ReturnType<typeof useRallyManager>;
 
 interface Props {
   matchDetails: MatchDetails;
   matchManager: MatchManager;
-  rallyManager: RallyManager;
 }
 
 function ScoreBoard({
   matchDetails,
   matchManager,
-  rallyManager
 }: Props) {
 
   const { teams, teamLogos, teamColors, maxSets } = matchDetails;
 
   const {
     match,
+    rally,
+    handleAction,
     callTimeout,
     callSubstitution,
     adjustScore,
@@ -42,11 +40,6 @@ function ScoreBoard({
     timeouts,
     substitutions,
   } = match;
-
-  const {
-    rally,
-    handleAction,
-  } = rallyManager;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSetsWonChange = (team: TeamKey, event: any) => {

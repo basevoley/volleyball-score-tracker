@@ -80,13 +80,13 @@ Replace `matchEvent` embedded in `MatchData` with a proper discriminated union a
 
 `useRallyManager` ceases to exist as a standalone hook.
 
-- [ ] Move rally logic inside `useMatchManager` using `domain/rally/actionHandlers.ts`
-- [ ] Expose `rally` sub-object on match manager: `{ stage, possession, stats, actionHistory, canUndo }`
-- [ ] Expose rally actions on match manager: `handleAction`, `undoLastAction`, `discardRally`
-- [ ] On `endRally`, internally finalise stats, archive full `RallyState` into history entry, reset rally
-- [ ] Remove `showConfirmation` and `showDiscardConfirmation` from `RallyState` — move to local state in `RallyControl.tsx`
-- [ ] Remove `useRallyManager.ts`
-- [ ] Remove manual wiring in `Match.tsx` (passing `updateBallPossession`, syncing `currentServer`)
+- [x] Move rally logic inside `useMatchManager` using `domain/rally/actionHandlers.ts`
+- [x] Expose `rally` sub-object on match manager: `{ stage, possession, stats, actionHistory, canUndo }`
+- [x] Expose rally actions on match manager: `handleAction`, `undoLastAction`, `discardRally`
+- [x] On `endRally`, internally finalise stats, archive full `RallySnapshot` into history entry, reset rally
+- [x] Remove `showConfirmation` and `showDiscardConfirmation` from `RallyState` — move to local state in `RallyControl.tsx`
+- [x] Remove `useRallyManager.ts`
+- [x] Remove manual wiring in `Match.tsx` (passing `updateBallPossession`, syncing `currentServer`)
 
 ---
 
@@ -94,12 +94,12 @@ Replace `matchEvent` embedded in `MatchData` with a proper discriminated union a
 
 Move all shared state out of `App.tsx` into dedicated contexts.
 
-- [ ] Create `MatchContext` — owns `useMatchManager` (source of truth for match state); exposes `matchData`, `matchDetails`, `setMatchDetails`, all match actions
-- [ ] Create `ConfigContext` — owns `config` and `setConfig`
-- [ ] Create `PreferencesContext` — owns `noStats` + future user preferences; persisted via cookies
-- [ ] Extract session restore dialog + localStorage logic → `services/session/useSession.ts`
-- [ ] Create `app/providers.tsx` composing all providers
-- [ ] `App.tsx` reduced to provider wrapper + tab layout with no state of its own
+- [x] Create `MatchContext` — owns `useMatchManager` (source of truth for match state); exposes `matchData`, `matchDetails`, `setMatchDetails`, all match actions
+- [x] Create `ConfigContext` — owns `config` and `setConfig`
+- [x] Create `PreferencesContext` — owns `noStats` + future user preferences; persisted via cookies
+- [x] Extract session restore dialog + localStorage logic → `services/session/useSession.ts`
+- [x] Create `app/providers.tsx` composing all providers
+- [x] `App.tsx` reduced to provider wrapper + tab layout with no state of its own
 
 ---
 

@@ -257,11 +257,6 @@ export interface RallySnapshot {
   stats: TeamRecord<RallyTeamStats>;
 }
 
-export interface RallyState extends RallySnapshot {
-  showConfirmation: boolean;
-  showDiscardConfirmation: boolean;
-}
-
 // ── Socket ───────────────────────────────────────────────────────────────────
 
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'reconnecting';

@@ -1,4 +1,4 @@
-import type { TeamKey, TeamRecord, RallyTeamStats, RallyStage, RallyState, RallyActionHistoryEntry, RallyActionType } from '../../types';
+import type { TeamKey, TeamRecord, RallyTeamStats, RallyStage, RallySnapshot, RallyActionHistoryEntry, RallyActionType } from '../../types';
 
 const opp = (team: TeamKey): TeamKey => team === 'teamA' ? 'teamB' : 'teamA';
 
@@ -11,12 +11,11 @@ export interface ActionApplyResult {
     stats: TeamRecord<RallyTeamStats>;
     stage: RallyStage;
     possession?: TeamKey;
-    showConfirmation?: boolean;
     team: TeamKey;
 }
 
 export interface RallyActionHandler {
-    apply: (state: RallyState, faultingTeam?: TeamKey) => ActionApplyResult;
+    apply: (state: RallySnapshot, faultingTeam?: TeamKey) => ActionApplyResult;
     undo: (entry: RallyActionHistoryEntry, stats: TeamRecord<RallyTeamStats>) => TeamRecord<RallyTeamStats>;
 }
 
@@ -85,7 +84,7 @@ export const RALLY_ACTION_HANDLERS: Record<RallyActionType, RallyActionHandler> 
             };
             const field = errorField[state.stage];
             const newStats = field ? inc(state.stats, team, field) : state.stats;
-            return { stats: newStats, stage: state.stage, possession: opp(team), showConfirmation: true, team };
+            return { stats: newStats, stage: state.stage, possession: opp(team), team };
         },
         undo: (entry, stats) => {
             const errorField: Partial<Record<RallyStage, keyof RallyTeamStats>> = {
@@ -102,7 +101,7 @@ export const RALLY_ACTION_HANDLERS: Record<RallyActionType, RallyActionHandler> 
     fault: {
         apply: (state, faultingTeam) => {
             const team = faultingTeam!;
-            return { stats: inc(state.stats, team, 'fault'), stage: state.stage, possession: opp(team), showConfirmation: true, team };
+            return { stats: inc(state.stats, team, 'fault'), stage: state.stage, possession: opp(team), team };
         },
         undo: (entry, stats) => inc(stats, entry.team, 'fault', -1),
     },
@@ -116,7 +115,7 @@ export const RALLY_ACTION_HANDLERS: Record<RallyActionType, RallyActionHandler> 
             };
             const field = pointField[state.stage];
             const newStats = field ? inc(state.stats, team, field) : state.stats;
-            return { stats: newStats, stage: state.stage, showConfirmation: true, team };
+            return { stats: newStats, stage: state.stage, team };
         },
         undo: (entry, stats) => {
             const pointField: Partial<Record<RallyStage, keyof RallyTeamStats>> = {

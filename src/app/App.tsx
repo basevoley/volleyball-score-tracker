@@ -1,7 +1,5 @@
 // app.js
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { MatchDetails, MatchData, Config } from '../types';
-import { initialMatchData, initialMatchDetails, initialConfig } from '../domain/match/defaults';
+import React, { useCallback, useRef, useState } from 'react';
 import { Container, Box, Typography, Paper, Tabs, Tab, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider } from '@mui/material';
 import PreMatch from '../features/pre-match/PreMatch';
 import Match from '../features/match/Match';
@@ -10,12 +8,14 @@ import Settings from '../features/settings/Settings';
 import Cookies from 'js-cookie';
 import ShortUUID from 'short-uuid';
 import { SocketProvider } from '../services/socket/SocketContext';
-import { AutomationProvider } from '../contexts/AutomationContext';
 import { ConnectionStatus } from '../shared/components/ConnectionStatus';
 import OverlayPreview from '../features/controls/OverlayPreview';
 import PackageJson from '../../package.json';
-
-const STORAGE_KEY = 'vb_tracker_session';
+import { AppProviders } from './providers';
+import { useMatchContext } from '../contexts/MatchContext';
+import { useConfig } from '../contexts/ConfigContext';
+import { useSession } from '../services/session/useSession';
+import type { MatchData, MatchDetails, Config } from '../types';
 
 const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3005';
 const OVERLAY_URL = import.meta.env.VITE_OVERLAY_URL || 'http://localhost:3001';
@@ -30,7 +30,7 @@ function RestoreSessionDialog({ session, onRestore, onDiscard }: RestoreSessionD
   const { matchData, matchDetails } = session;
   const { teams } = matchDetails;
   const { scores, setsWon, winner, matchStarted } = matchData;
-  const matchProgress = matchStarted || (matchData.setsWon.teamA > 0 || matchData.setsWon.teamB > 0)
+  const matchProgress = matchStarted || (matchData.setsWon.teamA > 0 || matchData.setsWon.teamB > 0);
 
   const statusLabel = winner
     ? 'Partido finalizado'
@@ -75,123 +75,37 @@ function RestoreSessionDialog({ session, onRestore, onDiscard }: RestoreSessionD
   );
 }
 
-function App() {
-  const [matchDetails, setMatchDetails] = useState<MatchDetails>(initialMatchDetails);
-  const [matchData, setMatchData] = useState<MatchData>(initialMatchData);
-  const [config, setConfig] = useState<Config>(initialConfig);
+// Inner shell — rendered inside all providers, has access to contexts
+function AppContent({ overlayUrl }: { overlayUrl: string }) {
   const [activeTab, setActiveTab] = useState(0);
-  const [noStats, setNoStats] = useState(() => Cookies.get('no-stats') === 'true');
-  const [savedSession, setSavedSession] = useState<{ matchData: MatchData; matchDetails: MatchDetails; config: Config } | null>(null);
+  const theme = useTheme();
+  const isUpMd = useMediaQuery(theme.breakpoints.up('md'));
 
-  const matchDetailsRef = useRef(matchDetails);
-  const matchDataRef = useRef(matchData);
-  const configRef = useRef(config);
+  const { matchManager, matchDetails, restoreSession } = useMatchContext();
+  const { config, setConfig } = useConfig();
 
-  // Update refs whenever state changes
-  useEffect(() => {
-    matchDetailsRef.current = matchDetails;
-  }, [matchDetails]);
-
-  useEffect(() => {
-    matchDataRef.current = matchData;
-  }, [matchData]);
-
-  useEffect(() => {
-    configRef.current = config;
-  }, [config]);
-
-  // Check for a saved session on mount
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const md = parsed.matchData;
-        const det = parsed.matchDetails;
-        const hasMatchProgress = md && (md.matchStarted || md.scores?.teamA > 0 || md.scores?.teamB > 0 || md.setsWon?.teamA > 0 || md.setsWon?.teamB > 0);
-        const hasCustomSetup = det && (det.teams?.teamA !== initialMatchDetails.teams.teamA || det.teams?.teamB !== initialMatchDetails.teams.teamB);
-        if (hasMatchProgress || hasCustomSetup) {
-          setSavedSession(parsed);
-        } else {
-          localStorage.removeItem(STORAGE_KEY);
-        }
-      }
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Persist everything together whenever any piece changes
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ matchData, matchDetails, config }));
-    } catch { /* storage unavailable or quota exceeded */ }
-  }, [matchData, matchDetails, config]);
-
-  useEffect(() => {
-    Cookies.set('no-stats', String(noStats), { expires: 365 });
-    if (noStats && config.afterMatch.showStats) {
-      const updatedConfig = {
-        ...config,
-        afterMatch: { ...config.afterMatch, showStats: false },
-      };
-      setConfig(updatedConfig);
-    }
-  }, [noStats]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const [key] = useState(() => {
-    // Load the key from a cookie or generate a new short UUID
-    const existingKey = Cookies.get('websocket-key');
-    if (existingKey) {
-      return existingKey;
-    } else {
-      const translator = ShortUUID();
-      const newKey = translator.new();
-      Cookies.set('websocket-key', newKey, { expires: 365 });
-      return newKey;
-    }
-  });
-
-  const overlayUrl = `${OVERLAY_URL}?key=${key}`;
+  const { savedSession, clearSavedSession, discardSession } = useSession(
+    matchManager.match, matchDetails, config
+  );
 
   const handleRestoreSession = () => {
-    setMatchData(savedSession!.matchData);
-    setMatchDetails(savedSession!.matchDetails);
+    restoreSession({ matchData: savedSession!.matchData, matchDetails: savedSession!.matchDetails });
     setConfig(savedSession!.config);
-    setSavedSession(null);
+    clearSavedSession();
     setActiveTab(savedSession!.matchData?.matchStarted ? 1 : 0);
   };
-
-  const handleDiscardSession = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setSavedSession(null);
-  };
-
-  const handleHandshake = useCallback(() => {
-    return {
-      matchDetails: matchDetailsRef.current,
-      matchData: matchDataRef.current,
-      config: configRef.current,
-    };
-  }, []);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
 
-  const theme = useTheme();
-
-  // Detecta si la pantalla es de tamaño mediano (md) o superior
-  const isUpMd = useMediaQuery(theme.breakpoints.up('md'));
-
   return (
-    <SocketProvider url={SOCKET_SERVER_URL} socketKey={key} onHandshake={handleHandshake}>
-      <AutomationProvider config={config} setConfig={setConfig} matchDetails={matchDetails} matchData={matchData}>
+    <>
       {savedSession && (
         <RestoreSessionDialog
           session={savedSession}
           onRestore={handleRestoreSession}
-          onDiscard={handleDiscardSession}
+          onDiscard={discardSession}
         />
       )}
       <ConnectionStatus />
@@ -219,15 +133,9 @@ function App() {
             flex: 1
           }}
         >
-
           <OverlayPreview overlayUrl={overlayUrl} />
 
-          {/* Tabs with background */}
-          <Box
-            sx={{
-              backgroundColor: '#e0e0e0',
-            }}
-          >
+          <Box sx={{ backgroundColor: '#e0e0e0' }}>
             <Tabs
               value={activeTab}
               onChange={handleTabChange}
@@ -250,17 +158,19 @@ function App() {
                   backgroundColor: '#007bff',
                   height: 3
                 }
-              }} >
+              }}
+            >
               <Tab label="Datos del partido" />
               <Tab label="Partido" />
               <Tab label="Controles de vídeo" />
               <Tab label="Ajustes" />
             </Tabs>
           </Box>
-          {activeTab === 0 && <PreMatch setMatchDetails={setMatchDetails} matchDetails={matchDetails} />}
-          {activeTab === 1 && <Match matchDetails={matchDetails} matchData={matchData} setMatchData={setMatchData} noStats={noStats} />}
-          {activeTab === 2 && <Controls config={config} setConfig={setConfig} matchDetails={matchDetails} matchData={matchData} noStats={noStats} />}
-          {activeTab === 3 && <Settings noStats={noStats} setNoStats={setNoStats} />}
+
+          {activeTab === 0 && <PreMatch />}
+          {activeTab === 1 && <Match />}
+          {activeTab === 2 && <Controls />}
+          {activeTab === 3 && <Settings />}
 
           <Box
             component="footer"
@@ -269,7 +179,7 @@ function App() {
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              mt: 'auto', // Empuja al fondo si estás en un flex container
+              mt: 'auto',
             }}
           >
             <Box
@@ -280,10 +190,10 @@ function App() {
                 px: 1,
                 py: 0.3,
                 border: '1px solid',
-                borderColor: 'divider', // Color sutil del tema
-                borderRadius: '12px', // Forma redondeada integrada
-                color: 'text.secondary', // Color discreto
-                backgroundColor: 'rgba(0, 0, 0, 0.02)', // Fondo casi imperceptible
+                borderColor: 'divider',
+                borderRadius: '12px',
+                color: 'text.secondary',
+                backgroundColor: 'rgba(0, 0, 0, 0.02)',
                 transition: 'all 0.2s',
                 '&:hover': {
                   borderColor: 'primary.main',
@@ -314,9 +224,43 @@ function App() {
           </Box>
         </Paper>
       </Container>
-      </AutomationProvider>
+    </>
+  );
+}
+
+// Outer wrapper — computes socket key, sets up SocketProvider + all app providers
+function App() {
+  const [socketKey] = useState(() => {
+    const existing = Cookies.get('websocket-key');
+    if (existing) return existing;
+    const translator = ShortUUID();
+    const newKey = translator.new();
+    Cookies.set('websocket-key', newKey, { expires: 365 });
+    return newKey;
+  });
+
+  const overlayUrl = `${OVERLAY_URL}?key=${socketKey}`;
+
+  // Stable ref-based handshake callback — inner contexts update the ref each render
+  const handshakeDataRef = useRef<Record<string, unknown>>({});
+  const onHandshake = useCallback(() => handshakeDataRef.current, []);
+
+  return (
+    <SocketProvider url={SOCKET_SERVER_URL} socketKey={socketKey} onHandshake={onHandshake}>
+      <AppProviders>
+        <HandshakeSync dataRef={handshakeDataRef} />
+        <AppContent overlayUrl={overlayUrl} />
+      </AppProviders>
     </SocketProvider>
   );
+}
+
+// Updates the handshake data ref with current context values each render
+function HandshakeSync({ dataRef }: { dataRef: React.MutableRefObject<Record<string, unknown>> }) {
+  const { matchManager, matchDetails } = useMatchContext();
+  const { config } = useConfig();
+  dataRef.current = { matchDetails, matchData: matchManager.match, config };
+  return null;
 }
 
 export default App;

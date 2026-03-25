@@ -1,32 +1,30 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ScoreBoard from './ScoreBoard';
 import StatsHandler from './StatsHandler';
-import { useMatchManager } from '../../hooks/useMatchManager';
 import { useSocket } from '../../services/socket/SocketContext';
 import { Box, Card, Paper } from '@mui/material';
-import { useRallyManager } from '../../hooks/useRallyManager';
 import WinnerDialog from './WinnerDialog';
 import RallyControl from './RallyControl';
 import MatchHeader from '../../shared/components/MatchHeader';
-import type { MatchData, MatchDetails, MatchDomainEvent } from '../../types';
+import type { MatchData, MatchDomainEvent } from '../../types';
+import { useMatchContext } from '../../contexts/MatchContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 
-interface Props {
-  matchDetails: MatchDetails;
-  matchData: Partial<MatchData> | null;
-  setMatchData: Dispatch<SetStateAction<MatchData>>;
-  noStats: boolean;
-}
+function Match() {
+  const { matchManager, matchDetails, setOnMatchEvent } = useMatchContext();
+  const { noStats } = usePreferences();
+  const { teams, teamLogos, teamColors } = matchDetails;
+  const { match } = matchManager;
 
-function Match({ matchDetails, matchData, setMatchData, noStats }: Props) {
-  const { teams, teamLogos, teamColors, maxSets } = matchDetails;
   const [expandedSetIndex, setExpandedSetIndex] = useState<number | null>(
-    matchData?.setStats ? Math.max(matchData.setStats.length - 1, 0) : null
+    match.setStats ? Math.max(match.setStats.length - 1, 0) : null
   );
   const [winnerDialogOpen, setWinnerDialogOpen] = useState(false);
   const { socket } = useSocket();
 
   // Always-current ref to match state — read in the event callback without stale closures
   const matchRef = useRef<MatchData | null>(null);
+  matchRef.current = match;
 
   const handleMatchEvent = useCallback((event: MatchDomainEvent) => {
     const currentMatch = matchRef.current!;
@@ -59,27 +57,14 @@ function Match({ matchDetails, matchData, setMatchData, noStats }: Props) {
     delete socketPayload.currentSetHistory;
 
     socket?.emit('matchData', socketPayload);
-    setMatchData(currentMatch);
     setExpandedSetIndex(null);
-  }, [socket, teams, setMatchData]);
+  }, [socket, teams]);
 
-  const matchManager = useMatchManager(matchData, teams, maxSets, handleMatchEvent);
-  const { match, updateBallPossession } = matchManager;
-
-  // Keep matchRef current after every render (safe to write refs during render)
-  matchRef.current = match;
-
-  // Rally manager
-  const rallyManager = useRallyManager(match.currentServer, updateBallPossession);
-  const { resetRally, updateInitialServer } = rallyManager;
-
-  // Sync server into rally manager when currentServer changes (e.g. after set end + server selection)
+  // Register / unregister the event handler with MatchContext
   useEffect(() => {
-    if (match.currentServer !== null) {
-      updateInitialServer(match.currentServer);
-      resetRally(match.currentServer);
-    }
-  }, [match.currentServer, updateInitialServer, resetRally]);
+    setOnMatchEvent(handleMatchEvent);
+    return () => setOnMatchEvent(null);
+  }, [handleMatchEvent, setOnMatchEvent]);
 
   // Open winner dialog when match ends
   useEffect(() => {
@@ -115,7 +100,6 @@ function Match({ matchDetails, matchData, setMatchData, noStats }: Props) {
         <MatchHeader
           teams={teams}
           matchManager={matchManager}
-          rallyManager={rallyManager}
         />
 
         <Card sx={{
@@ -131,14 +115,12 @@ function Match({ matchDetails, matchData, setMatchData, noStats }: Props) {
           <ScoreBoard
             matchDetails={matchDetails}
             matchManager={matchManager}
-            rallyManager={rallyManager}
           />
 
           {!noStats && (
             <RallyControl
               teams={teams}
               matchManager={matchManager}
-              rallyManager={rallyManager}
             />
           )}
         </Card>
