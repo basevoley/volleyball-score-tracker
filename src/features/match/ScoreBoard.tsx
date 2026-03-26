@@ -35,11 +35,12 @@ function ScoreBoard({
     scores,
     setsWon,
     currentServer,
-    ballPossession,
-    matchStarted,
+    matchPhase,
     timeouts,
     substitutions,
   } = match;
+
+  const isInProgress = matchPhase === 'in-progress';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSetsWonChange = (team: TeamKey, event: any) => {
@@ -123,7 +124,7 @@ function ScoreBoard({
 
   const renderTeamScore = (teamKey: TeamKey) => {
     const color = teamColors[teamKey];
-    const isPossession = ballPossession === teamKey;
+    const isPossession = rally.possession === teamKey;
     const isServing = currentServer === teamKey;
     const contrastColor = getContrastColor(color);
 
@@ -138,7 +139,7 @@ function ScoreBoard({
           position: 'relative',
           border: getServingBorder(isServing, color),
           borderRadius: 2,
-          ...(!matchStarted && {
+          ...(!isInProgress && {
             '&::after': {
               content: '""',
               position: 'absolute',
@@ -196,7 +197,7 @@ function ScoreBoard({
                 <ButtonGroup orientation="vertical" variant="outlined">
                   <Button
                     size="small"
-                    disabled={!matchStarted}
+                    disabled={!isInProgress}
                     onClick={() => handleAdjustScore(teamKey, 1)}
                     sx={{
                       margin: '2px',
@@ -218,7 +219,7 @@ function ScoreBoard({
                   </Button>
                   <Button
                     size="small"
-                    disabled={!matchStarted}
+                    disabled={!isInProgress}
                     onClick={() => adjustScore(teamKey, -1)}
                     sx={{
                       margin: '2px',
@@ -264,7 +265,7 @@ function ScoreBoard({
                   </Typography>
                   <Select
                     size="small"
-                    disabled={!matchStarted}
+                    disabled={!isInProgress}
                     value={setsWon[teamKey]}
                     onChange={(event) => handleSetsWonChange(teamKey, event)}
                     sx={{
@@ -304,7 +305,7 @@ function ScoreBoard({
                   </Typography>
                   <Select
                     size="small"
-                    disabled={!matchStarted}
+                    disabled={!isInProgress}
                     value={setsWon[teamKey]}
                     onChange={(event) => handleSetsWonChange(teamKey, event)}
                     sx={{
@@ -345,7 +346,7 @@ function ScoreBoard({
                 <ButtonGroup orientation="vertical" variant="outlined">
                   <Button
                     size="small"
-                    disabled={!matchStarted}
+                    disabled={!isInProgress}
                     onClick={() => handleAdjustScore(teamKey, 1)}
                     sx={{
                       margin: '2px',
@@ -367,7 +368,7 @@ function ScoreBoard({
                   </Button>
                   <Button
                     size="small"
-                    disabled={!matchStarted}
+                    disabled={!isInProgress}
                     onClick={() => adjustScore(teamKey, -1)}
                     sx={{
                       margin: '2px',
@@ -395,10 +396,10 @@ function ScoreBoard({
         <CardActions sx={{ pt: 2, justifyContent: 'space-evenly' }}>
           <Tooltip title={`Tiempo Muerto (${timeouts?.[teamKey] || 0}/2)`}>
             <span>
-              <Badge badgeContent={`${timeouts?.[teamKey] || 0}/2`} invisible={!matchStarted} color={((timeouts?.[teamKey] || 0) >= 2) ? 'error' : 'primary'}>
+              <Badge badgeContent={`${timeouts?.[teamKey] || 0}/2`} invisible={!isInProgress} color={((timeouts?.[teamKey] || 0) >= 2) ? 'error' : 'primary'}>
                 <IconButton
                   onClick={() => requestConfirm('timeout', teamKey)}
-                  disabled={!matchStarted || (timeouts?.[teamKey] || 0) >= 2 || rally.stage !== 'start'}
+                  disabled={!isInProgress || (timeouts?.[teamKey] || 0) >= 2 || rally.stage !== 'start'}
                   sx={{
                     backgroundColor: 'rgba(255, 152, 0, 0.9)',
                     // color: 'rgba(255, 152, 0, 0.9)',
@@ -423,10 +424,10 @@ function ScoreBoard({
 
           <Tooltip title={`Cambio (${substitutions?.[teamKey] || 0}/6)`}>
             <span>
-              <Badge badgeContent={`${substitutions?.[teamKey] || 0}/6`} invisible={!matchStarted} color={((substitutions?.[teamKey] || 0) >= 6) ? 'error' : 'primary'}>
+              <Badge badgeContent={`${substitutions?.[teamKey] || 0}/6`} invisible={!isInProgress} color={((substitutions?.[teamKey] || 0) >= 6) ? 'error' : 'primary'}>
                 <IconButton
                   onClick={() => requestConfirm('substitution', teamKey)}
-                  disabled={!matchStarted || (substitutions?.[teamKey] || 0) >= 6 || rally.stage !== 'start'}
+                  disabled={!isInProgress || (substitutions?.[teamKey] || 0) >= 6 || rally.stage !== 'start'}
                   sx={{
                     backgroundColor: 'rgba(76, 175, 80, 0.9)',
                     color: 'white',
@@ -451,7 +452,7 @@ function ScoreBoard({
             <span>
               <IconButton
                 onClick={() => handleAction?.('fault', teamKey)}
-                disabled={!matchStarted || (substitutions?.[teamKey] || 0) >= 6}
+                disabled={!isInProgress || (substitutions?.[teamKey] || 0) >= 6}
                 sx={{
                   backgroundColor: 'rgba(255, 69, 0, 0.9)',
                   color: 'white',

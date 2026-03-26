@@ -93,7 +93,6 @@ interface ReportProps {
     teams: TeamRecord<string>;
     teamColors: TeamRecord<string>;
     statistics: TeamRecord<RawTeamStats>;
-    setScores: { teamA: number; teamB: number }[];
     setStats: SetStats[];
 }
 
@@ -103,7 +102,8 @@ interface TimelineSVGProps {
     teamColors: TeamRecord<string>;
 }
 
-const MatchReportDocument = ({ teams, teamColors, statistics, setScores, setStats }: ReportProps) => {
+const MatchReportDocument = ({ teams, teamColors, statistics, setStats }: ReportProps) => {
+    const setScores = setStats.map(s => s.scores);
     const computedTotal = {
         teamA: computeEffectiveness(statistics.teamA, statistics.teamB),
         teamB: computeEffectiveness(statistics.teamB, statistics.teamA),
@@ -390,12 +390,12 @@ const SetTimelineSVG = ({ history, teams, teamColors }: TimelineSVGProps) => {
     );
 };
 
-const MatchReport = ({ teams, teamColors, statistics, setScores, setStats }: ReportProps) => {
+const MatchReport = ({ teams, teamColors, statistics, setStats }: ReportProps) => {
     const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
     const fileName = `${teams.teamA}_vs_${teams.teamB}_${currentDate}.pdf`;
 
     const handleDownload = async () => {
-        const doc = <MatchReportDocument teams={teams} teamColors={teamColors} statistics={statistics} setScores={setScores} setStats={setStats} />;
+        const doc = <MatchReportDocument teams={teams} teamColors={teamColors} statistics={statistics} setStats={setStats} />;
         const blob = await pdf(doc).toBlob();
         const url = URL.createObjectURL(blob);
 

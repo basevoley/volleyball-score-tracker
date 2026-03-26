@@ -19,7 +19,7 @@ export const useSession = (match: MatchData, matchDetails: MatchDetails, config:
 
         const { matchData: md, matchDetails: det } = session;
         const hasMatchProgress = md && (
-            md.matchStarted ||
+            (md.matchPhase && md.matchPhase !== 'pre-match') ||
             md.scores?.teamA > 0 || md.scores?.teamB > 0 ||
             md.setsWon?.teamA > 0 || md.setsWon?.teamB > 0
         );

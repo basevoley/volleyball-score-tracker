@@ -4,10 +4,8 @@ import { createEmptyMatchStats } from './stats';
 export const initialMatchData: MatchData = {
     scores: { teamA: 0, teamB: 0 },
     setsWon: { teamA: 0, teamB: 0 },
-    setScores: [],
     currentServer: null,
-    ballPossession: null,
-    matchStarted: false,
+    matchPhase: 'pre-match',
     timeouts: { teamA: 0, teamB: 0 },
     substitutions: { teamA: 0, teamB: 0 },
     statistics: createEmptyMatchStats(),

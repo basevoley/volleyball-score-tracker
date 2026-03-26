@@ -145,13 +145,11 @@ function StatsHandler(props: StatsHandlerProps) {
               teams={props.teams}
               teamColors={props.teamColors}
               statistics={props.localMatchData.statistics}
-              setScores={props.localMatchData.setScores}
               setStats={props.localMatchData.setStats}
             />
             <MatchExcel
               teams={props.teams}
               statistics={props.localMatchData.statistics}
-              setScores={props.localMatchData.setScores}
               setStats={props.localMatchData.setStats}
             />
           </DownloadsContainer>

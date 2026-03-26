@@ -9,7 +9,6 @@ import { computeEffectiveness } from '../../domain/match/stats';
 interface ExcelProps {
     teams: TeamRecord<string>;
     statistics: TeamRecord<RawTeamStats>;
-    setScores: { teamA: number; teamB: number }[];
     setStats: SetStats[];
 }
 
@@ -35,7 +34,8 @@ const stats = [
 ];
 
 // Hacer la función asíncrona para usar workbook.xlsx.writeBuffer()
-const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<RawTeamStats>, setScores: { teamA: number; teamB: number }[], setStats: SetStats[]) => {
+const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<RawTeamStats>, setStats: SetStats[]) => {
+    const setScores = setStats.map(s => s.scores);
     const workbook = new ExcelJS.Workbook();
     // Opcional: añadir propiedades al libro de trabajo
     workbook.creator = 'Tu Aplicación';
@@ -137,8 +137,8 @@ const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<R
     saveAs(blob, fileName);
 };
 
-const MatchExcel = ({ teams, statistics, setScores, setStats }: ExcelProps) => (
-    <button onClick={() => generateExcel(teams, statistics, setScores, setStats)} style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+const MatchExcel = ({ teams, statistics, setStats }: ExcelProps) => (
+    <button onClick={() => generateExcel(teams, statistics, setStats)} style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
         <FontAwesomeIcon icon={faFileExcel} style={{ marginRight: '5px' }} />
         Descargar XLSX
     </button>);

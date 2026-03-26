@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type {
     TeamKey, TeamRecord, RawTeamStats, RallyTeamStats, MatchData, MatchScores,
     RallySnapshot, RallyHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry, AdjustHistoryEntry,
-    MatchDomainEvent, RallyActionType,
+    MatchDomainEvent, RallyActionType, MatchPhase,
 } from '../types';
 import { checkSetEnd, checkMatchEnd } from '../domain/match/rules';
 import { calculateUpdatedStatistics, createEmptyMatchStats, createEmptyRallyStats } from '../domain/match/stats';
@@ -18,10 +18,8 @@ export const useMatchManager = (
     const [match, setMatch] = useState<MatchData>(() => ({
         scores: { teamA: 0, teamB: 0 },
         setsWon: { teamA: 0, teamB: 0 },
-        setScores: [],
         currentServer: null,
-        ballPossession: null,
-        matchStarted: false,
+        matchPhase: 'pre-match' as MatchPhase,
         timeouts: { teamA: 0, teamB: 0 },
         substitutions: { teamA: 0, teamB: 0 },
         statistics: createEmptyMatchStats(),
@@ -52,18 +50,8 @@ export const useMatchManager = (
 
     // Tracks the initial server for the current rally (used by discardRally to restore)
     const initialPossessionRef = useRef<TeamKey | null>(initialData?.currentServer || null);
-    // Tracks previous rally possession to detect changes for match.ballPossession sync
-    const prevRallyPossessionRef = useRef<TeamKey | null>(initialData?.currentServer || null);
     // When a set end is pending, stores the rally winner so confirmSetEnd can reset rally correctly
     const pendingRallyResetServerRef = useRef<TeamKey | null>(null);
-
-    // Sync rally.possession → match.ballPossession after each render
-    useEffect(() => {
-        if (rally.possession !== prevRallyPossessionRef.current && rally.possession !== null) {
-            prevRallyPossessionRef.current = rally.possession;
-            setMatch(prev => ({ ...prev, ballPossession: rally.possession }));
-        }
-    }, [rally.possession]);
 
     // Reset rally to a new server — internal helper
     const resetRallyInternal = useCallback((newServer: TeamKey | null) => {
@@ -76,7 +64,6 @@ export const useMatchManager = (
         });
         if (newServer !== null) {
             initialPossessionRef.current = newServer;
-            prevRallyPossessionRef.current = newServer;
         }
     }, []);
 
@@ -125,7 +112,6 @@ export const useMatchManager = (
         if (!setWinner) return { ...state, scores, currentSetStats, currentSetHistory: history };
 
         const newSetsWon = { ...state.setsWon, [setWinner]: state.setsWon[setWinner] + 1 };
-        const newSetScores = [...state.setScores, scores];
         const newSetStats = [...state.setStats, {
             setNumber: state.setsWon.teamA + state.setsWon.teamB + 1,
             scores,
@@ -139,14 +125,12 @@ export const useMatchManager = (
                 ...state,
                 scores,
                 setsWon: newSetsWon,
-                setScores: newSetScores,
                 setStats: newSetStats,
                 timeouts: { teamA: 0, teamB: 0 },
                 substitutions: { teamA: 0, teamB: 0 },
                 winner: matchWinner,
-                matchStarted: false,
+                matchPhase: 'ended' as MatchPhase,
                 currentServer: null,
-                ballPossession: null,
             };
         }
 
@@ -154,22 +138,20 @@ export const useMatchManager = (
             ...state,
             scores: { teamA: 0, teamB: 0 },
             setsWon: newSetsWon,
-            setScores: newSetScores,
             setStats: newSetStats,
             currentSetStats: createEmptyMatchStats(),
             currentSetHistory: [],
             timeouts: { teamA: 0, teamB: 0 },
             substitutions: { teamA: 0, teamB: 0 },
-            matchStarted: false,
+            matchPhase: 'between-sets' as MatchPhase,
             currentServer: null,
-            ballPossession: null,
         };
     }, [maxSets]);
 
     // ── Match actions ────────────────────────────────────────────────────────
 
     const startMatch = useCallback(() => {
-        setMatch(prev => ({ ...prev, matchStarted: true }));
+        setMatch(prev => ({ ...prev, matchPhase: 'in-progress' as MatchPhase }));
         pendingEventRef.current = { type: 'MatchStarted' };
     }, []);
 
@@ -177,10 +159,8 @@ export const useMatchManager = (
         setMatch({
             scores: { teamA: 0, teamB: 0 },
             setsWon: { teamA: 0, teamB: 0 },
-            setScores: [],
             currentServer: null,
-            ballPossession: null,
-            matchStarted: false,
+            matchPhase: 'pre-match',
             timeouts: { teamA: 0, teamB: 0 },
             substitutions: { teamA: 0, teamB: 0 },
             statistics: createEmptyMatchStats(),
@@ -194,7 +174,7 @@ export const useMatchManager = (
     }, [resetRallyInternal]);
 
     const setServer = useCallback((server: TeamKey) => {
-        setMatch(prev => ({ ...prev, currentServer: server, ballPossession: server }));
+        setMatch(prev => ({ ...prev, currentServer: server }));
         resetRallyInternal(server);
         pendingEventRef.current = { type: 'ServerSet', server };
     }, [resetRallyInternal]);
@@ -218,7 +198,6 @@ export const useMatchManager = (
 
             const newHistoryEntry: RallyHistoryEntry = {
                 entryType: 'rally',
-                index: (prev.currentSetHistory?.length || 0) + 1,
                 timestamp: Date.now(),
                 scores: updatedScores,
                 server: winner,
@@ -262,7 +241,6 @@ export const useMatchManager = (
         setMatch(prev => {
             const newEntry: TimeoutHistoryEntry = {
                 entryType: 'timeout',
-                index: (prev.currentSetHistory?.length || 0) + 1,
                 timestamp: Date.now(),
                 scores: { ...prev.scores },
                 team,
@@ -280,7 +258,6 @@ export const useMatchManager = (
         setMatch(prev => {
             const newEntry: SubstitutionHistoryEntry = {
                 entryType: 'substitution',
-                index: (prev.currentSetHistory?.length || 0) + 1,
                 timestamp: Date.now(),
                 scores: { ...prev.scores },
                 team,
@@ -299,7 +276,6 @@ export const useMatchManager = (
             const adjustedScores = { ...prev.scores, [team]: Math.max(0, prev.scores[team] + adjustment) };
             const newEntry: AdjustHistoryEntry = {
                 entryType: 'adjust',
-                index: (prev.currentSetHistory?.length || 0) + 1,
                 timestamp: Date.now(),
                 scores: adjustedScores,
                 team,
@@ -324,7 +300,7 @@ export const useMatchManager = (
             const matchWinner = checkMatchEnd(updatedSetsWon, maxSets);
             if (matchWinner) {
                 pendingEventRef.current = { type: 'MatchEnded', winner: matchWinner };
-                return { ...prev, setsWon: updatedSetsWon, winner: matchWinner, matchStarted: false, currentServer: null, ballPossession: null };
+                return { ...prev, setsWon: updatedSetsWon, winner: matchWinner, matchPhase: 'ended' as MatchPhase, currentServer: null };
             }
             pendingEventRef.current = { type: 'ScoreAdjusted' };
             return { ...prev, setsWon: updatedSetsWon };
@@ -389,10 +365,7 @@ export const useMatchManager = (
             actionHistory: [],
             stats: createEmptyRallyStats(),
         });
-        if (server !== null) {
-            prevRallyPossessionRef.current = server;
-            setMatch(prev => ({ ...prev, ballPossession: server }));
-        }
+        initialPossessionRef.current = server;
         pendingEventRef.current = { type: 'RallyDiscarded' };
     }, []);
 

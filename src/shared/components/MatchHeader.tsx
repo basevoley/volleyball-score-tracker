@@ -54,7 +54,7 @@ const MatchHeader = ({
       {/* Match Control Buttons */}
       <Box
         sx={{
-          display: (!match.matchStarted || match.winner) ? 'flex' : 'none',
+          display: match.matchPhase !== 'in-progress' ? 'flex' : 'none',
           flexDirection: 'column',
           alignItems: 'center',
           pt: 1,
@@ -63,14 +63,14 @@ const MatchHeader = ({
         <Button
           onClick={startMatch}
           variant='contained'
-          sx={{ display: (match.matchStarted || match.winner) ? 'none' : undefined }}
+          sx={{ display: (match.matchPhase === 'pre-match' || match.matchPhase === 'between-sets') ? undefined : 'none' }}
         >
-          {match.setStats.length === 0? "Iniciar" : "Reanudar"} partido
+          {match.setStats.length === 0 ? "Iniciar" : "Reanudar"} partido
         </Button>
         <Button
           onClick={resetMatch}
           variant='contained'
-          sx={{ display: match.winner ? undefined : 'none' }}
+          sx={{ display: match.matchPhase === 'ended' ? undefined : 'none' }}
         >
           Reiniciar partido
         </Button>
@@ -89,9 +89,9 @@ const MatchHeader = ({
           exclusive
           value={match.currentServer}
           onChange={(event, newVal) => setServer(newVal)}
-          disabled={!match.matchStarted || rally.stage !== 'start'}
+          disabled={match.matchPhase !== 'in-progress' || rally.stage !== 'start'}
           sx={{
-            display: (match.matchStarted || match.winner) ? 'flex' : 'none',
+            display: match.matchPhase !== 'pre-match' ? 'flex' : 'none',
             width: '100%',
             px: 1
           }}

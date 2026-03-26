@@ -129,7 +129,7 @@ const Controls = () => {
 
     const hasStats = [...Object.values(matchDetails.stats.teamA), ...Object.values(matchDetails.stats.teamB)].some(val => Number(val) > 0);
     const hasPlayers = (matchDetails.players.teamA?.length > 0) || (matchDetails.players.teamB?.length > 0);
-    const isPreMatch = !matchData.matchStarted && matchData.setStats.length === 0;
+    const isPreMatch = matchData.matchPhase === 'pre-match';
 
     const { isRunning, activeSequenceId, currentStepIndex, activeSteps, runSequence, stop, automationsEnabled, toggleAutomation, manualSequences, autoSequences } = useAutomation();
 
@@ -293,7 +293,7 @@ const Controls = () => {
                         </ControlSection>
                     </AccordionDetails>
                 </Accordion>
-                <Accordion defaultExpanded={!matchData.matchStarted} sx={{ mt: 1, mb: 0, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+                <Accordion defaultExpanded={matchData.matchPhase !== 'in-progress'} sx={{ mt: 1, mb: 0, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Typography variant="h6" >Patrocinadores y RRSS</Typography>
                     </AccordionSummary>
@@ -354,7 +354,7 @@ const Controls = () => {
                     </AccordionDetails>
                 </Accordion>
 
-                <Accordion defaultExpanded={matchData.matchStarted} sx={{ mt: 1, mb: 0, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+                <Accordion defaultExpanded={matchData.matchPhase === 'in-progress'} sx={{ mt: 1, mb: 0, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Typography variant="h6" >Marcador y Resultados</Typography>
                     </AccordionSummary>

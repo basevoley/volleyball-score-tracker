@@ -30,8 +30,8 @@ interface RestoreSessionDialogProps {
 function RestoreSessionDialog({ session, onRestore, onDiscard }: RestoreSessionDialogProps) {
   const { matchData, matchDetails } = session;
   const { teams } = matchDetails;
-  const { scores, setsWon, winner, matchStarted } = matchData;
-  const matchProgress = matchStarted || (matchData.setsWon.teamA > 0 || matchData.setsWon.teamB > 0);
+  const { scores, setsWon, winner, matchPhase } = matchData;
+  const matchProgress = matchPhase !== 'pre-match' || (matchData.setsWon.teamA > 0 || matchData.setsWon.teamB > 0);
 
   const statusLabel = winner
     ? 'Partido finalizado'
@@ -94,7 +94,7 @@ function AppContent({ overlayUrl }: { overlayUrl: string }) {
     restoreSession({ matchData: savedSession!.matchData, matchDetails: savedSession!.matchDetails });
     setConfig(savedSession!.config);
     clearSavedSession();
-    setActiveTab(savedSession!.matchData?.matchStarted ? 1 : 0);
+    setActiveTab(savedSession!.matchData?.matchPhase === 'in-progress' ? 1 : 0);
     syncAll();
   };
 

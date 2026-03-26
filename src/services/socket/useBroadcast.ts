@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useSocket } from './SocketContext';
 import { useMatchContext } from '../../contexts/MatchContext';
 import { useConfig } from '../../contexts/ConfigContext';
-import type { MatchData, MatchDomainEvent, MatchScores, TeamKey, TeamRecord, ComputedTeamStats } from '../../types';
+import type { MatchData, MatchDomainEvent, MatchScores, TeamKey, TeamRecord, ComputedTeamStats, MatchPhase } from '../../types';
 import { computeEffectiveness } from '../../domain/match/stats';
 
 interface MatchEvent {
@@ -15,7 +15,7 @@ export interface OverlayPayload {
     setsWon: MatchScores;
     setScores: MatchScores[];
     currentServer: TeamKey | null;
-    matchStarted: boolean;
+    matchPhase: MatchPhase;
     timeouts: MatchScores;
     substitutions: MatchScores;
     statistics: TeamRecord<ComputedTeamStats>;
@@ -30,7 +30,8 @@ const buildMatchPayload = (match: MatchData, matchEvent: MatchEvent): OverlayPay
         teamB: computeEffectiveness(match.statistics.teamB, match.statistics.teamA),
     };
 
-    const isBetweenSets = !match.matchStarted && match.setStats.length > 0;
+    const isBetweenSets = match.matchPhase === 'between-sets';
+    const allSetScores = match.setStats.map(s => s.scores);
     const lastSet = Math.max(match.setStats.length - 1, 0);
 
     let currentSetStats: TeamRecord<ComputedTeamStats>;
@@ -43,15 +44,15 @@ const buildMatchPayload = (match: MatchData, matchEvent: MatchEvent): OverlayPay
             teamA: computeEffectiveness(rawSet.teamA, rawSet.teamB),
             teamB: computeEffectiveness(rawSet.teamB, rawSet.teamA),
         };
-        scores = match.setScores[lastSet] ?? match.scores;
-        setScores = match.winner ? match.setScores : match.setScores.slice(0, -1);
+        scores = match.setStats[lastSet].scores;
+        setScores = match.winner ? allSetScores : allSetScores.slice(0, -1);
     } else {
         currentSetStats = {
             teamA: computeEffectiveness(match.currentSetStats.teamA, match.currentSetStats.teamB),
             teamB: computeEffectiveness(match.currentSetStats.teamB, match.currentSetStats.teamA),
         };
         scores = match.scores;
-        setScores = match.setScores;
+        setScores = allSetScores;
     }
 
     return {
@@ -59,7 +60,7 @@ const buildMatchPayload = (match: MatchData, matchEvent: MatchEvent): OverlayPay
         setsWon: match.setsWon,
         setScores,
         currentServer: match.currentServer,
-        matchStarted: match.matchStarted,
+        matchPhase: match.matchPhase,
         timeouts: match.timeouts,
         substitutions: match.substitutions,
         statistics: computedStats,

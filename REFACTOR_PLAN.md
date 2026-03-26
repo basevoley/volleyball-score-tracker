@@ -165,19 +165,19 @@ Separate stored raw statistics from computed display values. After this phase, `
 
 ---
 
-## Phase 11 — `matchPhase` enum + remove redundant fields
+## Phase 11 — `matchPhase` enum + remove redundant fields ✅
 
 Replace the ambiguous `matchStarted: boolean` combination with an explicit phase enum, and drop fields that duplicate data available elsewhere.
 
-- [ ] Add `matchPhase: 'pre-match' | 'in-progress' | 'between-sets' | 'ended'` to `MatchData`
-- [ ] Remove `matchStarted: boolean` from `MatchData`; keep `winner: TeamKey | null` (set only when `matchPhase === 'ended'`)
-- [ ] Update `useMatchManager`: `startMatch` → `'in-progress'`; `confirmSetEnd` (set end) → `'between-sets'`, then `setServer` → `'in-progress'`; match end → `'ended'`; `resetMatch` → `'pre-match'`
-- [ ] Replace all `match.matchStarted` reads in components with `match.matchPhase === 'in-progress'`
-- [ ] Remove the `!match.matchStarted && match.setStats.length > 0` "between-sets" hack from `useBroadcast`
-- [ ] Remove `ballPossession: TeamKey | null` from `MatchData`; components that need it read `rally.possession` directly
-- [ ] Remove the `useEffect` that syncs `rally.possession → match.ballPossession` in `useMatchManager`
-- [ ] Remove `setScores: MatchScores[]` from `MatchData`; derive as `setStats.map(s => s.scores)` where needed
-- [ ] Remove `index: number` from `BaseHistoryEntry` (redundant with array position); update all writers
+- [x] Add `matchPhase: 'pre-match' | 'in-progress' | 'between-sets' | 'ended'` to `MatchData`
+- [x] Remove `matchStarted: boolean` from `MatchData`; keep `winner: TeamKey | null` (set only when `matchPhase === 'ended'`)
+- [x] Update `useMatchManager`: `startMatch` → `'in-progress'`; `confirmSetEnd` (set end) → `'between-sets'`, then `setServer` → `'in-progress'`; match end → `'ended'`; `resetMatch` → `'pre-match'`
+- [x] Replace all `match.matchStarted` reads in components with `match.matchPhase === 'in-progress'`
+- [x] Remove the `!match.matchStarted && match.setStats.length > 0` "between-sets" hack from `useBroadcast`
+- [x] Remove `ballPossession: TeamKey | null` from `MatchData`; components that need it read `rally.possession` directly
+- [x] Remove the `useEffect` that syncs `rally.possession → match.ballPossession` in `useMatchManager`
+- [x] Remove `setScores: MatchScores[]` from `MatchData`; derive as `setStats.map(s => s.scores)` where needed
+- [x] Remove `index: number` from `BaseHistoryEntry` (redundant with array position); update all writers
 
 ---
 

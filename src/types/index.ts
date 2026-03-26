@@ -57,6 +57,8 @@ export interface MatchScores {
   teamB: number;
 }
 
+export type MatchPhase = 'pre-match' | 'in-progress' | 'between-sets' | 'ended';
+
 export type MatchDomainEvent =
   | { type: 'MatchStarted' }
   | { type: 'MatchReset' }
@@ -70,7 +72,6 @@ export type MatchDomainEvent =
   | { type: 'ScoreAdjusted' };
 
 interface BaseHistoryEntry {
-  index: number;
   timestamp: number;
   scores: MatchScores;
 }
@@ -112,10 +113,8 @@ export interface SetStats {
 export interface MatchData {
   scores: MatchScores;
   setsWon: MatchScores;
-  setScores: MatchScores[];
   currentServer: TeamKey | null;
-  ballPossession: TeamKey | null;
-  matchStarted: boolean;
+  matchPhase: MatchPhase;
   timeouts: MatchScores;
   substitutions: MatchScores;
   statistics: TeamRecord<RawTeamStats>;
