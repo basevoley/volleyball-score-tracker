@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
-import type { TeamRecord, TeamStats } from '../../types';
+import type { TeamRecord, RawTeamStats } from '../../types';
+import { computeEffectiveness } from '../../domain/match/stats';
 
 const StatisticsContainer = styled.div`
   width: 100%;
@@ -54,10 +55,14 @@ const stats = [
 
 interface Props {
   teams: TeamRecord<string>;
-  statistics: TeamRecord<TeamStats>;
+  statistics: TeamRecord<RawTeamStats>;
 }
 
 const Statistics = ({ teams, statistics }: Props) => {
+  const computed = {
+    teamA: computeEffectiveness(statistics.teamA, statistics.teamB),
+    teamB: computeEffectiveness(statistics.teamB, statistics.teamA),
+  };
   return (
     <StatisticsContainer>
       <div id="statistics-table">
@@ -74,8 +79,8 @@ const Statistics = ({ teams, statistics }: Props) => {
             {stats.map((stat, index) => (
                         <TableRow key={index}>
                             <TableCell>{stat.label}</TableCell>
-                            <TableCell>{(statistics.teamA as unknown as Record<string, unknown>)[stat.key] as string | number}</TableCell>
-                            <TableCell>{(statistics.teamB as unknown as Record<string, unknown>)[stat.key] as string | number}</TableCell>
+                            <TableCell>{(computed.teamA as unknown as Record<string, unknown>)[stat.key] as string | number}</TableCell>
+                            <TableCell>{(computed.teamB as unknown as Record<string, unknown>)[stat.key] as string | number}</TableCell>
                         </TableRow>
                     ))}
           </tbody>

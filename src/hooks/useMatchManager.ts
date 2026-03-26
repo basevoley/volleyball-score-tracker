@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type {
-    TeamKey, TeamRecord, TeamStats, RallyTeamStats, MatchData, MatchScores,
+    TeamKey, TeamRecord, RawTeamStats, RallyTeamStats, MatchData, MatchScores,
     RallySnapshot, RallyHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry, AdjustHistoryEntry,
     MatchDomainEvent, RallyActionType,
 } from '../types';
@@ -118,7 +118,7 @@ export const useMatchManager = (
     const handleGameEnd = useCallback((
         state: MatchData,
         scores: MatchScores,
-        currentSetStats: TeamRecord<TeamStats>,
+        currentSetStats: TeamRecord<RawTeamStats>,
         history: MatchData['currentSetHistory']
     ): MatchData => {
         const setWinner = checkSetEnd(scores, state.setsWon, maxSets);

@@ -3,11 +3,12 @@ import ExcelJS from 'exceljs'; // Importar ExcelJS
 import { saveAs } from 'file-saver'; // Importar saveAs para descargas en el navegador
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileExcel } from '@fortawesome/free-solid-svg-icons';
-import type { TeamRecord, TeamStats, SetStats } from '../../types';
+import type { TeamRecord, RawTeamStats, SetStats } from '../../types';
+import { computeEffectiveness } from '../../domain/match/stats';
 
 interface ExcelProps {
     teams: TeamRecord<string>;
-    statistics: TeamRecord<TeamStats>;
+    statistics: TeamRecord<RawTeamStats>;
     setScores: { teamA: number; teamB: number }[];
     setStats: SetStats[];
 }
@@ -34,11 +35,16 @@ const stats = [
 ];
 
 // Hacer la función asíncrona para usar workbook.xlsx.writeBuffer()
-const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<TeamStats>, setScores: { teamA: number; teamB: number }[], setStats: SetStats[]) => {
+const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<RawTeamStats>, setScores: { teamA: number; teamB: number }[], setStats: SetStats[]) => {
     const workbook = new ExcelJS.Workbook();
     // Opcional: añadir propiedades al libro de trabajo
     workbook.creator = 'Tu Aplicación';
     workbook.created = new Date();
+
+    const computedTotal = {
+        teamA: computeEffectiveness(statistics.teamA, statistics.teamB),
+        teamB: computeEffectiveness(statistics.teamB, statistics.teamA),
+    };
 
     // --- Hoja de Estadísticas Totales ---
     const statsSheet = workbook.addWorksheet('Estadísticas Totales');
@@ -50,8 +56,8 @@ const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<T
 
     const statsData = stats.map(stat => ({
         label: stat.label,
-        teamA: (statistics.teamA as unknown as Record<string, unknown>)[stat.key],
-        teamB: (statistics.teamB as unknown as Record<string, unknown>)[stat.key]
+        teamA: (computedTotal.teamA as unknown as Record<string, unknown>)[stat.key],
+        teamB: (computedTotal.teamB as unknown as Record<string, unknown>)[stat.key]
     }));
     statsSheet.addRows(statsData);
 
@@ -73,6 +79,11 @@ const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<T
     // --- Hojas por Set y Evolución de Rallies ---
     if (setStats && setStats.length > 0) {
         setStats.forEach((set) => {
+            const computedSet = {
+                teamA: computeEffectiveness(set.statistics.teamA, set.statistics.teamB),
+                teamB: computeEffectiveness(set.statistics.teamB, set.statistics.teamA),
+            };
+
             // Hoja de estadísticas por set
             const perSetSheet = workbook.addWorksheet(`Set ${set.setNumber}`);
             perSetSheet.columns = [
@@ -82,8 +93,8 @@ const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<T
             ];
             const perSetData = stats.map(stat => ({
                 label: stat.label,
-                teamA: set.statistics && set.statistics.teamA ? (set.statistics.teamA as unknown as Record<string, unknown>)[stat.key] : 'N/A',
-                teamB: set.statistics && set.statistics.teamB ? (set.statistics.teamB as unknown as Record<string, unknown>)[stat.key] : 'N/A'
+                teamA: (computedSet.teamA as unknown as Record<string, unknown>)[stat.key],
+                teamB: (computedSet.teamB as unknown as Record<string, unknown>)[stat.key]
             }));
             perSetSheet.addRows(perSetData);
 

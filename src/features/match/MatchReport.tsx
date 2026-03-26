@@ -1,7 +1,8 @@
 import React from 'react';
 import { pdf, Svg, Path, Circle, Rect, G, Text as SvgText, Polygon } from '@react-pdf/renderer';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import type { TeamKey, TeamRecord, TeamStats, SetStats, HistoryEntry } from '../../types';
+import type { TeamKey, TeamRecord, RawTeamStats, SetStats, HistoryEntry } from '../../types';
+import { computeEffectiveness } from '../../domain/match/stats';
 
 type ReportEvent = { type: 'rally' } | { type: 'fault' | 'timeout' | 'substitution'; team: TeamKey };
 
@@ -91,7 +92,7 @@ const stats = [
 interface ReportProps {
     teams: TeamRecord<string>;
     teamColors: TeamRecord<string>;
-    statistics: TeamRecord<TeamStats>;
+    statistics: TeamRecord<RawTeamStats>;
     setScores: { teamA: number; teamB: number }[];
     setStats: SetStats[];
 }
@@ -102,7 +103,12 @@ interface TimelineSVGProps {
     teamColors: TeamRecord<string>;
 }
 
-const MatchReportDocument = ({ teams, teamColors, statistics, setScores, setStats }: ReportProps) => (
+const MatchReportDocument = ({ teams, teamColors, statistics, setScores, setStats }: ReportProps) => {
+    const computedTotal = {
+        teamA: computeEffectiveness(statistics.teamA, statistics.teamB),
+        teamB: computeEffectiveness(statistics.teamB, statistics.teamA),
+    };
+    return (
     <Document>
         <Page size="A4" style={styles.page}>
             <View style={styles.section}>
@@ -125,10 +131,10 @@ const MatchReportDocument = ({ teams, teamColors, statistics, setScores, setStat
                                 <Text style={styles.tableCell}>{stat.label}</Text>
                             </View>
                             <View style={styles.tableCol}>
-                                <Text style={styles.tableCell}>{String((statistics.teamA as unknown as Record<string, unknown>)[stat.key])}</Text>
+                                <Text style={styles.tableCell}>{String((computedTotal.teamA as unknown as Record<string, unknown>)[stat.key])}</Text>
                             </View>
                             <View style={styles.tableCol}>
-                                <Text style={styles.tableCell}>{String((statistics.teamB as unknown as Record<string, unknown>)[stat.key])}</Text>
+                                <Text style={styles.tableCell}>{String((computedTotal.teamB as unknown as Record<string, unknown>)[stat.key])}</Text>
                             </View>
                         </View>
                     ))}
@@ -164,7 +170,12 @@ const MatchReportDocument = ({ teams, teamColors, statistics, setScores, setStat
                                 </View>
             </View>
         </Page>
-                {setStats && setStats.map((set, setIndex) => (
+                {setStats && setStats.map((set, setIndex) => {
+                    const computedSet = {
+                        teamA: computeEffectiveness(set.statistics.teamA, set.statistics.teamB),
+                        teamB: computeEffectiveness(set.statistics.teamB, set.statistics.teamA),
+                    };
+                    return (
                     <Page size="A4" style={styles.page} key={setIndex}>
                         <View style={styles.section}>
                             <Text style={{ fontSize: 14, marginBottom: 10 }}>Set {set.setNumber} - {teams.teamA} {set.scores?.teamA ?? 'N/A'} - {teams.teamB} {set.scores?.teamB ?? 'N/A'}</Text>
@@ -187,10 +198,10 @@ const MatchReportDocument = ({ teams, teamColors, statistics, setScores, setStat
                                                 <Text style={styles.tableCell}>{stat.label}</Text>
                                             </View>
                                             <View style={styles.tableCol}>
-                                                <Text style={styles.tableCell}>{set.statistics && set.statistics.teamA ? String((set.statistics.teamA as unknown as Record<string, unknown>)[stat.key]) : 'N/A'}</Text>
+                                                <Text style={styles.tableCell}>{String((computedSet.teamA as unknown as Record<string, unknown>)[stat.key])}</Text>
                                             </View>
                                             <View style={styles.tableCol}>
-                                                <Text style={styles.tableCell}>{set.statistics && set.statistics.teamB ? String((set.statistics.teamB as unknown as Record<string, unknown>)[stat.key]) : 'N/A'}</Text>
+                                                <Text style={styles.tableCell}>{String((computedSet.teamB as unknown as Record<string, unknown>)[stat.key])}</Text>
                                             </View>
                                         </View>
                                     ))}
@@ -206,9 +217,11 @@ const MatchReportDocument = ({ teams, teamColors, statistics, setScores, setStat
                             )}
                         </View>
                     </Page>
-                ))}
+                    );
+                })}
     </Document>
-);
+    );
+};
 
 // Simple SVG timeline renderer for PDFs using @react-pdf/renderer primitives
 const SetTimelineSVG = ({ history, teams, teamColors }: TimelineSVGProps) => {

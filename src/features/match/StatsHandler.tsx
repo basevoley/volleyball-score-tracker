@@ -4,7 +4,7 @@ import Statistics from './Statistics';
 import MatchReport from './MatchReport';
 import MatchExcel from './MatchExcel';
 import type { SlideProps } from '@mui/material';
-import type { TeamRecord, TeamStats, MatchData } from '../../types';
+import type { TeamRecord, MatchData } from '../../types';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -66,7 +66,7 @@ const Transition = React.forwardRef<unknown, SlideProps>(function Transition(pro
 interface StatsHandlerProps {
   teams: TeamRecord<string>;
   teamColors: TeamRecord<string>;
-  localMatchData: MatchData & { statistics: TeamRecord<TeamStats> };
+  localMatchData: MatchData;
   expandedSetIndex: number | null;
   setExpandedSetIndex: (index: number | null) => void;
 }

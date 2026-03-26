@@ -2,27 +2,71 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useSocket } from './SocketContext';
 import { useMatchContext } from '../../contexts/MatchContext';
 import { useConfig } from '../../contexts/ConfigContext';
-import type { MatchData, MatchDomainEvent } from '../../types';
+import type { MatchData, MatchDomainEvent, MatchScores, TeamKey, TeamRecord, ComputedTeamStats } from '../../types';
+import { computeEffectiveness } from '../../domain/match/stats';
 
-// Shape a matchData payload for the overlay (backward-compatible format)
-const buildMatchPayload = (
-    match: MatchData,
-    matchEvent: { type: string | null; details: Record<string, unknown> | null }
-) => {
-    const lastSet = match.setStats ? Math.max(match.setStats.length - 1, 0) : 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload: any = { ...match, matchEvent };
-    if (!match.matchStarted && match.setStats.length > 0) {
-        payload.currentSetStats = { ...match.setStats[lastSet].statistics };
-        payload.scores = { ...match.setScores[lastSet] || match.scores };
-        if (!match.winner) {
-            payload.setScores = match.setScores.slice(0, -1);
-        }
+interface MatchEvent {
+    type: string | null;
+    details: Record<string, unknown> | null;
+}
+
+export interface OverlayPayload {
+    scores: MatchScores;
+    setsWon: MatchScores;
+    setScores: MatchScores[];
+    currentServer: TeamKey | null;
+    matchStarted: boolean;
+    timeouts: MatchScores;
+    substitutions: MatchScores;
+    statistics: TeamRecord<ComputedTeamStats>;
+    currentSetStats: TeamRecord<ComputedTeamStats>;
+    winner: TeamKey | null;
+    matchEvent: MatchEvent;
+}
+
+const buildMatchPayload = (match: MatchData, matchEvent: MatchEvent): OverlayPayload => {
+    const computedStats: TeamRecord<ComputedTeamStats> = {
+        teamA: computeEffectiveness(match.statistics.teamA, match.statistics.teamB),
+        teamB: computeEffectiveness(match.statistics.teamB, match.statistics.teamA),
+    };
+
+    const isBetweenSets = !match.matchStarted && match.setStats.length > 0;
+    const lastSet = Math.max(match.setStats.length - 1, 0);
+
+    let currentSetStats: TeamRecord<ComputedTeamStats>;
+    let scores: MatchScores;
+    let setScores: MatchScores[];
+
+    if (isBetweenSets) {
+        const rawSet = match.setStats[lastSet].statistics;
+        currentSetStats = {
+            teamA: computeEffectiveness(rawSet.teamA, rawSet.teamB),
+            teamB: computeEffectiveness(rawSet.teamB, rawSet.teamA),
+        };
+        scores = match.setScores[lastSet] ?? match.scores;
+        setScores = match.winner ? match.setScores : match.setScores.slice(0, -1);
+    } else {
+        currentSetStats = {
+            teamA: computeEffectiveness(match.currentSetStats.teamA, match.currentSetStats.teamB),
+            teamB: computeEffectiveness(match.currentSetStats.teamB, match.currentSetStats.teamA),
+        };
+        scores = match.scores;
+        setScores = match.setScores;
     }
-    delete payload.ballPossession;
-    delete payload.setStats;
-    delete payload.currentSetHistory;
-    return payload;
+
+    return {
+        scores,
+        setsWon: match.setsWon,
+        setScores,
+        currentServer: match.currentServer,
+        matchStarted: match.matchStarted,
+        timeouts: match.timeouts,
+        substitutions: match.substitutions,
+        statistics: computedStats,
+        currentSetStats,
+        winner: match.winner,
+        matchEvent,
+    };
 };
 
 export const useBroadcast = () => {

@@ -5,8 +5,8 @@ export type TeamRecord<T> = { teamA: T; teamB: T };
 
 // ── Statistics ───────────────────────────────────────────────────────────────
 
-/** Full match statistics for a single team (includes computed effectiveness fields). */
-export interface TeamStats {
+/** Raw match statistics for a single team — stored in MatchData, no computed fields. */
+export interface RawTeamStats {
   serve: number;
   ace: number;
   serveError: number;
@@ -21,6 +21,10 @@ export interface TeamStats {
   blockPoint: number;
   blockOut: number;
   fault: number;
+}
+
+/** Display/overlay stats — RawTeamStats plus computed effectiveness fields. Produced by computeEffectiveness(). */
+export interface ComputedTeamStats extends RawTeamStats {
   selfErrors: number;
   serviceEffectiveness: string;
   receptionEffectiveness: string;
@@ -101,7 +105,7 @@ export type HistoryEntry = RallyHistoryEntry | TimeoutHistoryEntry | Substitutio
 export interface SetStats {
   setNumber: number;
   scores: MatchScores;
-  statistics: TeamRecord<TeamStats>;
+  statistics: TeamRecord<RawTeamStats>;
   history: HistoryEntry[];
 }
 
@@ -114,8 +118,8 @@ export interface MatchData {
   matchStarted: boolean;
   timeouts: MatchScores;
   substitutions: MatchScores;
-  statistics: TeamRecord<TeamStats>;
-  currentSetStats: TeamRecord<TeamStats>;
+  statistics: TeamRecord<RawTeamStats>;
+  currentSetStats: TeamRecord<RawTeamStats>;
   currentSetHistory: HistoryEntry[];
   setStats: SetStats[];
   winner: TeamKey | null;

@@ -148,17 +148,117 @@ Automation reacts to match events directly, not via socket intercept.
 
 ---
 
-## Phase 10 — Undo confirmed rally *(future feature)*
+## Phase 10 — Stats split ✅
 
-Depends on Phases 2, 3, 4, 5 all complete.
+Separate stored raw statistics from computed display values. After this phase, `MatchData` stores only raw counters; effectiveness metrics are computed at the point of use.
 
-- [ ] Implement `undoLastHistoryEntry()` on `useMatchManager`
-- [ ] Confirmed rally entries: restore full `RallyState` (stage, possession, stats, action history)
-- [ ] Timeout/substitution entries: decrement counters, remove history entry
-- [ ] Set-end entries: reverse set transition, restore previous scores/stats/history, decrement `setsWon`
-- [ ] Undo fires a `MatchDomainEvent` so overlay and automation react
-- [ ] UI: undo button in `Match.tsx`, enabled when `canUndoHistory` is true
-- [ ] Confirmation prompt for set-boundary undos
+- [x] Rename `TeamStats` → `RawTeamStats`, removing the five computed fields (`selfErrors`, `serviceEffectiveness`, `receptionEffectiveness`, `attackEffectiveness`, `defenseEffectiveness`)
+- [x] Define `ComputedTeamStats = RawTeamStats & { selfErrors: number; serviceEffectiveness: string; receptionEffectiveness: string; attackEffectiveness: string; defenseEffectiveness: string }`
+- [x] Export `computeEffectiveness(team: RawTeamStats, opp: RawTeamStats): ComputedTeamStats` from `domain/match/stats.ts` — single source of truth for all effectiveness formulas
+- [x] `MatchData.statistics`, `MatchData.currentSetStats`, and `SetStats.statistics` store `TeamRecord<RawTeamStats>` only
+- [x] Update `calculateUpdatedStatistics`, `mergeStats`, `createEmptyMatchStats` to work with `RawTeamStats`
+- [x] Remove `calculateComputedStats` (replaced by `computeEffectiveness`)
+- [x] `Statistics.tsx` calls `computeEffectiveness` at render time
+- [x] `buildMatchPayload` in `useBroadcast` calls `computeEffectiveness` before building the payload; overlay always receives `ComputedTeamStats`
+- [x] Define `OverlayPayload` interface; `buildMatchPayload` returns it — no more `any` type or `delete` calls
+- [x] Update all tests that reference `TeamStats`
+
+---
+
+## Phase 11 — `matchPhase` enum + remove redundant fields
+
+Replace the ambiguous `matchStarted: boolean` combination with an explicit phase enum, and drop fields that duplicate data available elsewhere.
+
+- [ ] Add `matchPhase: 'pre-match' | 'in-progress' | 'between-sets' | 'ended'` to `MatchData`
+- [ ] Remove `matchStarted: boolean` from `MatchData`; keep `winner: TeamKey | null` (set only when `matchPhase === 'ended'`)
+- [ ] Update `useMatchManager`: `startMatch` → `'in-progress'`; `confirmSetEnd` (set end) → `'between-sets'`, then `setServer` → `'in-progress'`; match end → `'ended'`; `resetMatch` → `'pre-match'`
+- [ ] Replace all `match.matchStarted` reads in components with `match.matchPhase === 'in-progress'`
+- [ ] Remove the `!match.matchStarted && match.setStats.length > 0` "between-sets" hack from `useBroadcast`
+- [ ] Remove `ballPossession: TeamKey | null` from `MatchData`; components that need it read `rally.possession` directly
+- [ ] Remove the `useEffect` that syncs `rally.possession → match.ballPossession` in `useMatchManager`
+- [ ] Remove `setScores: MatchScores[]` from `MatchData`; derive as `setStats.map(s => s.scores)` where needed
+- [ ] Remove `index: number` from `BaseHistoryEntry` (redundant with array position); update all writers
+
+---
+
+## Phase 12 — Unified history
+
+Replace the split `currentSetHistory` / `setStats[n].history` with a single `match.history[]` array that spans the entire match. Adds the two entry types needed for full undo coverage and lays the groundwork for Phase 13.
+
+- [ ] Add `history: HistoryEntry[]` to `MatchData` — never cleared mid-match
+- [ ] Remove `currentSetHistory: HistoryEntry[]` from `MatchData`
+- [ ] Add `setNumber: number` to `BaseHistoryEntry` — the set number when the entry was created; replaces per-set array split as the filter key
+- [ ] Add `SetEndHistoryEntry` to the `HistoryEntry` union:
+  ```ts
+  interface SetEndHistoryEntry extends BaseHistoryEntry {
+    entryType: 'set-end';
+    prevScores: MatchScores;
+    prevSetsWon: MatchScores;
+    prevSetStats: TeamRecord<RawTeamStats>;
+    prevServer: TeamKey | null;
+    prevTimeouts: MatchScores;
+    prevSubstitutions: MatchScores;
+  }
+  ```
+- [ ] Add `SetsWonAdjustHistoryEntry` to the `HistoryEntry` union:
+  ```ts
+  interface SetsWonAdjustHistoryEntry extends BaseHistoryEntry {
+    entryType: 'sets-won-adjust';
+    team: TeamKey;
+    prevSetsWon: number;
+    newSetsWon: number;
+  }
+  ```
+- [ ] Add `prevServer: TeamKey | null` to `AdjustHistoryEntry`
+- [ ] Update all six action writers in `useMatchManager`:
+  - `endRally` — writes `RallyHistoryEntry` (with `setNumber`) to `match.history`
+  - `confirmSetEnd` — writes `SetEndHistoryEntry` capturing pre-transition state, then transitions (`setsWon++`, scores reset, `matchPhase: 'between-sets'`)
+  - `callTimeout` — writes `TimeoutHistoryEntry` with `setNumber`
+  - `callSubstitution` — writes `SubstitutionHistoryEntry` with `setNumber`
+  - `adjustScore` — writes `AdjustHistoryEntry` with `setNumber` and `prevServer`
+  - `updateSetsWon` — writes `SetsWonAdjustHistoryEntry` with `setNumber`
+- [ ] Remove `history: HistoryEntry[]` from `SetStats`
+- [ ] Update `StatsHandler` to filter `match.history` by `setNumber` for per-set history display
+- [ ] Add `{ type: 'HistoryUndone' }` to `MatchDomainEvent`
+
+---
+
+## Phase 13 — Undo
+
+Implement `undoLastHistoryEntry` and expose a single undo button in the UI.
+
+- [ ] Add `undoLastHistoryEntry()` to `useMatchManager` — pops the last entry from `match.history` and dispatches to a typed undo handler:
+  - `'rally'`: restore `scores`, `statistics`, `currentSetStats`, `currentServer`; restore `rally` from `entry.rallySnapshot`
+  - `'timeout'`: decrement `timeouts[entry.team]`
+  - `'substitution'`: decrement `substitutions[entry.team]`
+  - `'adjust'`: reverse `entry.delta` on `scores`; restore `currentServer` from `entry.prevServer`
+  - `'set-end'`: restore `scores`, `setsWon`, `currentSetStats`, `currentServer`, `timeouts`, `substitutions` from `entry.prev*` fields; pop the archived set from `setStats`; set `matchPhase: 'in-progress'`
+  - `'sets-won-adjust'`: restore `setsWon[entry.team]` to `entry.prevSetsWon`
+  - All branches: fire `HistoryUndone` via `onEvent`
+- [ ] Add `canUndoHistory: boolean` to return value — `true` when `match.history.length > 0`
+- [ ] Add `isSetBoundaryUndo: boolean` to return value — `true` when the last entry has `entryType === 'set-end'`
+- [ ] Add unit tests for `undoLastHistoryEntry` — one test per `entryType`, including set-boundary restore
+- [ ] Add a single unified undo button (in `MatchHeader` or a toolbar row):
+  - Visible and enabled only when `canUndoHistory && rally.stage === 'start'`
+  - Calls `undoLastHistoryEntry()` directly when `!isSetBoundaryUndo`
+  - Shows a confirmation dialog when `isSetBoundaryUndo`, warning that the set transition will be reversed
+- [ ] The existing per-rally undo button in `RallyControl.tsx` (`undoLastAction`) is unchanged — it handles mid-rally action undos; the new button handles confirmed history undos
+
+---
+
+## Phase 14 — Session schema v2
+
+Migrate persisted sessions from schema v1 (split history, computed stats, `matchStarted`) to v2 (unified history, raw stats, `matchPhase`).
+
+- [ ] Bump session schema `version` to `2`
+- [ ] Write `migrate(raw, fromVersion)` for v1 → v2:
+  - Merge `currentSetHistory` (tagged as current set) and `setStats[n].history` entries (tagged with their set number) into a flat `history[]`
+  - Strip `index` from all history entries
+  - Drop `ballPossession`, `setScores`
+  - Convert `matchStarted: boolean` + `winner` → `matchPhase`
+  - Strip effectiveness fields from all stored stats objects — keep only `RawTeamStats`
+- [ ] Document schema v2 in `services/session/sessionStorage.ts`
+- [ ] Unit test for migration v1 → v2
 
 ---
 
@@ -174,5 +274,9 @@ Phase 1 (folder restructure)
             │       └─► Phase 6 (broadcast layer)
             │               └─► Phase 7 (automation decoupling)
             │                       └─► Phase 8 (code quality)
-            └─────────────────────────────────────────────────► Phase 10 (undo confirmed rally)
+            └─► Phase 10 (stats split)
+                    └─► Phase 11 (matchPhase + remove redundant fields)
+                            └─► Phase 12 (unified history)
+                                    └─► Phase 13 (undo)
+                                            └─► Phase 14 (session schema v2)
 ```
