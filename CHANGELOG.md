@@ -1,3 +1,23 @@
+# [0.60.0](https://github.com/basevoley/volleyball-score-tracker/compare/v0.59.2...v0.60.0) (2026-03-26)
+
+
+### Bug Fixes
+
+* adjusted times on pre-match sequence ([a0567e3](https://github.com/basevoley/volleyball-score-tracker/commit/a0567e38ebf4b83490b1736eddd2a76fdefbcf72))
+* fire SetEnded/MatchEnded events when adjustScore triggers a set/match end ([40a4d37](https://github.com/basevoley/volleyball-score-tracker/commit/40a4d37205d0fd5fafa0378fb38893bc19d4cddf))
+* small adjustment to the size of the switches ([d930325](https://github.com/basevoley/volleyball-score-tracker/commit/d930325f2ff655eb6e217fc90d759eecbc93ca19))
+
+
+### Features
+
+* added automations ([3910eb4](https://github.com/basevoley/volleyball-score-tracker/commit/3910eb46d4e6441a303e96d57bab7fe5d7ac6b73))
+* added no-stats mode as configurable user setting ([25fb776](https://github.com/basevoley/volleyball-score-tracker/commit/25fb776208b9f8fca7f5412b3410cc136fac9003))
+* added session restoring functionality ([2bd6772](https://github.com/basevoley/volleyball-score-tracker/commit/2bd677286d8126d982f7e116788fd904c980e410))
+* added teams lineup support for display only ([0ac491e](https://github.com/basevoley/volleyball-score-tracker/commit/0ac491ed23a51156f33e2528f565b6c5d714f3d0))
+* improvement on club logo selection ([d8c9bde](https://github.com/basevoley/volleyball-score-tracker/commit/d8c9bdefe4e0275c121fde0ae3285d4020912bad))
+* modified so that automation step execution condition is evaluated at run time ([825f320](https://github.com/basevoley/volleyball-score-tracker/commit/825f32098044d37f9b259a06ebbf67148067daf5))
+* phase 10 — split raw stats from computed display values ([9f10f6c](https://github.com/basevoley/volleyball-score-tracker/commit/9f10f6c281232d0cdd26034326b42e818253b810))
+
 ## [0.60.1](https://github.com/basevoley/volleyball-score-tracker/compare/v0.60.0...v0.60.1) (2026-03-26)
 
 
