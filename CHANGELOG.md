@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.9.0...v1.10.0) (2026-03-26)
+
+
+### Features
+
+* Update release.yml for github actions ([7f77fba](https://github.com/basevoley/volleyball-score-tracker/commit/7f77fba7cdc7d2971dc8d2ec2261c02eed790f9d))
+
 # [0.60.0](https://github.com/basevoley/volleyball-score-tracker/compare/v0.59.2...v0.60.0) (2026-03-26)
 
 
