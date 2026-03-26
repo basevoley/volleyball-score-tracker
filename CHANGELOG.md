@@ -1,3 +1,10 @@
+## [0.60.1](https://github.com/basevoley/volleyball-score-tracker/compare/v0.60.0...v0.60.1) (2026-03-26)
+
+
+### Bug Fixes
+
+* fire SetEnded/MatchEnded events when adjustScore triggers a set/match end ([40a4d37](https://github.com/basevoley/volleyball-score-tracker/commit/40a4d37205d0fd5fafa0378fb38893bc19d4cddf))
+
 # [0.60.0](https://github.com/basevoley/volleyball-score-tracker/compare/v0.59.2...v0.60.0) (2026-03-24)
 
 
