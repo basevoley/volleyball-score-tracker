@@ -25,6 +25,18 @@ export const calculateUpdatedStatistics = (current: TeamRecord<RawTeamStats>, up
     teamB: mergeStats(current, update, 'teamB'),
 });
 
+/** Reverses a rally stats update — subtracts delta from each field. Used by history undo. */
+export const reverseStats = (current: TeamRecord<RawTeamStats>, delta: TeamRecord<RallyTeamStats>): TeamRecord<RawTeamStats> => ({
+    teamA: Object.keys(current.teamA).reduce((acc, key) => ({
+        ...acc,
+        [key]: (current.teamA as unknown as Record<string, number>)[key] - ((delta.teamA as unknown as Record<string, number>)[key] || 0),
+    }), {} as RawTeamStats),
+    teamB: Object.keys(current.teamB).reduce((acc, key) => ({
+        ...acc,
+        [key]: (current.teamB as unknown as Record<string, number>)[key] - ((delta.teamB as unknown as Record<string, number>)[key] || 0),
+    }), {} as RawTeamStats),
+});
+
 const EMPTY_RAW_TEAM_STATS: RawTeamStats = {
     serve: 0, ace: 0, serveError: 0, reception: 0, receptionError: 0, dig: 0, digError: 0,
     attack: 0, attackPoint: 0, attackError: 0, block: 0, blockPoint: 0, blockOut: 0, fault: 0,

@@ -2,7 +2,7 @@
 
 import { Box, Button, IconButton, TextField, Tooltip, Typography } from "@mui/material";
 import type { useMatchManager } from '../../hooks/useMatchManager';
-import type { TeamRecord } from '../../types';
+import type { HistoryEntry, TeamRecord } from '../../types';
 
 type MatchManager = ReturnType<typeof useMatchManager>;
 
@@ -30,11 +30,15 @@ const RallyControl = ({
     endRally,
     confirmSetEnd,
     pendingSetEnd,
+    undoLastHistoryEntry,
+    canUndoHistory,
+    isSetBoundaryUndo,
   } = matchManager;
 
   // Local confirmation dialog state (was previously in RallyState)
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showDiscardConfirmation, setShowDiscardConfirmation] = useState(false);
+  const [showUndoSetConfirm, setShowUndoSetConfirm] = useState(false);
 
   // Open rally confirmation when a terminal action (error/fault/point) is added
   const prevActionCountRef = useRef(rally.actionHistory.length);
@@ -63,11 +67,38 @@ const RallyControl = ({
   }, [rally.id]);
 
   const renderPreviousActionText = () => {
-    if (!canUndo) return 'Ninguna';
-    const lastAction = rally.actionHistory[rally.actionHistory.length - 1];
-    const { action, team } = lastAction;
-    const teamName = teams[team] || team;
-    return `${actionLabels_sp[action]} ${teamName}`;
+    if (canUndo) {
+      const lastAction = rally.actionHistory[rally.actionHistory.length - 1];
+      const teamName = teams[lastAction.team] || lastAction.team;
+      return `${actionLabels_sp[lastAction.action]} ${teamName}`;
+    }
+    if (canUndoHistory) {
+      const entry: HistoryEntry = match.history[match.history.length - 1];
+      switch (entry.entryType) {
+        case 'rally':           return `Punto ${teams[entry.server] || entry.server}`;
+        case 'timeout':         return `Tiempo muerto ${teams[entry.team] || entry.team}`;
+        case 'substitution':    return `Sustitución ${teams[entry.team] || entry.team}`;
+        case 'adjust':          return `Ajuste marcador ${teams[entry.team] || entry.team}`;
+        case 'set-end':         return `Fin del set ${entry.setNumber}`;
+        case 'sets-won-adjust': return `Ajuste sets ${teams[entry.team] || entry.team}`;
+      }
+    }
+    return 'Ninguna';
+  };
+
+  const handleUndo = () => {
+    if (canUndo) {
+      undoLastAction();
+    } else if (isSetBoundaryUndo) {
+      setShowUndoSetConfirm(true);
+    } else {
+      undoLastHistoryEntry();
+    }
+  };
+
+  const confirmUndoSet = () => {
+    undoLastHistoryEntry();
+    setShowUndoSetConfirm(false);
   };
 
   // Rally event handlers
@@ -125,7 +156,7 @@ const RallyControl = ({
       {/* Set End Confirmation */}
       <ConfirmationDialog
         open={pendingSetEnd}
-        message={<Typography align='center'>Este punto finaliza el set, lo cual <b>NO</b> se puede deshacer.<br/> ¿Seguro que desea terminar el set?</Typography>}
+        message={<Typography align='center'>Este punto finaliza el set.<br/> ¿Seguro que desea terminar el set?</Typography>}
         onConfirm={handleEndSet}
         onCancel={handleDiscardSetEnd}
       />
@@ -136,6 +167,14 @@ const RallyControl = ({
         open={showDiscardConfirmation}
         onConfirm={confirmDiscardRally}
         onCancel={() => setShowDiscardConfirmation(false)}
+      />
+
+      {/* Set-boundary Undo Confirmation */}
+      <ConfirmationDialog
+        open={showUndoSetConfirm}
+        message={<Typography align='center'>Esta acción revertirá el fin de set y el punto que lo originó, restaurando el marcador anterior.<br/>¿Seguro que desea deshacer el fin de set?</Typography>}
+        onConfirm={confirmUndoSet}
+        onCancel={() => setShowUndoSetConfirm(false)}
       />
 
       {/* Action History and Controls */}
@@ -158,8 +197,8 @@ const RallyControl = ({
           <Tooltip title={'Deshacer última acción'}>
             <span>
               <IconButton
-                onClick={undoLastAction}
-                disabled={!canUndo}
+                onClick={handleUndo}
+                disabled={!canUndo && !canUndoHistory}
                 sx={{
                   display: { xs: 'flex', md: 'none' },
                   backgroundColor: '#4CAF50',
@@ -172,8 +211,8 @@ const RallyControl = ({
               </IconButton>
               <Button
                 variant="contained"
-                onClick={undoLastAction}
-                disabled={!canUndo}
+                onClick={handleUndo}
+                disabled={!canUndo && !canUndoHistory}
                 startIcon={<Undo />}
                 sx={{
                   display: { xs: 'none', md: 'flex' },

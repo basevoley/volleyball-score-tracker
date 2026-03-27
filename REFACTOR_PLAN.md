@@ -223,26 +223,27 @@ Replace the split `currentSetHistory` / `setStats[n].history` with a single `mat
 
 ---
 
-## Phase 13 — Undo
+## Phase 13 — Undo ✅
 
 Implement `undoLastHistoryEntry` and expose a single undo button in the UI.
 
-- [ ] Add `undoLastHistoryEntry()` to `useMatchManager` — pops the last entry from `match.history` and dispatches to a typed undo handler:
+- [x] Add `undoLastHistoryEntry()` to `useMatchManager` — pops the last entry from `match.history` and dispatches to a typed undo handler:
   - `'rally'`: restore `scores`, `statistics`, `currentSetStats`, `currentServer`; restore `rally` from `entry.rallySnapshot`
   - `'timeout'`: decrement `timeouts[entry.team]`
   - `'substitution'`: decrement `substitutions[entry.team]`
   - `'adjust'`: reverse `entry.delta` on `scores`; restore `currentServer` from `entry.prevServer`
   - `'set-end'`: restore `scores`, `setsWon`, `currentSetStats`, `currentServer`, `timeouts`, `substitutions` from `entry.prev*` fields; pop the archived set from `setStats`; set `matchPhase: 'in-progress'`
-  - `'sets-won-adjust'`: restore `setsWon[entry.team]` to `entry.prevSetsWon`
+  - `'sets-won-adjust'`: restore `setsWon[entry.team]` to `entry.prevSetsWon`; also clears `winner`/restores `matchPhase` if the adjust had ended the match
   - All branches: fire `HistoryUndone` via `onEvent`
-- [ ] Add `canUndoHistory: boolean` to return value — `true` when `match.history.length > 0`
-- [ ] Add `isSetBoundaryUndo: boolean` to return value — `true` when the last entry has `entryType === 'set-end'`
-- [ ] Add unit tests for `undoLastHistoryEntry` — one test per `entryType`, including set-boundary restore
-- [ ] Add a single unified undo button (in `MatchHeader` or a toolbar row):
-  - Visible and enabled only when `canUndoHistory && rally.stage === 'start'`
+- [x] Add `canUndoHistory: boolean` to return value — `true` when `match.history.length > 0`
+- [x] Add `isSetBoundaryUndo: boolean` to return value — `true` when the last entry has `entryType === 'set-end'`
+- [x] Add unit tests for `undoLastHistoryEntry` — one test per `entryType`, including set-boundary restore and match-end restore for `sets-won-adjust` (`domain/match/__tests__/undo.test.ts`)
+- [x] Add a single unified undo button (in `MatchHeader`):
+  - Visible only when `match.matchPhase === 'in-progress'`; enabled when `canUndoHistory && rally.stage === 'start'`
   - Calls `undoLastHistoryEntry()` directly when `!isSetBoundaryUndo`
   - Shows a confirmation dialog when `isSetBoundaryUndo`, warning that the set transition will be reversed
-- [ ] The existing per-rally undo button in `RallyControl.tsx` (`undoLastAction`) is unchanged — it handles mid-rally action undos; the new button handles confirmed history undos
+- [x] The existing per-rally undo button in `RallyControl.tsx` (`undoLastAction`) is unchanged — it handles mid-rally action undos; the new button handles confirmed history undos
+- [x] Undo logic extracted into `domain/match/undo.ts` (`applyHistoryUndo`) — pure function, fully tested without React; `reverseStats` added to `domain/match/stats.ts`
 
 ---
 

@@ -7,6 +7,7 @@ import type {
 } from '../types';
 import { checkSetEnd, checkMatchEnd } from '../domain/match/rules';
 import { calculateUpdatedStatistics, createEmptyMatchStats, createEmptyRallyStats } from '../domain/match/stats';
+import { applyHistoryUndo } from '../domain/match/undo';
 import { RALLY_ACTION_HANDLERS } from '../domain/rally/actionHandlers';
 
 // --- Hook ---
@@ -330,6 +331,39 @@ export const useMatchManager = (
         });
     }, [maxSets]);
 
+    const undoLastHistoryEntry = useCallback(() => {
+        const history = matchRef.current.history;
+        const entry = history[history.length - 1];
+        if (!entry) return;
+
+        setMatch(prev => {
+            let state = applyHistoryUndo(prev, entry, maxSets);
+            // A set-end and the action that triggered it are not independent —
+            // undo both in one operation so the user lands at the state before
+            // the set-ending action was taken.
+            if (entry.entryType === 'set-end' && state.history.length > 0) {
+                const triggerEntry = state.history[state.history.length - 1];
+                state = applyHistoryUndo(state, triggerEntry, maxSets);
+            }
+            return state;
+        });
+
+        if (entry.entryType === 'rally') {
+            setRally(entry.rallySnapshot);
+            initialPossessionRef.current = entry.rallySnapshot.possession;
+        } else if (entry.entryType === 'set-end') {
+            // Both the set-end and its trigger have been undone — start a fresh rally.
+            // Use prevServer from the trigger entry (the server before the set-ending action).
+            const triggerEntry = history[history.length - 2];
+            const prevServer = (triggerEntry?.entryType === 'rally' || triggerEntry?.entryType === 'adjust')
+                ? triggerEntry.prevServer
+                : entry.prevServer;
+            resetRallyInternal(prevServer);
+        }
+
+        pendingEventRef.current = { type: 'HistoryUndone' };
+    }, [maxSets, resetRallyInternal]);
+
     const willRallyEndSet = useCallback((winner: TeamKey) => {
         const newScores = { ...match.scores, [winner]: match.scores[winner] + 1 };
         return checkSetEnd(newScores, match.setsWon, maxSets);
@@ -392,12 +426,17 @@ export const useMatchManager = (
         pendingEventRef.current = { type: 'RallyDiscarded' };
     }, []);
 
+    const lastHistoryEntry = match.history[match.history.length - 1];
+
     return useMemo(() => ({
         match,
         startMatch, resetMatch, restoreMatch, setServer, endRally,
         pendingSetEnd: !!pendingSetUpdate,
         confirmSetEnd,
         callTimeout, callSubstitution, adjustScore, updateSetsWon, willRallyEndSet,
+        undoLastHistoryEntry,
+        canUndoHistory: match.history.length > 0,
+        isSetBoundaryUndo: lastHistoryEntry?.entryType === 'set-end',
         rally,
         handleAction, undoLastAction, discardRally,
         canUndo: rally.actionHistory.length > 0,
@@ -405,6 +444,8 @@ export const useMatchManager = (
         pendingSetUpdate,
         confirmSetEnd,
         callTimeout, callSubstitution, adjustScore, updateSetsWon, willRallyEndSet,
+        undoLastHistoryEntry,
+        lastHistoryEntry,
         rally,
         handleAction, undoLastAction, discardRally,
     ]);
