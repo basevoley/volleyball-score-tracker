@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.10.1...v1.11.0) (2026-03-27)
+
+
+### Features
+
+* undo confirmed history entries — phase 13 ([ffc5414](https://github.com/basevoley/volleyball-score-tracker/commit/ffc5414497e507a650cc0fd88f4a171e14d3e567))
+
 ## [1.10.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.10.0...v1.10.1) (2026-03-27)
 
 
