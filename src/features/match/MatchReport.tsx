@@ -94,6 +94,7 @@ interface ReportProps {
     teamColors: TeamRecord<string>;
     statistics: TeamRecord<RawTeamStats>;
     setStats: SetStats[];
+    history: HistoryEntry[];
 }
 
 interface TimelineSVGProps {
@@ -102,7 +103,7 @@ interface TimelineSVGProps {
     teamColors: TeamRecord<string>;
 }
 
-const MatchReportDocument = ({ teams, teamColors, statistics, setStats }: ReportProps) => {
+const MatchReportDocument = ({ teams, teamColors, statistics, setStats, history }: ReportProps) => {
     const setScores = setStats.map(s => s.scores);
     const computedTotal = {
         teamA: computeEffectiveness(statistics.teamA, statistics.teamB),
@@ -209,10 +210,10 @@ const MatchReportDocument = ({ teams, teamColors, statistics, setStats }: Report
                             </View>
 
                             {/* Point evolution chart for the set */}
-                            {set.history && set.history.length > 0 && (
+                            {history.some(e => e.setNumber === set.setNumber) && (
                                 <View style={{ marginTop: 12 }}>
                                     <Text style={{ fontSize: 12, marginBottom: 6 }}>Evolución de puntos (por rally)</Text>
-                                    <SetTimelineSVG history={set.history} teams={teams} teamColors={teamColors} />
+                                    <SetTimelineSVG history={history.filter(e => e.setNumber === set.setNumber)} teams={teams} teamColors={teamColors} />
                                 </View>
                             )}
                         </View>
@@ -390,12 +391,12 @@ const SetTimelineSVG = ({ history, teams, teamColors }: TimelineSVGProps) => {
     );
 };
 
-const MatchReport = ({ teams, teamColors, statistics, setStats }: ReportProps) => {
+const MatchReport = ({ teams, teamColors, statistics, setStats, history }: ReportProps) => {
     const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
     const fileName = `${teams.teamA}_vs_${teams.teamB}_${currentDate}.pdf`;
 
     const handleDownload = async () => {
-        const doc = <MatchReportDocument teams={teams} teamColors={teamColors} statistics={statistics} setStats={setStats} />;
+        const doc = <MatchReportDocument teams={teams} teamColors={teamColors} statistics={statistics} setStats={setStats} history={history} />;
         const blob = await pdf(doc).toBlob();
         const url = URL.createObjectURL(blob);
 

@@ -10,7 +10,7 @@ export const initialMatchData: MatchData = {
     substitutions: { teamA: 0, teamB: 0 },
     statistics: createEmptyMatchStats(),
     currentSetStats: createEmptyMatchStats(),
-    currentSetHistory: [],
+    history: [],
     setStats: [],
     winner: null,
 };

@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type {
     TeamKey, TeamRecord, RawTeamStats, RallyTeamStats, MatchData, MatchScores,
     RallySnapshot, RallyHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry, AdjustHistoryEntry,
+    SetEndHistoryEntry, SetsWonAdjustHistoryEntry,
     MatchDomainEvent, RallyActionType, MatchPhase,
 } from '../types';
 import { checkSetEnd, checkMatchEnd } from '../domain/match/rules';
@@ -24,7 +25,7 @@ export const useMatchManager = (
         substitutions: { teamA: 0, teamB: 0 },
         statistics: createEmptyMatchStats(),
         currentSetStats: createEmptyMatchStats(),
-        currentSetHistory: [],
+        history: [],
         setStats: [],
         winner: null,
         ...(initialData || {}),
@@ -106,17 +107,29 @@ export const useMatchManager = (
         state: MatchData,
         scores: MatchScores,
         currentSetStats: TeamRecord<RawTeamStats>,
-        history: MatchData['currentSetHistory']
     ): MatchData => {
         const setWinner = checkSetEnd(scores, state.setsWon, maxSets);
-        if (!setWinner) return { ...state, scores, currentSetStats, currentSetHistory: history };
+        if (!setWinner) return { ...state, scores, currentSetStats };
+
+        const setNumber = state.setsWon.teamA + state.setsWon.teamB + 1;
+        const setEndEntry: SetEndHistoryEntry = {
+            entryType: 'set-end',
+            timestamp: Date.now(),
+            scores,
+            setNumber,
+            prevScores: scores,
+            prevSetsWon: { ...state.setsWon },
+            prevSetStats: currentSetStats,
+            prevServer: state.currentServer,
+            prevTimeouts: { ...state.timeouts },
+            prevSubstitutions: { ...state.substitutions },
+        };
 
         const newSetsWon = { ...state.setsWon, [setWinner]: state.setsWon[setWinner] + 1 };
         const newSetStats = [...state.setStats, {
-            setNumber: state.setsWon.teamA + state.setsWon.teamB + 1,
+            setNumber,
             scores,
             statistics: currentSetStats,
-            history,
         }];
 
         const matchWinner = checkMatchEnd(newSetsWon, maxSets);
@@ -131,6 +144,7 @@ export const useMatchManager = (
                 winner: matchWinner,
                 matchPhase: 'ended' as MatchPhase,
                 currentServer: null,
+                history: [...state.history, setEndEntry],
             };
         }
 
@@ -140,7 +154,7 @@ export const useMatchManager = (
             setsWon: newSetsWon,
             setStats: newSetStats,
             currentSetStats: createEmptyMatchStats(),
-            currentSetHistory: [],
+            history: [...state.history, setEndEntry],
             timeouts: { teamA: 0, teamB: 0 },
             substitutions: { teamA: 0, teamB: 0 },
             matchPhase: 'between-sets' as MatchPhase,
@@ -165,7 +179,7 @@ export const useMatchManager = (
             substitutions: { teamA: 0, teamB: 0 },
             statistics: createEmptyMatchStats(),
             currentSetStats: createEmptyMatchStats(),
-            currentSetHistory: [],
+            history: [],
             setStats: [],
             winner: null,
         });
@@ -200,6 +214,7 @@ export const useMatchManager = (
                 entryType: 'rally',
                 timestamp: Date.now(),
                 scores: updatedScores,
+                setNumber: prev.setsWon.teamA + prev.setsWon.teamB + 1,
                 server: winner,
                 faultingTeam,
                 prevServer: prev.currentServer,
@@ -207,28 +222,23 @@ export const useMatchManager = (
                 statsUpdate: currentRally.stats,
             };
 
-            const newHistory = [...(prev.currentSetHistory || []), newHistoryEntry];
+            const stateWithEntry = {
+                ...prev,
+                currentServer: winner,
+                statistics: updatedStatistics,
+                history: [...prev.history, newHistoryEntry],
+            };
             const setWinner = checkSetEnd(updatedScores, prev.setsWon, maxSets);
 
             if (setWinner) {
-                const nextState = handleGameEnd(
-                    { ...prev, currentServer: winner, statistics: updatedStatistics },
-                    updatedScores,
-                    updatedSetStats,
-                    newHistory
-                );
+                const nextState = handleGameEnd(stateWithEntry, updatedScores, updatedSetStats);
                 setPendingSetUpdate(nextState);
                 return prev; // Defer state update until user confirms set end
             }
 
             // No set end — fire RallyEnded event after state commits
             pendingEventRef.current = { type: 'RallyEnded', winner, faultingTeam };
-            return handleGameEnd(
-                { ...prev, currentServer: winner, statistics: updatedStatistics },
-                updatedScores,
-                updatedSetStats,
-                newHistory
-            );
+            return handleGameEnd(stateWithEntry, updatedScores, updatedSetStats);
         });
 
         // Reset rally immediately for non-set-end case
@@ -243,12 +253,13 @@ export const useMatchManager = (
                 entryType: 'timeout',
                 timestamp: Date.now(),
                 scores: { ...prev.scores },
+                setNumber: prev.setsWon.teamA + prev.setsWon.teamB + 1,
                 team,
             };
             return {
                 ...prev,
                 timeouts: { ...prev.timeouts, [team]: prev.timeouts[team] + 1 },
-                currentSetHistory: [...(prev.currentSetHistory || []), newEntry],
+                history: [...prev.history, newEntry],
             };
         });
         pendingEventRef.current = { type: 'TimeoutCalled', team };
@@ -260,12 +271,13 @@ export const useMatchManager = (
                 entryType: 'substitution',
                 timestamp: Date.now(),
                 scores: { ...prev.scores },
+                setNumber: prev.setsWon.teamA + prev.setsWon.teamB + 1,
                 team,
             };
             return {
                 ...prev,
                 substitutions: { ...prev.substitutions, [team]: prev.substitutions[team] + 1 },
-                currentSetHistory: [...(prev.currentSetHistory || []), newEntry],
+                history: [...prev.history, newEntry],
             };
         });
         pendingEventRef.current = { type: 'SubstitutionCalled', team };
@@ -278,11 +290,13 @@ export const useMatchManager = (
                 entryType: 'adjust',
                 timestamp: Date.now(),
                 scores: adjustedScores,
+                setNumber: prev.setsWon.teamA + prev.setsWon.teamB + 1,
                 team,
                 delta: adjustment,
+                prevServer: prev.currentServer,
             };
-            const newHistory = [...(prev.currentSetHistory || []), newEntry];
-            const newState = handleGameEnd(prev, adjustedScores, prev.currentSetStats, newHistory);
+            const stateWithEntry = { ...prev, history: [...prev.history, newEntry] };
+            const newState = handleGameEnd(stateWithEntry, adjustedScores, prev.currentSetStats);
             if (newState.winner) {
                 pendingEventRef.current = { type: 'MatchEnded', winner: newState.winner };
             } else if (newState.setsWon.teamA + newState.setsWon.teamB > prev.setsWon.teamA + prev.setsWon.teamB) {
@@ -294,18 +308,27 @@ export const useMatchManager = (
         });
     }, [handleGameEnd]);
 
-    const updateSetsWon = useCallback((team: TeamKey, newSetsWon: number) => {
+    const updateSetsWon = useCallback((team: TeamKey, newSetsWonValue: number) => {
         setMatch(prev => {
-            const updatedSetsWon = { ...prev.setsWon, [team]: newSetsWon };
+            const newEntry: SetsWonAdjustHistoryEntry = {
+                entryType: 'sets-won-adjust',
+                timestamp: Date.now(),
+                scores: { ...prev.scores },
+                setNumber: prev.setsWon.teamA + prev.setsWon.teamB + 1,
+                team,
+                prevSetsWon: prev.setsWon[team],
+                newSetsWon: newSetsWonValue,
+            };
+            const updatedSetsWon = { ...prev.setsWon, [team]: newSetsWonValue };
             const matchWinner = checkMatchEnd(updatedSetsWon, maxSets);
             if (matchWinner) {
                 pendingEventRef.current = { type: 'MatchEnded', winner: matchWinner };
-                return { ...prev, setsWon: updatedSetsWon, winner: matchWinner, matchPhase: 'ended' as MatchPhase, currentServer: null };
+                return { ...prev, setsWon: updatedSetsWon, winner: matchWinner, matchPhase: 'ended' as MatchPhase, currentServer: null, history: [...prev.history, newEntry] };
             }
             pendingEventRef.current = { type: 'ScoreAdjusted' };
-            return { ...prev, setsWon: updatedSetsWon };
+            return { ...prev, setsWon: updatedSetsWon, history: [...prev.history, newEntry] };
         });
-    }, [teams, maxSets]);
+    }, [maxSets]);
 
     const willRallyEndSet = useCallback((winner: TeamKey) => {
         const newScores = { ...match.scores, [winner]: match.scores[winner] + 1 };

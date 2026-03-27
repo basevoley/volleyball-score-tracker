@@ -3,13 +3,14 @@ import ExcelJS from 'exceljs'; // Importar ExcelJS
 import { saveAs } from 'file-saver'; // Importar saveAs para descargas en el navegador
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileExcel } from '@fortawesome/free-solid-svg-icons';
-import type { TeamRecord, RawTeamStats, SetStats } from '../../types';
+import type { TeamRecord, RawTeamStats, SetStats, HistoryEntry } from '../../types';
 import { computeEffectiveness } from '../../domain/match/stats';
 
 interface ExcelProps {
     teams: TeamRecord<string>;
     statistics: TeamRecord<RawTeamStats>;
     setStats: SetStats[];
+    history: HistoryEntry[];
 }
 
 const stats = [
@@ -34,7 +35,7 @@ const stats = [
 ];
 
 // Hacer la función asíncrona para usar workbook.xlsx.writeBuffer()
-const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<RawTeamStats>, setStats: SetStats[]) => {
+const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<RawTeamStats>, setStats: SetStats[], history: HistoryEntry[]) => {
     const setScores = setStats.map(s => s.scores);
     const workbook = new ExcelJS.Workbook();
     // Opcional: añadir propiedades al libro de trabajo
@@ -106,7 +107,8 @@ const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<R
                 { header: teams.teamB, key: 'teamB', width: 12 },
                 { header: 'Evento', key: 'event', width: 25 }
             ];
-            const rallyEvolutionData = set.history.map((entry, idx) => {
+            const setHistory = history.filter(e => e.setNumber === set.setNumber);
+            const rallyEvolutionData = setHistory.map((entry, idx) => {
                 let eventDescription = 'Rally';
                 if (entry.entryType === 'rally' && entry.faultingTeam) {
                     eventDescription = `Falta (${entry.faultingTeam === 'teamA' ? teams.teamA : teams.teamB})`;
@@ -137,8 +139,8 @@ const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<R
     saveAs(blob, fileName);
 };
 
-const MatchExcel = ({ teams, statistics, setStats }: ExcelProps) => (
-    <button onClick={() => generateExcel(teams, statistics, setStats)} style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+const MatchExcel = ({ teams, statistics, setStats, history }: ExcelProps) => (
+    <button onClick={() => generateExcel(teams, statistics, setStats, history)} style={{ display: 'flex', alignItems: 'center', padding: '5px 10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
         <FontAwesomeIcon icon={faFileExcel} style={{ marginRight: '5px' }} />
         Descargar XLSX
     </button>);

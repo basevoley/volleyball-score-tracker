@@ -146,11 +146,13 @@ function StatsHandler(props: StatsHandlerProps) {
               teamColors={props.teamColors}
               statistics={props.localMatchData.statistics}
               setStats={props.localMatchData.setStats}
+              history={props.localMatchData.history}
             />
             <MatchExcel
               teams={props.teams}
               statistics={props.localMatchData.statistics}
               setStats={props.localMatchData.setStats}
+              history={props.localMatchData.history}
             />
           </DownloadsContainer>
 
@@ -169,7 +171,9 @@ function StatsHandler(props: StatsHandlerProps) {
               <Statistics teams={props.teams} statistics={props.localMatchData.currentSetStats} />
               <Box sx={{ mt: 2 }}>
                 <PointEvolutionChart
-                  history={props.localMatchData.currentSetHistory}
+                  history={props.localMatchData.history.filter(e =>
+                    e.setNumber === props.localMatchData.setsWon.teamA + props.localMatchData.setsWon.teamB + 1
+                  )}
                   teams={props.teams}
                   teamColors={props.teamColors}
                 />
@@ -239,10 +243,10 @@ function StatsHandler(props: StatsHandlerProps) {
                     }}
                   >
                     <Statistics teams={props.teams} statistics={set.statistics} />
-                    {set.history && set.history.length > 0 && (
+                    {props.localMatchData.history.some(e => e.setNumber === set.setNumber) && (
                       <Box sx={{ mt: 2 }}>
                         <PointEvolutionChart
-                          history={set.history}
+                          history={props.localMatchData.history.filter(e => e.setNumber === set.setNumber)}
                           teams={props.teams}
                           teamColors={props.teamColors}
                         />

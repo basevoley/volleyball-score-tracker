@@ -181,14 +181,14 @@ Replace the ambiguous `matchStarted: boolean` combination with an explicit phase
 
 ---
 
-## Phase 12 — Unified history
+## Phase 12 — Unified history ✅
 
 Replace the split `currentSetHistory` / `setStats[n].history` with a single `match.history[]` array that spans the entire match. Adds the two entry types needed for full undo coverage and lays the groundwork for Phase 13.
 
-- [ ] Add `history: HistoryEntry[]` to `MatchData` — never cleared mid-match
-- [ ] Remove `currentSetHistory: HistoryEntry[]` from `MatchData`
-- [ ] Add `setNumber: number` to `BaseHistoryEntry` — the set number when the entry was created; replaces per-set array split as the filter key
-- [ ] Add `SetEndHistoryEntry` to the `HistoryEntry` union:
+- [x] Add `history: HistoryEntry[]` to `MatchData` — never cleared mid-match
+- [x] Remove `currentSetHistory: HistoryEntry[]` from `MatchData`
+- [x] Add `setNumber: number` to `BaseHistoryEntry` — the set number when the entry was created; replaces per-set array split as the filter key
+- [x] Add `SetEndHistoryEntry` to the `HistoryEntry` union:
   ```ts
   interface SetEndHistoryEntry extends BaseHistoryEntry {
     entryType: 'set-end';
@@ -200,7 +200,7 @@ Replace the split `currentSetHistory` / `setStats[n].history` with a single `mat
     prevSubstitutions: MatchScores;
   }
   ```
-- [ ] Add `SetsWonAdjustHistoryEntry` to the `HistoryEntry` union:
+- [x] Add `SetsWonAdjustHistoryEntry` to the `HistoryEntry` union:
   ```ts
   interface SetsWonAdjustHistoryEntry extends BaseHistoryEntry {
     entryType: 'sets-won-adjust';
@@ -209,17 +209,17 @@ Replace the split `currentSetHistory` / `setStats[n].history` with a single `mat
     newSetsWon: number;
   }
   ```
-- [ ] Add `prevServer: TeamKey | null` to `AdjustHistoryEntry`
-- [ ] Update all six action writers in `useMatchManager`:
+- [x] Add `prevServer: TeamKey | null` to `AdjustHistoryEntry`
+- [x] Update all six action writers in `useMatchManager`:
   - `endRally` — writes `RallyHistoryEntry` (with `setNumber`) to `match.history`
-  - `confirmSetEnd` — writes `SetEndHistoryEntry` capturing pre-transition state, then transitions (`setsWon++`, scores reset, `matchPhase: 'between-sets'`)
+  - `handleGameEnd` — writes `SetEndHistoryEntry` capturing pre-transition state, then transitions (`setsWon++`, scores reset, `matchPhase: 'between-sets'`)
   - `callTimeout` — writes `TimeoutHistoryEntry` with `setNumber`
   - `callSubstitution` — writes `SubstitutionHistoryEntry` with `setNumber`
   - `adjustScore` — writes `AdjustHistoryEntry` with `setNumber` and `prevServer`
   - `updateSetsWon` — writes `SetsWonAdjustHistoryEntry` with `setNumber`
-- [ ] Remove `history: HistoryEntry[]` from `SetStats`
-- [ ] Update `StatsHandler` to filter `match.history` by `setNumber` for per-set history display
-- [ ] Add `{ type: 'HistoryUndone' }` to `MatchDomainEvent`
+- [x] Remove `history: HistoryEntry[]` from `SetStats`
+- [x] Update `StatsHandler` to filter `match.history` by `setNumber` for per-set history display
+- [x] Add `{ type: 'HistoryUndone' }` to `MatchDomainEvent`
 
 ---
 

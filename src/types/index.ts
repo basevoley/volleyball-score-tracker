@@ -69,11 +69,13 @@ export type MatchDomainEvent =
   | { type: 'SubstitutionCalled'; team: TeamKey }
   | { type: 'SetEnded' }
   | { type: 'MatchEnded'; winner: TeamKey }
-  | { type: 'ScoreAdjusted' };
+  | { type: 'ScoreAdjusted' }
+  | { type: 'HistoryUndone' };
 
 interface BaseHistoryEntry {
   timestamp: number;
   scores: MatchScores;
+  setNumber: number;
 }
 
 export interface RallyHistoryEntry extends BaseHistoryEntry {
@@ -99,15 +101,38 @@ export interface AdjustHistoryEntry extends BaseHistoryEntry {
   entryType: 'adjust';
   team: TeamKey;
   delta: number;
+  prevServer: TeamKey | null;
 }
 
-export type HistoryEntry = RallyHistoryEntry | TimeoutHistoryEntry | SubstitutionHistoryEntry | AdjustHistoryEntry;
+export interface SetEndHistoryEntry extends BaseHistoryEntry {
+  entryType: 'set-end';
+  prevScores: MatchScores;
+  prevSetsWon: MatchScores;
+  prevSetStats: TeamRecord<RawTeamStats>;
+  prevServer: TeamKey | null;
+  prevTimeouts: MatchScores;
+  prevSubstitutions: MatchScores;
+}
+
+export interface SetsWonAdjustHistoryEntry extends BaseHistoryEntry {
+  entryType: 'sets-won-adjust';
+  team: TeamKey;
+  prevSetsWon: number;
+  newSetsWon: number;
+}
+
+export type HistoryEntry =
+  | RallyHistoryEntry
+  | TimeoutHistoryEntry
+  | SubstitutionHistoryEntry
+  | AdjustHistoryEntry
+  | SetEndHistoryEntry
+  | SetsWonAdjustHistoryEntry;
 
 export interface SetStats {
   setNumber: number;
   scores: MatchScores;
   statistics: TeamRecord<RawTeamStats>;
-  history: HistoryEntry[];
 }
 
 export interface MatchData {
@@ -119,7 +144,7 @@ export interface MatchData {
   substitutions: MatchScores;
   statistics: TeamRecord<RawTeamStats>;
   currentSetStats: TeamRecord<RawTeamStats>;
-  currentSetHistory: HistoryEntry[];
+  history: HistoryEntry[];
   setStats: SetStats[];
   winner: TeamKey | null;
 }
