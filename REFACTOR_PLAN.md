@@ -247,19 +247,19 @@ Implement `undoLastHistoryEntry` and expose a single undo button in the UI.
 
 ---
 
-## Phase 14 — Session schema v2
+## Phase 14 — Session schema v2 ✅
 
 Migrate persisted sessions from schema v1 (split history, computed stats, `matchStarted`) to v2 (unified history, raw stats, `matchPhase`).
 
-- [ ] Bump session schema `version` to `2`
-- [ ] Write `migrate(raw, fromVersion)` for v1 → v2:
+- [x] Bump session schema `version` to `2`
+- [x] Write `migrate(raw, fromVersion)` for v1 → v2:
   - Merge `currentSetHistory` (tagged as current set) and `setStats[n].history` entries (tagged with their set number) into a flat `history[]`
   - Strip `index` from all history entries
   - Drop `ballPossession`, `setScores`
   - Convert `matchStarted: boolean` + `winner` → `matchPhase`
   - Strip effectiveness fields from all stored stats objects — keep only `RawTeamStats`
-- [ ] Document schema v2 in `services/session/sessionStorage.ts`
-- [ ] Unit test for migration v1 → v2
+- [x] Document schema v2 in `services/session/sessionStorage.ts`
+- [x] Unit test for migration v1 → v2
 
 ---
 
