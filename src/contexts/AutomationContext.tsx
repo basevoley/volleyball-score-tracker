@@ -3,6 +3,7 @@ import useAutomationRunner from '../hooks/useAutomationRunner';
 import type { Sequence, SequenceTrigger } from '../types';
 import { useConfig } from './ConfigContext';
 import { useMatchContext } from './MatchContext';
+import { useBroadcast } from '../services/socket/useBroadcast';
 
 type DomainEventTrigger = Extract<SequenceTrigger, { type: 'domainEvent' }>;
 type DomainEventSequence = Sequence & { trigger: DomainEventTrigger };
@@ -20,6 +21,7 @@ export const AutomationProvider = ({ children, sequences }: { children: React.Re
     const { matchManager, matchDetails, addMatchEventListener } = useMatchContext();
 
     const runner = useAutomationRunner({ config, setConfig });
+    const { syncAll } = useBroadcast();
 
     const hasStats = [...Object.values(matchDetails.stats.teamA), ...Object.values(matchDetails.stats.teamB)]
         .some(val => Number(val) > 0);
@@ -36,6 +38,16 @@ export const AutomationProvider = ({ children, sequences }: { children: React.Re
     useEffect(() => {
         runnerRunRef.current = runner.run;
     }, [runner.run]);
+
+    const runnerStopRef = useRef(runner.stop);
+    useEffect(() => {
+        runnerStopRef.current = runner.stop;
+    }, [runner.stop]);
+
+    const syncAllRef = useRef(syncAll);
+    useEffect(() => {
+        syncAllRef.current = syncAll;
+    }, [syncAll]);
 
     const manualSequences = sequences.filter(s => s.trigger.type === 'manual');
     const autoSequences = sequences.filter((s): s is DomainEventSequence => s.trigger.type === 'domainEvent');
@@ -65,6 +77,11 @@ export const AutomationProvider = ({ children, sequences }: { children: React.Re
         }, {});
 
         return addMatchEventListener((event) => {
+            if (event.type === 'HistoryUndone') {
+                runnerStopRef.current();
+                syncAllRef.current();
+                return;
+            }
             const matching = byEvent[event.type] ?? [];
             for (const seq of matching) {
                 if (!automationsEnabledRef.current[seq.id]) continue;
