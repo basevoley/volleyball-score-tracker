@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.11.0...v1.12.0) (2026-03-27)
+
+
+### Features
+
+* session schema v2 migration — phase 14 ([d6cb6ea](https://github.com/basevoley/volleyball-score-tracker/commit/d6cb6ea540b148145931624cdeeaab2d232f0c7f))
+
 # [1.11.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.10.1...v1.11.0) (2026-03-27)
 
 
