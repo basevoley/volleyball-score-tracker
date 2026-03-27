@@ -13,7 +13,6 @@ interface SocketProviderProps {
   children: React.ReactNode;
   url: string;
   socketKey: string;
-  onHandshake?: () => Record<string, unknown>;
 }
 
 const SocketContext = createContext<SocketContextValue | null>(null);
@@ -26,7 +25,7 @@ export const useSocket = (): SocketContextValue => {
   return context;
 };
 
-export const SocketProvider = ({ children, url, socketKey, onHandshake }: SocketProviderProps) => {
+export const SocketProvider = ({ children, url, socketKey }: SocketProviderProps) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
@@ -150,18 +149,6 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }: Socket
       console.log('📨 Message received:', data);
     });
 
-    // Handshake handler
-    socketInstance.on('handshake', (data) => {
-      console.log('🤝 Handshake received:', data);
-      if (onHandshake) {
-        const response = onHandshake();
-        socketInstance.emit('handshake-response', {
-          message: 'Hello from ControlApp!',
-          ...response,
-        });
-      }
-    });
-
     // Pong handler (for heartbeat)
     socketInstance.on('pong', () => {
       console.log('💓 Heartbeat pong received');
@@ -176,7 +163,7 @@ export const SocketProvider = ({ children, url, socketKey, onHandshake }: Socket
       socketInstance.disconnect();
       socketInstance.removeAllListeners();
     };
-  }, [url, socketKey, onHandshake, cleanup]);
+  }, [url, socketKey, cleanup]);
 
   // Heartbeat to keep connection alive and detect server cold starts
   // const startHeartbeat = (socketInstance) => {

@@ -21,7 +21,6 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CustomCombobox from '../../shared/components/CustomCombobox';
 import MatchSelector from './MatchSelector';
 import ModalOverlay from '../../shared/components/ModalOverlay';
-import { useSocket } from '../../services/socket/SocketContext';
 import { TeamColorSelector } from './TeamColorSelector';
 import TeamPlayerList from './EditablePlayerList';
 
@@ -40,8 +39,6 @@ function PreMatch() {
   const [maxSets, setMaxSets] = useState(matchDetails.maxSets);
   const [statsA, setStatsA] = useState(matchDetails.stats.teamA);
   const [statsB, setStatsB] = useState(matchDetails.stats.teamB);
-
-  const { socket } = useSocket();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -68,13 +65,7 @@ function PreMatch() {
 
   }, [teamA, teamB, teamALogo, teamBLogo, teamAColor, teamBColor,
     matchHeader, stadium, extendedInfo, competitionLogo,
-    maxSets, statsA, statsB, socket, setMatchDetails]);
-
-  useEffect(() => {
-    if (socket) {
-      socket.emit('matchDetails', matchDetails);
-    }
-  }, [matchDetails, socket])
+    maxSets, statsA, statsB, setMatchDetails]);
 
 
 

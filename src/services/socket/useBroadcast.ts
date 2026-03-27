@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useSocket } from './SocketContext';
 import { useMatchContext } from '../../contexts/MatchContext';
 import { useConfig } from '../../contexts/ConfigContext';
-import type { MatchData, MatchDomainEvent, MatchScores, TeamKey, TeamRecord, ComputedTeamStats, MatchPhase } from '../../types';
+import type { MatchData, MatchDetails, MatchDomainEvent, MatchScores, TeamKey, TeamRecord, ComputedTeamStats, MatchPhase } from '../../types';
 import { computeEffectiveness } from '../../domain/match/stats';
 
 interface MatchEvent {
@@ -78,10 +78,12 @@ export const useBroadcast = () => {
     // Always-current refs — callbacks read these without stale closures
     const matchRef = useRef(matchManager.match);
     const teamsRef = useRef(matchDetails.teams);
+    const matchDetailsRef = useRef<MatchDetails>(matchDetails);
     const configRef = useRef(config);
     const socketRef = useRef(socket);
     matchRef.current = matchManager.match;
     teamsRef.current = matchDetails.teams;
+    matchDetailsRef.current = matchDetails;
     configRef.current = config;
     socketRef.current = socket;
 
@@ -115,10 +117,36 @@ export const useBroadcast = () => {
         socketRef.current?.emit('updateConfig', config);
     }, [config]);
 
+    // Emit matchDetails whenever it changes (skip the initial render)
+    const isFirstDetailsRender = useRef(true);
+    useEffect(() => {
+        if (isFirstDetailsRender.current) {
+            isFirstDetailsRender.current = false;
+            return;
+        }
+        socketRef.current?.emit('matchDetails', matchDetails);
+    }, [matchDetails]);
+
+    // Respond to handshake with the full current state in the correct format
+    useEffect(() => {
+        if (!socket) return;
+        const handleHandshake = () => {
+            socket.emit('handshake-response', {
+                message: 'Hello from ControlApp!',
+                matchData: buildMatchPayload(matchRef.current, { type: null, details: null }),
+                config: configRef.current,
+                matchDetails: matchDetailsRef.current,
+            });
+        };
+        socket.on('handshake', handleHandshake);
+        return () => { socket.off('handshake', handleHandshake); };
+    }, [socket]);
+
     // Emit full current state — call on session restore or any manual resync
     const syncAll = useCallback(() => {
         socketRef.current?.emit('matchData', buildMatchPayload(matchRef.current, { type: null, details: null }));
         socketRef.current?.emit('updateConfig', configRef.current);
+        socketRef.current?.emit('matchDetails', matchDetailsRef.current);
     }, []);
 
     return { syncAll };

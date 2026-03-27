@@ -1,5 +1,5 @@
 // app.js
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Container, Box, Typography, Paper, Tabs, Tab, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider } from '@mui/material';
 import PreMatch from '../features/pre-match/PreMatch';
 import Match from '../features/match/Match';
@@ -244,26 +244,13 @@ function App() {
 
   const overlayUrl = `${OVERLAY_URL}?key=${socketKey}`;
 
-  // Stable ref-based handshake callback — inner contexts update the ref each render
-  const handshakeDataRef = useRef<Record<string, unknown>>({});
-  const onHandshake = useCallback(() => handshakeDataRef.current, []);
-
   return (
-    <SocketProvider url={SOCKET_SERVER_URL} socketKey={socketKey} onHandshake={onHandshake}>
+    <SocketProvider url={SOCKET_SERVER_URL} socketKey={socketKey}>
       <AppProviders>
-        <HandshakeSync dataRef={handshakeDataRef} />
         <AppContent overlayUrl={overlayUrl} />
       </AppProviders>
     </SocketProvider>
   );
-}
-
-// Updates the handshake data ref with current context values each render
-function HandshakeSync({ dataRef }: { dataRef: React.MutableRefObject<Record<string, unknown>> }) {
-  const { matchManager, matchDetails } = useMatchContext();
-  const { config } = useConfig();
-  dataRef.current = { matchDetails, matchData: matchManager.match, config };
-  return null;
 }
 
 export default App;
