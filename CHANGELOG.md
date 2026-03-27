@@ -1,3 +1,10 @@
+## [1.10.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.10.0...v1.10.1) (2026-03-27)
+
+
+### Bug Fixes
+
+* route all socket comms through useBroadcast ([e2b0109](https://github.com/basevoley/volleyball-score-tracker/commit/e2b0109fdf2a2f0c9b8854ca6689e3b7bf35e043))
+
 # [1.10.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.9.0...v1.10.0) (2026-03-26)
 
 
