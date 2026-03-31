@@ -18,8 +18,7 @@ import { useSession } from '../services/session/useSession';
 import { useBroadcast } from '../services/socket/useBroadcast';
 import type { MatchData, MatchDetails, Config } from '../types';
 
-const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3005';
-const OVERLAY_URL = import.meta.env.VITE_OVERLAY_URL || 'http://localhost:3001';
+import { SOCKET_SERVER_URL, OVERLAY_URL } from '../config';
 
 interface RestoreSessionDialogProps {
   session: { matchData: MatchData; matchDetails: MatchDetails; config: Config };

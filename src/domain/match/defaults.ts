@@ -1,5 +1,8 @@
 import type { MatchData, MatchDetails, Config } from '../../types';
 import { createEmptyMatchStats } from './stats';
+import { SOCKET_SERVER_URL } from '../../config';
+
+const baseUrl = SOCKET_SERVER_URL;
 
 export const initialMatchData: MatchData = {
     scores: { teamA: 0, teamB: 0 },
@@ -65,11 +68,13 @@ export const initialConfig: Config = {
         enabled: false,
         position: 'top-left',
         channels: [
-            { network: 'YouTube', handle: 'voleibolAlcala', icon: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png' },
-            { network: 'TikTok', handle: 'cv_Alcala', icon: 'https://images.seeklogo.com/logo-png/34/2/tiktok-logo-png_seeklogo-340606.png' },
-            { network: 'Instagram', handle: 'voleibolalcala', icon: 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png' },
-            { network: 'Twitch', handle: 'cvalcalaoficial', icon: 'https://images.seeklogo.com/logo-png/44/2/twitch-new-logo-png_seeklogo-447573.png' },
-            { network: 'Facebook', handle: 'Club-Voleibol-Alcalá', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Facebook_Logo_%282019%29.png/1200px-Facebook_Logo_%282019%29.png' },
+            { network: 'YouTube',   handle: '@voleibolAlcala',          icon: `${baseUrl}/images/networks/Youtube_logo.png` },
+            { network: 'TikTok',    handle: '@cv_Alcala',               icon: `${baseUrl}/images/networks/tiktok-logo.png`},
+            { network: 'Instagram', handle: '@voleibolalcala',          icon: `${baseUrl}/images/networks/Instagram-Gradient-Logo.png` },
+            { network: 'Twitch',    handle: '@cvalcalaoficial',         icon: `${baseUrl}/images/networks/twitch-logo.png` },
+            { network: 'Facebook',  handle: '@Club-Voleibol-Alcalá',    icon: `${baseUrl}/images/networks/Facebook_Logo.png` },
+            { network: 'Web',       handle: 'cvoleibolalcala.com',      icon: `${baseUrl}/images/networks/web.png` },
+
         ],
     },
     teamComparison: {
