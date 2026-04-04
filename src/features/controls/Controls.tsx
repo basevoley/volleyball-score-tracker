@@ -80,7 +80,16 @@ const SequenceRow = ({ seq, isRunning, activeSequenceId, currentStepIndex, activ
                         </Tooltip>
                     </ClickAwayListener>
                 </Box>
-                {isManual ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    {!isManual && (
+                        <Tooltip title="Activar disparo automático">
+                            <Switch
+                                size="small"
+                                checked={automationsEnabled[seq.id] ?? true}
+                                onChange={() => toggleAutomation(seq.id)}
+                            />
+                        </Tooltip>
+                    )}
                     <Button
                         variant={isThisRunning ? 'outlined' : 'contained'}
                         color={isThisRunning ? 'error' : 'primary'}
@@ -88,16 +97,24 @@ const SequenceRow = ({ seq, isRunning, activeSequenceId, currentStepIndex, activ
                         startIcon={isThisRunning ? <StopIcon /> : <PlayArrowIcon />}
                         onClick={isThisRunning ? stop : () => runSequence(seq)}
                         disabled={!isThisRunning && (isRunning || !socket)}
-                        sx={isThisRunning ? {} : { color: 'white' }}
+                        sx={{ display: { xs: 'none', md: 'flex' }, ...(!isThisRunning && { color: 'white' }) }}
                     >
                         {isThisRunning ? 'Detener' : 'Iniciar'}
                     </Button>
-                ) : (
-                    <Switch
-                        checked={automationsEnabled[seq.id] ?? true}
-                        onChange={() => toggleAutomation(seq.id)}
-                    />
-                )}
+                    <Tooltip title={isThisRunning ? 'Detener' : 'Iniciar'}>
+                        <span>
+                            <IconButton
+                                color={isThisRunning ? 'error' : 'primary'}
+                                size="small"
+                                onClick={isThisRunning ? stop : () => runSequence(seq)}
+                                disabled={!isThisRunning && (isRunning || !socket)}
+                                sx={{ display: { xs: 'flex', md: 'none' }, border: '2px solid currentColor' }}
+                            >
+                                {isThisRunning ? <StopIcon /> : <PlayArrowIcon />}
+                            </IconButton>
+                        </span>
+                    </Tooltip>
+                </Box>
             </Box>
             {isThisRunning && currentStepIndex !== null && (
                 <Box sx={{ mt: 0.5 }}>
