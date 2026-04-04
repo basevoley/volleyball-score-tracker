@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box, Button, Typography, Collapse, IconButton,
     //  Menu, MenuItem, 
      Tooltip, Snackbar, Alert } from '@mui/material';
-import CastIcon from '@mui/icons-material/Cast';
+import ShareIcon from '@mui/icons-material/Share';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ResizablePreview from './ResizablePreview';
@@ -26,10 +26,13 @@ const OverlayPreview = ({ overlayUrl }: Props) => {
     //     setAnchorEl(null);
     // };
 
-    const handleCopyUrl = () => {
-        navigator.clipboard.writeText(overlayUrl);
-        // alert("Output URL copied to clipboard");
-        setOpenSnackbar(true);
+    const handleShareUrl = async () => {
+        if (navigator.share) {
+            await navigator.share({ url: overlayUrl });
+        } else {
+            navigator.clipboard.writeText(overlayUrl);
+            setOpenSnackbar(true);
+        }
     };
     
     const handleCloseSnackbar = (_event: React.SyntheticEvent | Event, reason?: string) => {
@@ -76,13 +79,13 @@ const OverlayPreview = ({ overlayUrl }: Props) => {
                     </IconButton>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Tooltip title="Copiar Overlay URL">
+                    <Tooltip title="Compartir Overlay URL">
                         <span>
                             <Button
                                 variant="contained"
                                 size="small"
-                                onClick={handleCopyUrl}
-                                startIcon={<CastIcon />}
+                                onClick={handleShareUrl}
+                                startIcon={<ShareIcon />}
                                 sx={{
                                     display: { xs: 'none', md: 'flex' },
                                     backgroundColor: '#4CAF50',
@@ -94,10 +97,10 @@ const OverlayPreview = ({ overlayUrl }: Props) => {
                                     }
                                 }}
                             >
-                                Copiar URL
+                                Compartir URL
                             </Button>
                             <IconButton
-                                onClick={handleCopyUrl}
+                                onClick={handleShareUrl}
                                 size="small"
                                 sx={{
                                     display: { xs: 'flex', md: 'none' },
@@ -112,7 +115,7 @@ const OverlayPreview = ({ overlayUrl }: Props) => {
                                     }
                                 }}
                             >
-                                <CastIcon />
+                                <ShareIcon />
                             </IconButton>
                         </span>
                     </Tooltip>
