@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.13.0...v1.14.0) (2026-04-04)
+
+
+### Features
+
+* use Web Share API for overlay URL, fallback to clipboard copy ([c00c5e5](https://github.com/basevoley/volleyball-score-tracker/commit/c00c5e505a344603e6f70467f79ca2db316ef601))
+
 # [1.13.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.12.0...v1.13.0) (2026-04-04)
 
 
