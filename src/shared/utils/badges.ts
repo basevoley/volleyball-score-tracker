@@ -69,7 +69,7 @@ const staticImages: Badge[] = [
   { id: 63,  name: 'colegio fuentelarreyna',                url: `${baseUrl}/images/teams/colegio-fuentelarreyna.jpg.jpeg` },
   { id: 64,  name: 'colegio miramadrid',                    url: `${baseUrl}/images/teams/colegio-miramadrid.png` },
   { id: 65,  name: 'corazonistas',                          url: `${baseUrl}/images/teams/corazonistas.jpg.jpeg` },
-  { id: 66,  name: 'cv alcala',                             url: `${baseUrl}/images/teams/cv-alcala.jpg.jpeg` },
+  { id: 66,  name: 'cv alcala',                             url: `${baseUrl}/images/teams/cv-alcala.jpg` },
   { id: 67,  name: 'cv alcobendas',                         url: `${baseUrl}/images/teams/cv-alcobendas.jpg.jpeg` },
   { id: 68,  name: 'cv aranjuez',                           url: `${baseUrl}/images/teams/cv-aranjuez.jpg.jpeg` },
   { id: 69,  name: 'cv arganda',                            url: `${baseUrl}/images/teams/cv-arganda.jpg.jpeg` },
