@@ -1,3 +1,15 @@
+# [1.13.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.12.0...v1.13.0) (2026-04-04)
+
+
+### Bug Fixes
+
+* stop running sequence and re-sync overlay on history undo ([af0420d](https://github.com/basevoley/volleyball-score-tracker/commit/af0420d2b582f873a1f51d997af2bfeedbd26e38))
+
+
+### Features
+
+* obtain team badges from local socket server ([83827dd](https://github.com/basevoley/volleyball-score-tracker/commit/83827ddff9b619a9cc4ba439686f895ef69db101))
+
 # [1.12.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.11.0...v1.12.0) (2026-03-27)
 
 
