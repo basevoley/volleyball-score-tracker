@@ -5,7 +5,8 @@ import { useConfig } from '../../contexts/ConfigContext';
 import type { MatchData, MatchDetails, MatchDomainEvent, MatchScores, TeamKey, TeamRecord, ComputedTeamStats, MatchPhase } from '../../types';
 import { computeEffectiveness } from '../../domain/match/stats';
 
-interface MatchEvent {
+export interface MatchEventPayload {
+    timestamp: number;
     type: string | null;
     details: Record<string, unknown> | null;
 }
@@ -21,10 +22,9 @@ export interface OverlayPayload {
     statistics: TeamRecord<ComputedTeamStats>;
     currentSetStats: TeamRecord<ComputedTeamStats>;
     winner: TeamKey | null;
-    matchEvent: MatchEvent;
 }
 
-const buildMatchPayload = (match: MatchData, matchEvent: MatchEvent): OverlayPayload => {
+const buildMatchPayload = (match: MatchData): OverlayPayload => {
     const computedStats: TeamRecord<ComputedTeamStats> = {
         teamA: computeEffectiveness(match.statistics.teamA, match.statistics.teamB),
         teamB: computeEffectiveness(match.statistics.teamB, match.statistics.teamA),
@@ -66,7 +66,6 @@ const buildMatchPayload = (match: MatchData, matchEvent: MatchEvent): OverlayPay
         statistics: computedStats,
         currentSetStats,
         winner: match.winner,
-        matchEvent,
     };
 };
 
@@ -87,20 +86,23 @@ export const useBroadcast = () => {
     configRef.current = config;
     socketRef.current = socket;
 
-    // Derive overlay notification from domain event and emit matchData
+    // Derive overlay notification from domain event, emit matchData and a dedicated matchEvent
     const handleMatchEvent = useCallback((event: MatchDomainEvent) => {
         const teams = teamsRef.current;
-        let matchEvent: { type: string | null; details: Record<string, unknown> | null } = { type: null, details: null };
+        let matchEvent: MatchEventPayload | null = null;
         if (event.type === 'RallyEnded' && event.faultingTeam) {
-            matchEvent = { type: 'referee-call', details: { text: 'Falta', team: teams[event.faultingTeam] } };
+            matchEvent = { timestamp: Date.now(), type: 'referee-call', details: { text: 'Falta', team: teams[event.faultingTeam] } };
         } else if (event.type === 'TimeoutCalled') {
-            matchEvent = { type: 'timeout', details: { text: 'Tiempo muerto', team: teams[event.team] } };
+            matchEvent = { timestamp: Date.now(), type: 'timeout', details: { text: 'Tiempo muerto', team: teams[event.team] } };
         } else if (event.type === 'SubstitutionCalled') {
-            matchEvent = { type: 'substitution', details: { text: 'Cambio', team: teams[event.team] } };
+            matchEvent = { timestamp: Date.now(), type: 'substitution', details: { text: 'Cambio', team: teams[event.team] } };
         } else if (event.type === 'RallyDiscarded') {
-            matchEvent = { type: 'referee-call', details: { text: 'Se repite el punto' } };
+            matchEvent = { timestamp: Date.now(), type: 'referee-call', details: { text: 'Se repite el punto' } };
         }
-        socketRef.current?.emit('matchData', buildMatchPayload(matchRef.current, matchEvent));
+        socketRef.current?.emit('matchData', buildMatchPayload(matchRef.current));
+        if (matchEvent) {
+            socketRef.current?.emit('matchEvent', matchEvent);
+        }
     }, []);
 
     useEffect(() => {
@@ -133,7 +135,7 @@ export const useBroadcast = () => {
         const handleHandshake = () => {
             socket.emit('handshake-response', {
                 message: 'Hello from ControlApp!',
-                matchData: buildMatchPayload(matchRef.current, { type: null, details: null }),
+                matchData: buildMatchPayload(matchRef.current),
                 config: configRef.current,
                 matchDetails: matchDetailsRef.current,
             });
@@ -144,7 +146,7 @@ export const useBroadcast = () => {
 
     // Emit full current state — call on session restore or any manual resync
     const syncAll = useCallback(() => {
-        socketRef.current?.emit('matchData', buildMatchPayload(matchRef.current, { type: null, details: null }));
+        socketRef.current?.emit('matchData', buildMatchPayload(matchRef.current));
         socketRef.current?.emit('updateConfig', configRef.current);
         socketRef.current?.emit('matchDetails', matchDetailsRef.current);
     }, []);
