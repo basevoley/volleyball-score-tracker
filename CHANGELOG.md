@@ -1,3 +1,16 @@
+# [1.15.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.14.0...v1.15.0) (2026-04-10)
+
+
+### Bug Fixes
+
+* small update to badges list ([239ad09](https://github.com/basevoley/volleyball-score-tracker/commit/239ad09205c94073dd5946e019a0a34c7aea4f7b))
+
+
+### Features
+
+* emit matchEvent on dedicated socket channel ([81b8b7b](https://github.com/basevoley/volleyball-score-tracker/commit/81b8b7bf83a3c07c3b92def23f773bdad21410fb))
+* responsive sequence buttons — icon-only with border on small screens ([3aea429](https://github.com/basevoley/volleyball-score-tracker/commit/3aea429c78da5d93058fd0a5f186c9896f8a876f))
+
 # [1.14.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.13.0...v1.14.0) (2026-04-04)
 
 
