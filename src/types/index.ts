@@ -193,22 +193,48 @@ export interface SocialChannel {
   icon: string;
 }
 
-export interface Config {
+// RuntimeConfig — live operator toggles, sent via updateConfig on every change.
+export interface RuntimeConfig {
   scoreboard: { enabled: boolean; type: string; position: string; showHistory: boolean };
   matchup: { enabled: boolean };
   lowerThird: { enabled: boolean };
-  socialMedia: { enabled: boolean; position: string; channels: SocialChannel[] };
+  socialMedia: { enabled: boolean; position: string };
   teamComparison: { enabled: boolean };
   afterMatch: { enabled: boolean; showStats: boolean };
-  sponsors: { enabled: boolean; imageUrls: string[]; displayTime: number };
+  sponsors: { enabled: boolean };
   subscribe: { enabled: boolean; position: string };
   lineup: { enabled: boolean; showStats: boolean };
+}
+
+// ThemeTokens — operator-customisable appearance tokens sent via overlaySetup.
+export interface ThemeColors {
+  background?: string;  // panel background        default: #34495e
+  text?: string;        // primary text             default: #ecf0f1
+  secondary?: string;   // secondary/muted text     default: #bdc3c7
+  primary?: string;     // accent (borders, scores) default: #3498db
+  accent?: string;      // highlight (names, sets)  default: #f1c40f
+  serving?: string;     // serving indicator        default: #2ecc71
+}
+
+export interface ThemeTokens {
+  colors?: ThemeColors;
+  font?: string;      // CSS font-family string   default: Arial, sans-serif
+  radius?: string;    // base border-radius        default: 8px
+  animation?: string; // base transition duration  default: 0.5s
+}
+
+// OverlaySetup — static broadcaster identity, sent once at handshake and on explicit save from Ajustes.
+export interface OverlaySetup {
+  socialMedia: { channels: SocialChannel[] };
+  sponsors: { imageUrls: string[]; displayTime: number };
+  subscribe: { logoUrl: string; callToActionText: string; buttonColor: string };
+  theme: ThemeTokens;
 }
 
 // ── Automation / sequences ───────────────────────────────────────────────────
 
 export interface ConfigChange {
-  section: keyof Config;
+  section: keyof RuntimeConfig;
   key: string;
   value: unknown;
 }
@@ -238,8 +264,8 @@ export interface Sequence {
   trigger: SequenceTrigger;
   defaultEnabled?: boolean;
   steps: SequenceStep[];
-  snapshotSections?: (keyof Config)[];
-  resetOnStop?: (keyof Config)[];
+  snapshotSections?: (keyof RuntimeConfig)[];
+  resetOnStop?: (keyof RuntimeConfig)[];
 }
 
 // ── Rally ────────────────────────────────────────────────────────────────────

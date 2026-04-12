@@ -1,10 +1,10 @@
 // app.js
-import React, { useState } from 'react';
-import { Container, Box, Typography, Paper, Tabs, Tab, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider } from '@mui/material';
-import PreMatch from '../features/pre-match/PreMatch';
-import Match from '../features/match/Match';
-import Controls from '../features/controls/Controls';
-import Settings from '../features/settings/Settings';
+import React, { useState, lazy, Suspense } from 'react';
+import { Container, Box, Typography, Paper, Tabs, Tab, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider, CircularProgress } from '@mui/material';
+const PreMatch  = lazy(() => import('../features/pre-match/PreMatch'));
+const Match     = lazy(() => import('../features/match/Match'));
+const Controls  = lazy(() => import('../features/controls/Controls'));
+const Settings  = lazy(() => import('../features/settings/Settings'));
 import Cookies from 'js-cookie';
 import ShortUUID from 'short-uuid';
 import { SocketProvider } from '../services/socket/SocketContext';
@@ -16,12 +16,13 @@ import { useMatchContext } from '../contexts/MatchContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { useSession } from '../services/session/useSession';
 import { useBroadcast } from '../services/socket/useBroadcast';
-import type { MatchData, MatchDetails, Config } from '../types';
+import { useImagePreloader } from '../hooks/useImagePreloader';
+import type { MatchData, MatchDetails, RuntimeConfig, OverlaySetup } from '../types';
 
 import { SOCKET_SERVER_URL, OVERLAY_URL } from '../config';
 
 interface RestoreSessionDialogProps {
-  session: { matchData: MatchData; matchDetails: MatchDetails; config: Config };
+  session: { matchData: MatchData; matchDetails: MatchDetails; runtimeConfig: RuntimeConfig; overlaySetup: OverlaySetup };
   onRestore: () => void;
   onDiscard: () => void;
 }
@@ -78,22 +79,26 @@ function RestoreSessionDialog({ session, onRestore, onDiscard }: RestoreSessionD
 // Inner shell — rendered inside all providers, has access to contexts
 function AppContent({ overlayUrl }: { overlayUrl: string }) {
   const [activeTab, setActiveTab] = useState(0);
+  const [sessionKey, setSessionKey] = useState(0);
   const theme = useTheme();
   const isUpMd = useMediaQuery(theme.breakpoints.up('md'));
 
   const { matchManager, matchDetails, restoreSession } = useMatchContext();
-  const { config, setConfig } = useConfig();
+  const { config, setConfig, overlaySetup, setOverlaySetup } = useConfig();
   const { syncAll } = useBroadcast();
+  useImagePreloader(matchDetails, overlaySetup);
 
   const { savedSession, clearSavedSession, discardSession } = useSession(
-    matchManager.match, matchDetails, config
+    matchManager.match, matchDetails, config, overlaySetup
   );
 
   const handleRestoreSession = () => {
     restoreSession({ matchData: savedSession!.matchData, matchDetails: savedSession!.matchDetails });
-    setConfig(savedSession!.config);
+    setConfig(savedSession!.runtimeConfig);
+    setOverlaySetup(savedSession!.overlaySetup);
     clearSavedSession();
     setActiveTab(savedSession!.matchData?.matchPhase === 'in-progress' ? 1 : 0);
+    setSessionKey(k => k + 1);
     syncAll();
   };
 
@@ -169,10 +174,12 @@ function AppContent({ overlayUrl }: { overlayUrl: string }) {
             </Tabs>
           </Box>
 
-          {activeTab === 0 && <PreMatch />}
-          {activeTab === 1 && <Match />}
-          {activeTab === 2 && <Controls />}
-          {activeTab === 3 && <Settings />}
+          <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>}>
+            {activeTab === 0 && <PreMatch key={sessionKey} />}
+            {activeTab === 1 && <Match key={sessionKey} />}
+            {activeTab === 2 && <Controls />}
+            {activeTab === 3 && <Settings />}
+          </Suspense>
 
           <Box
             component="footer"

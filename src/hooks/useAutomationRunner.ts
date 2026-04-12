@@ -1,18 +1,20 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { Config, ConfigChange, Sequence, SequenceStep, AutomationCtx } from '../types';
+import type { RuntimeConfig, ConfigChange, Sequence, SequenceStep, AutomationCtx } from '../types';
 
-const applyChanges = (config: Config, changes: ConfigChange[]): Config =>
-    changes.reduce(
-        (cfg, { section, key, value }) => ({
-            ...cfg,
-            [section]: { ...cfg[section], [key]: value },
+const applyChanges = (config: RuntimeConfig, changes: ConfigChange[]): RuntimeConfig => {
+    const cfg = config as unknown as Record<string, Record<string, unknown>>;
+    return changes.reduce(
+        (acc, { section, key, value }) => ({
+            ...acc,
+            [section]: { ...(acc as unknown as Record<string, Record<string, unknown>>)[section], [key]: value },
         }),
-        { ...config }
-    );
+        { ...cfg }
+    ) as unknown as RuntimeConfig;
+};
 
 interface UseAutomationRunnerParams {
-    config: Config;
-    setConfig: (config: Config) => void;
+    config: RuntimeConfig;
+    setConfig: (config: RuntimeConfig) => void;
 }
 
 const useAutomationRunner = ({ config, setConfig }: UseAutomationRunnerParams) => {
@@ -21,10 +23,10 @@ const useAutomationRunner = ({ config, setConfig }: UseAutomationRunnerParams) =
     const [currentStepIndex, setCurrentStepIndex] = useState<number | null>(null);
     const [activeSteps, setActiveSteps] = useState<SequenceStep[]>([]);
 
-    const configRef = useRef<Config>(config);
+    const configRef = useRef<RuntimeConfig>(config);
     const isRunningRef = useRef(false);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const snapshotRef = useRef<Partial<Config> | null>(null);
+    const snapshotRef = useRef<Partial<RuntimeConfig> | null>(null);
     const activeSequenceRef = useRef<Sequence | null>(null);
 
     useEffect(() => {
@@ -84,7 +86,7 @@ const useAutomationRunner = ({ config, setConfig }: UseAutomationRunnerParams) =
         if (sequence.snapshotSections && sequence.snapshotSections.length > 0) {
             snapshotRef.current = sequence.snapshotSections.reduce(
                 (snap, section) => ({ ...snap, [section]: { ...configRef.current[section] } }),
-                {} as Partial<Config>
+                {} as Partial<RuntimeConfig>
             );
         }
 

@@ -1,72 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Box, Paper, Typography, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { usePreferences } from '../../contexts/PreferencesContext';
-import {
-    Box,
-    Paper,
-    Typography,
-    Switch,
-    FormControlLabel,
-    Divider,
-    Tooltip,
-    IconButton,
-    ClickAwayListener,
-} from '@mui/material';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-
-interface SettingRowProps {
-  title: string;
-  description?: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}
-
-const SettingRow = ({ title, description, checked, onChange }: SettingRowProps) => {
-    const [descOpen, setDescOpen] = useState(false);
-
-    return (
-        <Box sx={{ paddingY: 1.5 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="body2">{title}</Typography>
-                    {description && (
-                        <ClickAwayListener onClickAway={() => setDescOpen(false)}>
-                            <Tooltip
-                                title={description}
-                                arrow
-                                placement="bottom-start"
-                                open={descOpen}
-                                disableFocusListener
-                                disableHoverListener
-                                disableTouchListener
-                                slotProps={{
-                                    popper: {
-                                        modifiers: [
-                                            { name: 'preventOverflow', options: { boundary: 'window', padding: 8 } },
-                                            { name: 'flip', options: { fallbackPlacements: ['top-start', 'bottom', 'top'] } },
-                                        ],
-                                    },
-                                    tooltip: { sx: { maxWidth: 220 } },
-                                }}
-                            >
-                                <IconButton size="small" onClick={() => setDescOpen(v => !v)} sx={{ p: 0.25 }}>
-                                    <InfoOutlinedIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
-                                </IconButton>
-                            </Tooltip>
-                        </ClickAwayListener>
-                    )}
-                </Box>
-                <FormControlLabel
-                    control={<Switch checked={checked} onChange={(e) => onChange(e.target.checked)} />}
-                    label={<Typography variant="caption">{checked ? 'Activado' : 'Desactivado'}</Typography>}
-                />
-            </Box>
-            <Divider sx={{ mt: 1.5 }} />
-        </Box>
-    );
-};
+import { SettingRow } from './SettingRow';
+import { SocialNetworksSection } from './SocialNetworksSection';
+import { SponsorsSection } from './SponsorsSection';
+import { AppearanceSection } from './AppearanceSection';
+import { SubscribeSection } from './SubscribeSection';
+import { OVERLAY_CUSTOMIZATIONS_ENABLED } from '../../config'
 
 const Settings = () => {
-  const { noStats, setNoStats } = usePreferences();
+    const { noStats, setNoStats } = usePreferences();
+
     return (
         <Box sx={{ width: '100%', p: { xs: 1, sm: 2 }, boxSizing: 'border-box' }}>
             <Paper
@@ -80,16 +25,53 @@ const Settings = () => {
                     borderRadius: 2,
                 }}
             >
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                    Seguimiento del Partido
-                </Typography>
+                <Accordion sx={{ mb: 1, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="h6">Seguimiento del Partido</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ pt: 0 }}>
+                        <SettingRow
+                            title="Modo sin estadísticas"
+                            description="Oculta los controles de rally durante el partido y deshabilita la tabla de estadísticas en el panel de resultados del overlay."
+                            checked={noStats}
+                            onChange={setNoStats}
+                        />
+                    </AccordionDetails>
+                </Accordion>
 
-                <SettingRow
-                    title="Modo sin estadísticas"
-                    description="Oculta los controles de rally durante el partido y deshabilita la tabla de estadísticas en el panel de resultados del overlay."
-                    checked={noStats}
-                    onChange={setNoStats}
-                />
+                {OVERLAY_CUSTOMIZATIONS_ENABLED && (
+                    <>
+                        <Accordion sx={{ mt: 1, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6">Redes Sociales</Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <SocialNetworksSection />
+                            </AccordionDetails>
+                        </Accordion><Accordion sx={{ mt: 1, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6">Patrocinadores</Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <SponsorsSection />
+                            </AccordionDetails>
+                        </Accordion><Accordion sx={{ mt: 1, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6">Suscripción</Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <SubscribeSection />
+                            </AccordionDetails>
+                        </Accordion><Accordion sx={{ mt: 1, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography variant="h6">Apariencia General</Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <AppearanceSection />
+                            </AccordionDetails>
+                        </Accordion>
+                    </>
+                )}
             </Paper>
         </Box>
     );

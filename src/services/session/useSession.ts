@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Config, MatchData, MatchDetails } from '../../types';
+import type { RuntimeConfig, OverlaySetup, MatchData, MatchDetails } from '../../types';
 import { initialMatchDetails } from '../../domain/match/defaults';
 import { loadSession, saveSession, clearSession } from './sessionStorage';
 
 interface SavedSession {
     matchData: MatchData;
     matchDetails: MatchDetails;
-    config: Config;
+    runtimeConfig: RuntimeConfig;
+    overlaySetup: OverlaySetup;
 }
 
-export const useSession = (match: MatchData, matchDetails: MatchDetails, config: Config) => {
+export const useSession = (
+    match: MatchData,
+    matchDetails: MatchDetails,
+    runtimeConfig: RuntimeConfig,
+    overlaySetup: OverlaySetup,
+) => {
     const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
 
     // Read saved session on mount
@@ -36,8 +42,8 @@ export const useSession = (match: MatchData, matchDetails: MatchDetails, config:
 
     // Persist session on every state change
     useEffect(() => {
-        saveSession({ matchData: match, matchDetails, config });
-    }, [match, matchDetails, config]);
+        saveSession({ matchData: match, matchDetails, runtimeConfig, overlaySetup });
+    }, [match, matchDetails, runtimeConfig, overlaySetup]);
 
     const clearSavedSession = useCallback(() => {
         setSavedSession(null);

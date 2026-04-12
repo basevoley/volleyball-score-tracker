@@ -14,7 +14,7 @@
 //              AdjustHistoryEntry has no prevServer field.
 //              Stats objects are TeamStats (includes computed effectiveness fields).
 //
-//   version 2  (current)
+//   version 2
 //              Shape: { version: 2, matchData, matchDetails, config }
 //              matchData fields: matchPhase enum replaces matchStarted/ballPossession/setScores.
 //              Single history: HistoryEntry[] spanning the full match (replaces split arrays).
@@ -22,10 +22,20 @@
 //              AdjustHistoryEntry has prevServer: TeamKey | null.
 //              Stats objects are RawTeamStats (no computed effectiveness fields).
 //
+//   version 3
+//              Shape: { version: 3, matchData, matchDetails, runtimeConfig, overlaySetup }
+//              config split into runtimeConfig (live toggles) + overlaySetup (static broadcaster identity).
+//              overlaySetup contains socialMedia.channels, sponsors.imageUrls/displayTime, theme.
+//
+//   version 4  (current)
+//              Shape: { version: 4, matchData, matchDetails, runtimeConfig, overlaySetup }
+//              overlaySetup gains subscribe: { logoUrl, callToActionText, buttonColor }.
+//
 // ── Migration rules ───────────────────────────────────────────────────────────
 //
 //   0 → 1: data shape unchanged — stamp version: 1.
 //   1 → 2: see migrateV1ToV2() below.
+//   2 → 3: see migrateV2ToV3() below.
 //
 // ── Adding a new version ──────────────────────────────────────────────────────
 //
@@ -33,16 +43,18 @@
 //   2. Add a migration block inside `migrate()` guarded by `fromVersion < N`.
 //   3. Document the new shape in the version history above.
 
-import type { Config, MatchData, MatchDetails } from '../../types';
+import type { RuntimeConfig, OverlaySetup, SocialChannel, MatchData, MatchDetails } from '../../types';
+import { initialOverlaySetup } from '../../domain/match/defaults';
 
 export const STORAGE_KEY = 'vb_tracker_session';
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 4;
 
 export interface PersistedSession {
     version: number;
     matchData: MatchData;
     matchDetails: MatchDetails;
-    config: Config;
+    runtimeConfig: RuntimeConfig;
+    overlaySetup: OverlaySetup;
 }
 
 // Raw field keys that belong in RawTeamStats (v2). All others are computed and must be stripped.
@@ -141,6 +153,33 @@ const migrateV1ToV2 = (data: Record<string, unknown>): Record<string, unknown> =
     };
 };
 
+const migrateV2ToV3 = (data: Record<string, unknown>): Record<string, unknown> => {
+    const config = (data.config ?? {}) as Record<string, unknown>;
+    const socialMediaConfig = (config.socialMedia ?? {}) as Record<string, unknown>;
+    const sponsorsConfig = (config.sponsors ?? {}) as Record<string, unknown>;
+
+    const overlaySetup: OverlaySetup = {
+        socialMedia: { channels: (socialMediaConfig.channels as SocialChannel[]) ?? initialOverlaySetup.socialMedia.channels },
+        sponsors: {
+            imageUrls: (sponsorsConfig.imageUrls as string[]) ?? initialOverlaySetup.sponsors.imageUrls,
+            displayTime: (sponsorsConfig.displayTime as number) ?? initialOverlaySetup.sponsors.displayTime,
+        },
+        subscribe: { ...initialOverlaySetup.subscribe },
+        theme: {},
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { channels: _channels, ...socialMediaRuntime } = socialMediaConfig;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { imageUrls: _imageUrls, displayTime: _displayTime, ...sponsorsRuntime } = sponsorsConfig;
+
+    const runtimeConfig = { ...config, socialMedia: socialMediaRuntime, sponsors: sponsorsRuntime };
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { config: _config, ...restData } = data;
+    return { ...restData, version: 3, runtimeConfig, overlaySetup };
+};
+
 // Migrate raw parsed data from `fromVersion` up to CURRENT_VERSION.
 // Returns null if the data cannot be safely migrated.
 export const migrate = (raw: Record<string, unknown>, fromVersion: number): PersistedSession | null => {
@@ -154,6 +193,22 @@ export const migrate = (raw: Record<string, unknown>, fromVersion: number): Pers
 
         if (fromVersion < 2) {
             data = migrateV1ToV2(data);
+        }
+
+        if (fromVersion < 3) {
+            data = migrateV2ToV3(data);
+        }
+
+        if (fromVersion < 4) {
+            const overlaySetup = (data.overlaySetup ?? {}) as Record<string, unknown>;
+            data = {
+                ...data,
+                version: 4,
+                overlaySetup: {
+                    ...overlaySetup,
+                    subscribe: overlaySetup.subscribe ?? { ...initialOverlaySetup.subscribe },
+                },
+            };
         }
 
         return data as unknown as PersistedSession;
@@ -192,4 +247,35 @@ export const saveSession = (session: Omit<PersistedSession, 'version'>): void =>
 // Remove the stored session from localStorage.
 export const clearSession = (): void => {
     localStorage.removeItem(STORAGE_KEY);
+};
+
+// ── Overlay setup persistence ─────────────────────────────────────────────────
+// Stored independently from the match session so broadcaster config survives
+// page refreshes regardless of whether a match is in progress.
+
+const OVERLAY_SETUP_KEY = 'vb_overlay_setup';
+
+export const saveOverlaySetup = (setup: OverlaySetup): void => {
+    try {
+        localStorage.setItem(OVERLAY_SETUP_KEY, JSON.stringify(setup));
+    } catch { /* storage unavailable or quota exceeded */ }
+};
+
+// Returns saved setup merged over initialOverlaySetup so any new fields
+// added in future versions always get their defaults without a migration.
+export const loadOverlaySetup = (): OverlaySetup | null => {
+    try {
+        const raw = localStorage.getItem(OVERLAY_SETUP_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<OverlaySetup>;
+        return {
+            ...initialOverlaySetup,
+            ...parsed,
+            subscribe: { ...initialOverlaySetup.subscribe, ...parsed.subscribe },
+            sponsors: { ...initialOverlaySetup.sponsors, ...parsed.sponsors },
+            socialMedia: { ...initialOverlaySetup.socialMedia, ...parsed.socialMedia },
+        };
+    } catch {
+        return null;
+    }
 };

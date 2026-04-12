@@ -1,4 +1,4 @@
-import type { MatchData, MatchDetails, Config } from '../../types';
+import type { MatchData, MatchDetails, RuntimeConfig, OverlaySetup } from '../../types';
 import { createEmptyMatchStats } from './stats';
 import { SOCKET_SERVER_URL } from '../../config';
 
@@ -51,54 +51,37 @@ export const initialMatchDetails: MatchDetails = {
     },
 };
 
-export const initialConfig: Config = {
-    scoreboard: {
-        enabled: false,
-        type: 'classic',
-        position: 'top',
-        showHistory: true,
-    },
-    matchup: {
-        enabled: false,
-    },
-    lowerThird: {
-        enabled: false,
-    },
-    socialMedia: {
-        enabled: false,
-        position: 'top-left',
-        channels: [
-            { network: 'YouTube',   handle: '@voleibolAlcala',          icon: `${baseUrl}/images/networks/Youtube_logo.png` },
-            { network: 'TikTok',    handle: '@cv_Alcala',               icon: `${baseUrl}/images/networks/tiktok-logo.png`},
-            { network: 'Instagram', handle: '@voleibolalcala',          icon: `${baseUrl}/images/networks/Instagram-Gradient-Logo.png` },
-            { network: 'Twitch',    handle: '@cvalcalaoficial',         icon: `${baseUrl}/images/networks/twitch-logo.png` },
-            { network: 'Facebook',  handle: '@Club-Voleibol-Alcalá',    icon: `${baseUrl}/images/networks/Facebook_Logo.png` },
-            { network: 'Web',       handle: 'cvoleibolalcala.com',      icon: `${baseUrl}/images/networks/web.png` },
+export const initialConfig: RuntimeConfig = {
+    scoreboard: { enabled: false, type: 'classic', position: 'top', showHistory: true },
+    matchup: { enabled: false },
+    lowerThird: { enabled: false },
+    socialMedia: { enabled: false, position: 'top-left' },
+    teamComparison: { enabled: false },
+    afterMatch: { enabled: false, showStats: true },
+    sponsors: { enabled: false },
+    subscribe: { enabled: false, position: 'center' },
+    lineup: { enabled: false, showStats: true },
+};
 
+export const initialOverlaySetup: OverlaySetup = {
+    socialMedia: {
+        channels: [
+            { network: 'YouTube',   handle: '@voleibolAlcala',       icon: `${baseUrl}/images/networks/Youtube_logo.png` },
+            { network: 'TikTok',    handle: '@cv_Alcala',            icon: `${baseUrl}/images/networks/tiktok-logo.png` },
+            { network: 'Instagram', handle: '@voleibolalcala',       icon: `${baseUrl}/images/networks/Instagram-Gradient-Logo.png` },
+            { network: 'Twitch',    handle: '@cvalcalaoficial',      icon: `${baseUrl}/images/networks/twitch-logo.png` },
+            { network: 'Facebook',  handle: '@Club-Voleibol-Alcalá', icon: `${baseUrl}/images/networks/Facebook_Logo.png` },
+            { network: 'Web',       handle: 'cvoleibolalcala.com',   icon: `${baseUrl}/images/networks/web.png` },
         ],
-    },
-    teamComparison: {
-        enabled: false,
-    },
-    afterMatch: {
-        enabled: false,
-        showStats: true,
     },
     sponsors: {
-        enabled: false,
-        imageUrls: [
-            'sponsors-1.png',
-            'sponsors-2.png',
-            'sponsors-3.png',
-        ],
+        imageUrls: [`${baseUrl}/images/sponsors/sponsors-1.png`, `${baseUrl}/images/sponsors/sponsors-2.png`, `${baseUrl}/images/sponsors/sponsors-3.png`],
         displayTime: 5000,
     },
     subscribe: {
-        enabled: false,
-        position: 'center',
+        logoUrl: `${baseUrl}/images/teams/cv-alcala.jpg`,
+        callToActionText: 'SUSCRÍBETE',
+        buttonColor: '#ff0000',
     },
-    lineup: {
-        enabled: false,
-        showStats: true,
-    },
+    theme: {},
 };

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useSocket } from './SocketContext';
 import { useMatchContext } from '../../contexts/MatchContext';
 import { useConfig } from '../../contexts/ConfigContext';
-import type { MatchData, MatchDetails, MatchDomainEvent, MatchScores, TeamKey, TeamRecord, ComputedTeamStats, MatchPhase } from '../../types';
+import type { MatchData, MatchDetails, MatchDomainEvent, MatchScores, TeamKey, TeamRecord, ComputedTeamStats, MatchPhase, OverlaySetup } from '../../types';
 import { computeEffectiveness } from '../../domain/match/stats';
 
 export interface MatchEventPayload {
@@ -72,18 +72,20 @@ const buildMatchPayload = (match: MatchData): OverlayPayload => {
 export const useBroadcast = () => {
     const { socket } = useSocket();
     const { matchManager, matchDetails, addMatchEventListener } = useMatchContext();
-    const { config } = useConfig();
+    const { config, overlaySetup } = useConfig();
 
     // Always-current refs — callbacks read these without stale closures
     const matchRef = useRef(matchManager.match);
     const teamsRef = useRef(matchDetails.teams);
     const matchDetailsRef = useRef<MatchDetails>(matchDetails);
     const configRef = useRef(config);
+    const overlaySetupRef = useRef<OverlaySetup>(overlaySetup);
     const socketRef = useRef(socket);
     matchRef.current = matchManager.match;
     teamsRef.current = matchDetails.teams;
     matchDetailsRef.current = matchDetails;
     configRef.current = config;
+    overlaySetupRef.current = overlaySetup;
     socketRef.current = socket;
 
     // Derive overlay notification from domain event, emit matchData and a dedicated matchEvent
@@ -109,7 +111,7 @@ export const useBroadcast = () => {
         return addMatchEventListener(handleMatchEvent);
     }, [addMatchEventListener, handleMatchEvent]);
 
-    // Emit updateConfig whenever config changes (skip the initial render)
+    // Emit updateConfig whenever runtimeConfig changes (skip the initial render)
     const isFirstConfigRender = useRef(true);
     useEffect(() => {
         if (isFirstConfigRender.current) {
@@ -118,6 +120,16 @@ export const useBroadcast = () => {
         }
         socketRef.current?.emit('updateConfig', config);
     }, [config]);
+
+    // Emit overlaySetup whenever it changes (skip the initial render)
+    const isFirstOverlaySetupRender = useRef(true);
+    useEffect(() => {
+        if (isFirstOverlaySetupRender.current) {
+            isFirstOverlaySetupRender.current = false;
+            return;
+        }
+        socketRef.current?.emit('overlaySetup', overlaySetup);
+    }, [overlaySetup]);
 
     // Emit matchDetails whenever it changes (skip the initial render)
     const isFirstDetailsRender = useRef(true);
@@ -136,7 +148,8 @@ export const useBroadcast = () => {
             socket.emit('handshake-response', {
                 message: 'Hello from ControlApp!',
                 matchData: buildMatchPayload(matchRef.current),
-                config: configRef.current,
+                runtimeConfig: configRef.current,
+                overlaySetup: overlaySetupRef.current,
                 matchDetails: matchDetailsRef.current,
             });
         };
@@ -148,6 +161,7 @@ export const useBroadcast = () => {
     const syncAll = useCallback(() => {
         socketRef.current?.emit('matchData', buildMatchPayload(matchRef.current));
         socketRef.current?.emit('updateConfig', configRef.current);
+        socketRef.current?.emit('overlaySetup', overlaySetupRef.current);
         socketRef.current?.emit('matchDetails', matchDetailsRef.current);
     }, []);
 
