@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.15.0...v1.16.0) (2026-04-12)
+
+
+### Features
+
+* added support for overlay appearance management ([3700578](https://github.com/basevoley/volleyball-score-tracker/commit/370057895abc656243594b622c155f67d74b62c2))
+
 # [1.15.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.14.0...v1.15.0) (2026-04-10)
 
 
