@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Box, Button, Typography, Collapse, IconButton,
-    //  Menu, MenuItem, 
+    //  Menu, MenuItem,
      Tooltip, Snackbar, Alert } from '@mui/material';
-import ShareIcon from '@mui/icons-material/Share';
+import ShareIcon from '@mui/icons-material/Cast';
+import SportsVolleyballIcon from '@mui/icons-material/SportsVolleyball';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ResizablePreview from './ResizablePreview';
@@ -26,11 +27,22 @@ const OverlayPreview = ({ overlayUrl }: Props) => {
     //     setAnchorEl(null);
     // };
 
+    const liveUrl = overlayUrl.replace('?key=', '/live?key=');
+
     const handleShareUrl = async () => {
         if (navigator.share) {
             await navigator.share({ url: overlayUrl });
         } else {
             navigator.clipboard.writeText(overlayUrl);
+            setOpenSnackbar(true);
+        }
+    };
+
+    const handleShareLiveUrl = async () => {
+        if (navigator.share) {
+            await navigator.share({ url: liveUrl });
+        } else {
+            navigator.clipboard.writeText(liveUrl);
             setOpenSnackbar(true);
         }
     };
@@ -116,6 +128,38 @@ const OverlayPreview = ({ overlayUrl }: Props) => {
                                 }}
                             >
                                 <ShareIcon />
+                            </IconButton>
+                        </span>
+                    </Tooltip>
+                    <Tooltip title="Compartir marcador en directo (para espectadores)">
+                        <span>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                onClick={handleShareLiveUrl}
+                                startIcon={<SportsVolleyballIcon />}
+                                sx={{
+                                    display: { xs: 'none', md: 'flex' },
+                                    backgroundColor: '#1976d2',
+                                    color: 'white',
+                                    fontSize: '0.75rem',
+                                    padding: '6px 12px',
+                                    '&:hover': { backgroundColor: '#1565c0' },
+                                }}
+                            >
+                                Marcador en vivo
+                            </Button>
+                            <IconButton
+                                onClick={handleShareLiveUrl}
+                                size="small"
+                                sx={{
+                                    display: { xs: 'flex', md: 'none' },
+                                    backgroundColor: '#1976d2',
+                                    color: 'white',
+                                    '&:hover': { backgroundColor: '#1565c0' },
+                                }}
+                            >
+                                <SportsVolleyballIcon />
                             </IconButton>
                         </span>
                     </Tooltip>

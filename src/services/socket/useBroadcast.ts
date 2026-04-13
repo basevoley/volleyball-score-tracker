@@ -15,6 +15,7 @@ export interface OverlayPayload {
     scores: MatchScores;
     setsWon: MatchScores;
     setScores: MatchScores[];
+    setStats: { scores: MatchScores; statistics: TeamRecord<ComputedTeamStats> }[];
     currentServer: TeamKey | null;
     matchPhase: MatchPhase;
     timeouts: MatchScores;
@@ -55,10 +56,22 @@ const buildMatchPayload = (match: MatchData): OverlayPayload => {
         setScores = allSetScores;
     }
 
+    const setStatsSlice = isBetweenSets && !match.winner
+        ? match.setStats.slice(0, -1)
+        : match.setStats;
+    const setStats = setStatsSlice.map(s => ({
+        scores: s.scores,
+        statistics: {
+            teamA: computeEffectiveness(s.statistics.teamA, s.statistics.teamB),
+            teamB: computeEffectiveness(s.statistics.teamB, s.statistics.teamA),
+        },
+    }));
+
     return {
         scores,
         setsWon: match.setsWon,
         setScores,
+        setStats,
         currentServer: match.currentServer,
         matchPhase: match.matchPhase,
         timeouts: match.timeouts,
