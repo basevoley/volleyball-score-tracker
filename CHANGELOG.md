@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.16.0...v1.17.0) (2026-04-13)
+
+
+### Features
+
+* expose spectator live URL + include per-set stats in overlay payload ([c95e8da](https://github.com/basevoley/volleyball-score-tracker/commit/c95e8daece7c2ce6795f2c4353f5442ff2a39a7a))
+
 # [1.16.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.15.0...v1.16.0) (2026-04-12)
 
 
