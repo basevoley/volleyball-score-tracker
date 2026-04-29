@@ -19,8 +19,10 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CustomCombobox from '../../shared/components/CustomCombobox';
+import { getBestBadge } from '../../shared/utils/badgeUtils';
 import MatchSelector from './MatchSelector';
 import ModalOverlay from '../../shared/components/ModalOverlay';
+import RfevbMatchSelector from './RfevbMatchSelector';
 import { TeamColorSelector } from './TeamColorSelector';
 import TeamPlayerList from './EditablePlayerList';
 
@@ -41,6 +43,7 @@ function PreMatch() {
   const [statsB, setStatsB] = useState(matchDetails.stats.teamB);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRfevbModalOpen, setIsRfevbModalOpen] = useState(false);
 
   useEffect(() => {
     setMatchDetails(prevDetails => {
@@ -223,9 +226,7 @@ function PreMatch() {
           <Button
             variant="contained"
             onClick={() => setIsModalOpen(true)}
-            sx={{
-              gap: '8px',
-            }}
+            sx={{ gap: '8px' }}
           >
             Obtener desde FMV
             <Box
@@ -235,12 +236,34 @@ function PreMatch() {
               sx={{ height: '20px' }}
             />
           </Button>
+
+          <Button
+            variant="outlined"
+            onClick={() => setIsRfevbModalOpen(true)}
+            sx={{ gap: '8px' }}
+          >
+            Campeonatos de España
+            <Box
+              component="img"
+              src="https://esvoley.es/images/logo-rfevb.svg"
+              alt="RFEVB"
+              sx={{ height: '20px' }}
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }}
+            />
+          </Button>
         </Box>
 
         {isModalOpen && (
           <ModalOverlay onClose={() => setIsModalOpen(false)}>
             <MatchSelector onSelectMatch={handleSelectMatch} />
           </ModalOverlay>
+        )}
+
+        {isRfevbModalOpen && (
+          <RfevbMatchSelector
+            onSelectMatch={handleSelectMatch}
+            onClose={() => setIsRfevbModalOpen(false)}
+          />
         )}
 
         <TextField
@@ -348,6 +371,7 @@ function PreMatch() {
             placeholderText="URL del escudo del Equipo A"
             inputValue={teamALogo}
             onInputChange={setTeamALogo}
+            fallbackUrl={getBestBadge(teamA) ?? undefined}
           />
         </Box>
         <Divider sx={{ mt: 1 }} />
@@ -383,7 +407,7 @@ function PreMatch() {
         </Box>
 
         <Box sx={{ width: '100%', mt: 1 }}>
-          <CustomCombobox label={"URL del escudo del Equipo B"} placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} />
+          <CustomCombobox label={"URL del escudo del Equipo B"} placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} fallbackUrl={getBestBadge(teamB) ?? undefined} />
         </Box>
 
         <Accordion defaultExpanded={hasStats} sx={{ mt: 1, mb: 0, boxShadow: 'none', border: '1px solid #e0e0e0' }}>

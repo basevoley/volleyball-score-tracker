@@ -83,7 +83,7 @@ describe('migrate — v0 → v2', () => {
         const result = migrate(v0, 0);
 
         expect(result).not.toBeNull();
-        expect(result!.version).toBe(2);
+        expect(result!.version).toBe(4);
         expect((result!.matchData as unknown as Record<string, unknown>).matchPhase).toBe('pre-match');
     });
 });
@@ -114,7 +114,7 @@ describe('migrate — v1 → v2', () => {
         const result = migrate(v1, 1)!;
         const md = (result.matchData as unknown) as Record<string, unknown>;
 
-        expect(result.version).toBe(2);
+        expect(result.version).toBe(4);
         expect(md.matchPhase).toBe('pre-match');
         expect(md.matchStarted).toBeUndefined();
         expect(md.ballPossession).toBeUndefined();

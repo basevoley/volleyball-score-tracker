@@ -1,12 +1,33 @@
 {
+    "version": "0.2.0",
     "configurations": [
-        
-        {
-            "type": "node-terminal",
-            "name": "Run Script: start",
-            "request": "launch",
-            "command": "npm run start",
-            "cwd": "${workspaceFolder}"
+      {
+        "type": "chrome",
+        "request": "launch",
+        "name": "Debug Tracker (Chrome)",
+        "url": "http://localhost:3000",
+        "webRoot": "${workspaceFolder}/src",
+        "sourceMaps": true,
+        "preLaunchTask": null,
+        "serverReadyAction": {
+          "action": "debugWithChrome",
+          "pattern": "Local:.*http://localhost:([0-9]+)",
+          "uriFormat": "http://localhost:%s"
         }
+      },
+      {
+        "type": "node-terminal",
+        "name": "Run Script: start",
+        "request": "launch",
+        "command": "npm run start",
+        "cwd": "${workspaceFolder}"
+      }
+    ],
+    "compounds": [
+      {
+        "name": "Start + Debug Tracker",
+        "configurations": ["Run Script: start", "Debug Tracker (Chrome)"],
+        "stopAll": true
+      }
     ]
-}
+  }

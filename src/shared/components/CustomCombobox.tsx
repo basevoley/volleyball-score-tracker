@@ -13,9 +13,10 @@ interface Props {
   placeholderText?: string;
   inputValue: string;
   onInputChange: (value: string) => void;
+  fallbackUrl?: string;
 }
 
-const CustomCombobox = ({ label, placeholderText, inputValue, onInputChange }: Props) => {
+const CustomCombobox = ({ label, placeholderText, inputValue, onInputChange, fallbackUrl }: Props) => {
     // Buscamos el objeto que coincida con la URL actual para que el Autocomplete lo resalte
     const selectedOption = staticImages.find(img => img.url === inputValue) || null;
     const [hasImageError, setHasImageError] = useState(false);
@@ -153,7 +154,13 @@ const CustomCombobox = ({ label, placeholderText, inputValue, onInputChange }: P
                         src={inputValue}
                         alt="Badge Preview"
                         sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        onError={() => setHasImageError(true)}
+                        onError={() => {
+                            if (fallbackUrl && fallbackUrl !== inputValue) {
+                                onInputChange(fallbackUrl);
+                            } else {
+                                setHasImageError(true);
+                            }
+                        }}
                     />
                 ) : (
                     <Typography variant="caption" align="center" sx={{ color: hasImageError ? 'white' : 'text.disabled', p: 0.5 }}>

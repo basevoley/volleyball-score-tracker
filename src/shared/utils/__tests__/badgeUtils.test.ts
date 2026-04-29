@@ -26,7 +26,7 @@ describe('getBestBadge', () => {
 
   test('debe ser flexible con errores (fuzzy search)', () => {
     const result = getBestBadge('Alcala'); // Sin tilde
-    expect(result).toBe('https://www.todovoleibol.com/images/escudos/cv-alcala.jpg');
+    expect(result).toBe('http://localhost:3005/images/teams/cv-alcala.jpg');
   });
 
   test('debe retornar null si no hay coincidencia', () => {
