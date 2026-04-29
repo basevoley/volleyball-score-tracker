@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.17.0...v1.18.0) (2026-04-29)
+
+
+### Features
+
+* add synchronization for Campeonatos de Espana from RFEVB ([59283fe](https://github.com/basevoley/volleyball-score-tracker/commit/59283fe7efb4f874902dae717656056ba6146c6d))
+
 # [1.17.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.16.0...v1.17.0) (2026-04-13)
 
 
