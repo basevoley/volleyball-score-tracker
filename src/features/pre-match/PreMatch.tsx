@@ -245,9 +245,9 @@ function PreMatch() {
             Campeonatos de España
             <Box
               component="img"
-              src="https://esvoley.es/images/logo-rfevb.svg"
+              src="https://esvoley.es/images/logo.svg"
               alt="RFEVB"
-              sx={{ height: '20px' }}
+              sx={{ height: '20px', width: 'auto' }}
               onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }}
             />
           </Button>

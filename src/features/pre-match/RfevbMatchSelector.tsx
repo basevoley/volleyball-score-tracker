@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import Tooltip from '@mui/material/Tooltip';
 import { CATEGORIES, type Sex } from '../../services/rfevb/types';
 import { fetchCompetitionData } from '../../services/rfevb/rfevbService';
 import { resolveParticipant } from '../../services/rfevb/resolveParticipant';
@@ -36,15 +37,18 @@ const EMPTY_STATS = { ranking: 0, competitionPoints: 0, matchesPlayed: 0, totalM
 function buildMatchDetails(
   match: RfevbMatch,
   data: RfevbCompetitionData,
+  categorySlug: string,
+  sex: Sex,
 ): Record<string, unknown> {
   const home = resolveParticipant(match.homeRef, data);
   const away = resolveParticipant(match.awayRef, data);
+  const categoryLabel = CATEGORIES.find(c => c.slug === categorySlug)?.label ?? categorySlug;
   return {
     teamA: home.name,
     teamB: away.name,
     teamALogo: home.logoUrl || getBestBadge(home.name) || '',
     teamBLogo: away.logoUrl || getBestBadge(away.name) || '',
-    matchHeader: data.name,
+    matchHeader: `Campeonatos de España ${categoryLabel} ${sex}`,
     extendedInfo: match.phaseLabel ?? '',
     stadium: `${match.date} ${match.time} · ${match.venue}`,
     competitionLogo: data.logoUrl,
@@ -141,7 +145,7 @@ export default function RfevbMatchSelector({ onSelectMatch, onClose }: Props) {
 
   const handleMatchSelect = (match: RfevbMatch) => {
     if (!data) return;
-    onSelectMatch(buildMatchDetails(match, data));
+    onSelectMatch(buildMatchDetails(match, data, categorySlug, sex));
     onClose();
   };
 
@@ -184,26 +188,40 @@ export default function RfevbMatchSelector({ onSelectMatch, onClose }: Props) {
             onChange={handleSexChange}
             size="small"
           >
-            <ToggleButton value="Femenino">Femenino</ToggleButton>
-            <ToggleButton value="Masculino">Masculino</ToggleButton>
+            <Tooltip title="Femenino">
+              <ToggleButton value="Femenino">
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Femenino</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>F</Box>
+              </ToggleButton>
+            </Tooltip>
+            <Tooltip title="Masculino">
+              <ToggleButton value="Masculino">
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Masculino</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>M</Box>
+              </ToggleButton>
+            </Tooltip>
           </ToggleButtonGroup>
-
-          {data && (
-            <Button
-              size="small"
-              startIcon={<RefreshIcon />}
-              onClick={() => load(categorySlug, sex, true)}
-              disabled={loading}
-            >
-              Actualizar
-            </Button>
-          )}
         </Box>
 
         {lastFetched && !loading && (
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-            Actualizado: {lastFetched.toLocaleTimeString()}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Actualizado: {lastFetched.toLocaleTimeString()}
+            </Typography>
+            {data && (
+              <Tooltip title="Actualizar">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => load(categorySlug, sex, true)}
+                    disabled={loading}
+                  >
+                    <RefreshIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
+          </Box>
         )}
 
         {loading && (

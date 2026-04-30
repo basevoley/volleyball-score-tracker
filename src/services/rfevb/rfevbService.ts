@@ -249,7 +249,8 @@ export async function fetchCompetitionData(categorySlug: string, sex: Sex, year:
   const name = pageDoc.querySelector('.h5')?.textContent?.trim()
     ?? `Campeonato de España ${sex} ${year}`;
 
-  const result: RfevbCompetitionData = { competitionId, name, logoUrl, teams, matches, standings: allStandings };
+  const horizontalRfevbLogoUrl = "https://madridbeachvolley.com/media/a1we2l4c/esvoley-horizontal_rgb_recorte.png";
+  const result: RfevbCompetitionData = { competitionId, name, logoUrl: horizontalRfevbLogoUrl /*logoUrl*/, teams, matches, standings: allStandings };
   competitionCache.set(cacheKey, { data: result, fetchedAt: Date.now() });
   return result;
 }
