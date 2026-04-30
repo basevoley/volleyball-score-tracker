@@ -1,3 +1,10 @@
+## [1.18.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.18.0...v1.18.1) (2026-04-30)
+
+
+### Bug Fixes
+
+* show proper rfevb icons for CES ([581e6ab](https://github.com/basevoley/volleyball-score-tracker/commit/581e6ab022c7d9c7143162e748ec2697baf21a4c))
+
 # [1.18.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.17.0...v1.18.0) (2026-04-29)
 
 
