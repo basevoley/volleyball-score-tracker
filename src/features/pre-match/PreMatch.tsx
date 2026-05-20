@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { TeamCompetitionStats } from '../../types';
 import { useMatchContext } from '../../contexts/MatchContext';
 import {
   Paper,
   Box,
   Button,
+  ButtonGroup,
   TextField,
   Select,
   MenuItem,
@@ -16,15 +17,20 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Menu,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CustomCombobox from '../../shared/components/CustomCombobox';
 import { getBestBadge } from '../../shared/utils/badgeUtils';
 import MatchSelector from './MatchSelector';
 import ModalOverlay from '../../shared/components/ModalOverlay';
 import RfevbMatchSelector from './RfevbMatchSelector';
+import EsvoleyMatchSelector from './EsvoleyMatchSelector';
 import { TeamColorSelector } from './TeamColorSelector';
 import TeamPlayerList from './EditablePlayerList';
+
+type ActiveSelector = 'fmv' | 'rfevb' | 'esvoley' | null;
 
 function PreMatch() {
   const { matchDetails, setMatchDetails } = useMatchContext();
@@ -42,12 +48,62 @@ function PreMatch() {
   const [statsA, setStatsA] = useState(matchDetails.stats.teamA);
   const [statsB, setStatsB] = useState(matchDetails.stats.teamB);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isRfevbModalOpen, setIsRfevbModalOpen] = useState(false);
+  const [activeSelector, setActiveSelector] = useState<ActiveSelector>(null);
+  const [lastSelector, setLastSelector] = useState<NonNullable<ActiveSelector>>('fmv');
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+
+  const selectorConfig: Record<NonNullable<ActiveSelector>, { label: string; icon: React.ReactNode }> = {
+    fmv: {
+      label: 'FMV',
+      icon: <Box component="img" src="fmv_icon.png" alt="FMV" sx={{ height: '20px' }} />,
+    },
+    rfevb: {
+      label: 'Campeonatos de España',
+      icon: (
+        <Box
+          component="img"
+          src="https://esvoley.es/images/logo.svg"
+          alt="RFEVB"
+          sx={{ height: '20px' }}
+          onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }}
+        />
+      ),
+    },
+    esvoley: {
+      label: 'Liga Nacional 2ª División',
+      icon: (
+        <Box
+          component="img"
+          src="https://esvoley.es/images/logo.svg"
+          alt="Esvoley"
+          sx={{ height: '20px' }}
+          onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }}
+        />
+      ),
+    },
+  };
 
   useEffect(() => {
     setMatchDetails(prevDetails => {
-      const updated = {
+      // Return the same reference when nothing changed — React bails out and no
+      // downstream effects (including socket broadcast) will fire.
+      if (
+        prevDetails.teams.teamA === teamA &&
+        prevDetails.teams.teamB === teamB &&
+        prevDetails.teamLogos.teamA === teamALogo &&
+        prevDetails.teamLogos.teamB === teamBLogo &&
+        prevDetails.teamColors.teamA === teamAColor &&
+        prevDetails.teamColors.teamB === teamBColor &&
+        prevDetails.matchHeader === matchHeader &&
+        prevDetails.stadium === stadium &&
+        prevDetails.extendedInfo === extendedInfo &&
+        prevDetails.competitionLogo === competitionLogo &&
+        prevDetails.maxSets === maxSets &&
+        prevDetails.stats.teamA === statsA &&
+        prevDetails.stats.teamB === statsB
+      ) return prevDetails;
+
+      return {
         ...prevDetails,
         teams: { teamA, teamB },
         teamLogos: { teamA: teamALogo, teamB: teamBLogo },
@@ -57,18 +113,15 @@ function PreMatch() {
         extendedInfo,
         competitionLogo,
         maxSets,
-        stats: {
-          teamA: statsA,
-          teamB: statsB,
-        },
+        stats: { teamA: statsA, teamB: statsB },
       };
-
-      return updated;
     });
 
+  // setMatchDetails is a useState setter — stable by spec, excluded from deps to avoid render loops
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamA, teamB, teamALogo, teamBLogo, teamAColor, teamBColor,
     matchHeader, stadium, extendedInfo, competitionLogo,
-    maxSets, statsA, statsB, setMatchDetails]);
+    maxSets, statsA, statsB]);
 
 
 
@@ -100,7 +153,7 @@ function PreMatch() {
     const stats = selectedMatchDetails.stats as Record<string, unknown>;
     setStatsA(stats.teamA as TeamCompetitionStats);
     setStatsB(stats.teamB as TeamCompetitionStats);
-    setIsModalOpen(false);
+    setActiveSelector(null);
   };
 
   const statFields: { label: string; key: keyof TeamCompetitionStats }[] = [
@@ -116,6 +169,9 @@ function PreMatch() {
     { label: 'Total Puntos Anotados', key: 'totalPointsScored' },
     { label: 'Total Puntos Recibidos', key: 'totalPointsReceived' },
   ];
+
+  const badgeA = useMemo(() => getBestBadge(teamA) ?? undefined, [teamA]);
+  const badgeB = useMemo(() => getBestBadge(teamB) ?? undefined, [teamB]);
 
   const hasStats = [...Object.values(statsA), ...Object.values(statsB)].some(val => Number(val) > 0);
   const hasPlayers = (matchDetails.players.teamA?.length > 0) || (matchDetails.players.teamB?.length > 0);
@@ -214,55 +270,65 @@ function PreMatch() {
           borderRadius: 2
         }}
       >
-        <Box sx={{
-          display: 'flex',
-
-          alignItems: 'center',
-          justifyContent: 'center',
-          mb: 4,
-          gap: 2,
-          flexWrap: 'wrap'
-        }}>
-          <Button
-            variant="contained"
-            onClick={() => setIsModalOpen(true)}
-            sx={{ gap: '8px' }}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 4 }}>
+          <ButtonGroup variant="contained">
+            <Button
+              onClick={() => setActiveSelector(lastSelector)}
+              sx={{ gap: '6px' }}
+            >
+              <Box component="span" sx={{ opacity: 0.7, fontWeight: 400 }}>
+                Importar desde
+              </Box>
+              <Box component="span" sx={{ opacity: 0.4 }}>·</Box>
+              <Box component="span" sx={{ fontWeight: 600 }}>
+                {selectorConfig[lastSelector].label}
+              </Box>
+              {selectorConfig[lastSelector].icon}
+            </Button>
+            <Button
+              size="small"
+              onClick={(e) => setMenuAnchor(e.currentTarget)}
+              aria-haspopup="true"
+            >
+              <ArrowDropDownIcon />
+            </Button>
+          </ButtonGroup>
+          <Menu
+            anchorEl={menuAnchor}
+            open={Boolean(menuAnchor)}
+            onClose={() => setMenuAnchor(null)}
           >
-            Obtener desde FMV
-            <Box
-              component="img"
-              src="fmv_icon.png"
-              alt="FMV Logo"
-              sx={{ height: '20px' }}
-            />
-          </Button>
-
-          <Button
-            variant="outlined"
-            onClick={() => setIsRfevbModalOpen(true)}
-            sx={{ gap: '8px' }}
-          >
-            Campeonatos de España
-            <Box
-              component="img"
-              src="https://esvoley.es/images/logo.svg"
-              alt="RFEVB"
-              sx={{ height: '20px', width: 'auto' }}
-              onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }}
-            />
-          </Button>
+            {(Object.keys(selectorConfig) as NonNullable<ActiveSelector>[]).map((key) => (
+              <MenuItem
+                key={key}
+                selected={key === lastSelector}
+                onClick={() => { setLastSelector(key); setActiveSelector(key); setMenuAnchor(null); }}
+                sx={{ gap: 1 }}
+              >
+                {selectorConfig[key].label}
+                {selectorConfig[key].icon}
+              </MenuItem>
+            ))}
+          </Menu>
         </Box>
 
-        {isModalOpen && (
-          <ModalOverlay onClose={() => setIsModalOpen(false)}>
+        {activeSelector === 'fmv' && (
+          <ModalOverlay onClose={() => setActiveSelector(null)}>
             <MatchSelector onSelectMatch={handleSelectMatch} />
           </ModalOverlay>
         )}
 
-        {isRfevbModalOpen && (
+        {activeSelector === 'rfevb' && (
           <RfevbMatchSelector
             onSelectMatch={handleSelectMatch}
-            onClose={() => setIsRfevbModalOpen(false)}
+            onClose={() => setActiveSelector(null)}
+          />
+        )}
+
+        {activeSelector === 'esvoley' && (
+          <EsvoleyMatchSelector
+            onSelectMatch={handleSelectMatch}
+            onClose={() => setActiveSelector(null)}
           />
         )}
 
@@ -371,7 +437,7 @@ function PreMatch() {
             placeholderText="URL del escudo del Equipo A"
             inputValue={teamALogo}
             onInputChange={setTeamALogo}
-            fallbackUrl={getBestBadge(teamA) ?? undefined}
+            fallbackUrl={badgeA}
           />
         </Box>
         <Divider sx={{ mt: 1 }} />
@@ -407,7 +473,7 @@ function PreMatch() {
         </Box>
 
         <Box sx={{ width: '100%', mt: 1 }}>
-          <CustomCombobox label={"URL del escudo del Equipo B"} placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} fallbackUrl={getBestBadge(teamB) ?? undefined} />
+          <CustomCombobox label={"URL del escudo del Equipo B"} placeholderText={"URL del escudo del Equipo B"} inputValue={teamBLogo} onInputChange={setTeamBLogo} fallbackUrl={badgeB} />
         </Box>
 
         <Accordion defaultExpanded={hasStats} sx={{ mt: 1, mb: 0, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
