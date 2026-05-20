@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.18.1...v1.19.0) (2026-05-20)
+
+
+### Features
+
+* add Liga Nacional 2ª División match import via Esvoley ([34d37b0](https://github.com/basevoley/volleyball-score-tracker/commit/34d37b0102a4148bee258f6d63e1e95e79e735cf))
+
 ## [1.18.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.18.0...v1.18.1) (2026-04-30)
 
 
