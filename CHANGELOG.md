@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.19.0...v1.20.0) (2026-05-22)
+
+
+### Features
+
+* add men's competition support to EsvoleyMatchSelector ([5487cb9](https://github.com/basevoley/volleyball-score-tracker/commit/5487cb99e259dcc7f1933ef600316adab1bf52d0))
+
 # [1.19.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.18.1...v1.19.0) (2026-05-20)
 
 
