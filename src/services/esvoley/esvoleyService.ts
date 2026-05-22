@@ -1,11 +1,22 @@
 import type { RfevbCompetitionData } from '../rfevb/types';
+import type { Sex } from '../rfevb/types';
 import { CACHE_TTL_MS, esvoleyUrl, fetchCompetitionById } from '../rfevb/intranetClient';
 
 const ESVOLEY_BASE = 'https://esvoley.es';
-const LIGA_PATH = '/voleibol/competiciones-femeninas/primera-division-femenina/liga-nacional-segunda-division';
+
+export const COMPETITION_PATHS: Record<Sex, { path: string; label: string }> = {
+  Femenino: {
+    path: '/voleibol/competiciones-femeninas/primera-division-femenina/liga-nacional-segunda-division',
+    label: 'Liga Nacional Segunda División Femenina',
+  },
+  Masculino: {
+    path: '/voleibol/competiciones-masculinas/primera-division-masculina/liga-nacional-segunda-division',
+    label: 'Liga Nacional Segunda División Masculina',
+  },
+};
 
 const groupCache = new Map<string, { data: EsvoleyGroupData; fetchedAt: number }>();
-let cachedGroups: EsvoleyGroup[] | null = null;
+const cachedGroupsBySex = new Map<Sex, EsvoleyGroup[]>();
 
 export interface EsvoleyGroup {
   name: string;
@@ -20,10 +31,10 @@ export interface EsvoleyGroupData extends RfevbCompetitionData {
   groupName: string;
 }
 
-export async function discoverGroups(forceRefresh = false): Promise<EsvoleyGroup[]> {
-  if (!forceRefresh && cachedGroups) return cachedGroups;
+export async function discoverGroups(sex: Sex = 'Femenino', forceRefresh = false): Promise<EsvoleyGroup[]> {
+  if (!forceRefresh && cachedGroupsBySex.has(sex)) return cachedGroupsBySex.get(sex)!;
 
-  const resp = await fetch(esvoleyUrl(LIGA_PATH));
+  const resp = await fetch(esvoleyUrl(COMPETITION_PATHS[sex].path));
   const html = await resp.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -55,20 +66,16 @@ export async function discoverGroups(forceRefresh = false): Promise<EsvoleyGroup
       const groupHtml = await groupResp.text();
       const groupDoc = new DOMParser().parseFromString(groupHtml, 'text/html');
 
-      // competitionId from href="#tab-equipos-{id}"
-      const equiposAnchor = groupDoc.querySelector<HTMLAnchorElement>('a[href^="#tab-equipos-"]');
-      competitionId = equiposAnchor?.getAttribute('href')?.replace('#tab-equipos-', '') ?? '';
+      // competitionId from hidden input (same DOM pattern as rfevbService)
+      const competitionIdEl = groupDoc.getElementById('auxIdCompeticion') as HTMLInputElement | null;
+      competitionId = competitionIdEl?.value ?? '';
 
-      // Bug fix 1: keep ALL named phases, not just those with numeric IDs.
+      // Keep ALL named phases, not just those with numeric IDs.
       // Phases with no numeric suffix (Semifinales/Finales) are included with id=""
       // so they appear in the UI selector; fetchCompetitionById skips them when
       // building API requests (handled there by filtering on /^\d+$/).
-      phases = Array.from(groupDoc.querySelectorAll<HTMLAnchorElement>('a[href^="#tab-fase"]'))
-        .map(a => {
-          const raw = a.getAttribute('href') ?? '';
-          const id = raw.replace('#tab-fase', '');
-          return { id, name: a.textContent?.trim() ?? '' };
-        })
+      phases = Array.from(groupDoc.querySelectorAll<HTMLElement>('[data-action="fase"]'))
+        .map(el => ({ id: el.getAttribute('data-id') ?? '', name: el.textContent?.trim() ?? '' }))
         .filter(p => p.name);
     } catch {
       // skip group if page not reachable
@@ -79,7 +86,7 @@ export async function discoverGroups(forceRefresh = false): Promise<EsvoleyGroup
     groups.push({ name: title, path: href, competitionId, logoUrl, phases });
   }
 
-  cachedGroups = groups;
+  cachedGroupsBySex.set(sex, groups);
   return groups;
 }
 

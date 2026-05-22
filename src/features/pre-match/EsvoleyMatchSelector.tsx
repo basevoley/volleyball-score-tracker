@@ -13,6 +13,8 @@ import {
   ListItemText,
   MenuItem,
   Select,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -20,8 +22,10 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import Tooltip from '@mui/material/Tooltip';
 import { resolveParticipant } from '../../services/rfevb/resolveParticipant';
 import type { RfevbMatch } from '../../services/rfevb/types';
+import type { Sex } from '../../services/rfevb/types';
 import { getBestBadge } from '../../shared/utils/badgeUtils';
 import {
+  COMPETITION_PATHS,
   discoverGroups,
   fetchGroupData,
 } from '../../services/esvoley/esvoleyService';
@@ -34,7 +38,7 @@ interface Props {
 
 const EMPTY_STATS = { ranking: 0, competitionPoints: 0, matchesPlayed: 0, totalMatchesWon: 0, won3Points: 0, won2Points: 0, totalMatchesLost: 0, lost1Point: 0, lost0Points: 0, totalPointsScored: 0, totalPointsReceived: 0 };
 
-function buildMatchDetails(match: RfevbMatch, data: EsvoleyGroupData): Record<string, unknown> {
+function buildMatchDetails(match: RfevbMatch, data: EsvoleyGroupData, sex: Sex): Record<string, unknown> {
   const home = resolveParticipant(match.homeRef, data);
   const away = resolveParticipant(match.awayRef, data);
   return {
@@ -42,7 +46,7 @@ function buildMatchDetails(match: RfevbMatch, data: EsvoleyGroupData): Record<st
     teamB: away.name,
     teamALogo: home.logoUrl || getBestBadge(home.name) || '',
     teamBLogo: away.logoUrl || getBestBadge(away.name) || '',
-    matchHeader: 'Liga Nacional Segunda División Femenina',
+    matchHeader: COMPETITION_PATHS[sex].label,
     extendedInfo: data.groupName,
     stadium: `${match.date} ${match.time} · ${match.venue}`,
     competitionLogo: data.logoUrl,
@@ -90,6 +94,7 @@ function sortGroupKeys(keys: string[]): string[] {
 }
 
 export default function EsvoleyMatchSelector({ onSelectMatch, onClose }: Props) {
+  const [sex, setSex] = useState<Sex>('Femenino');
   const [groups, setGroups] = useState<EsvoleyGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [loadingGroups, setLoadingGroups] = useState(false);
@@ -101,13 +106,19 @@ export default function EsvoleyMatchSelector({ onSelectMatch, onClose }: Props) 
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
   useEffect(() => {
+    setGroups([]);
+    setSelectedGroupId('');
+    setData(null);
+    setSelectedPhase('');
+    setSelectedGroup('');
+    setLastFetched(null);
     setLoadingGroups(true);
     setError(null);
-    discoverGroups()
+    discoverGroups(sex)
       .then(g => setGroups(g))
       .catch(e => setError(e instanceof Error ? e.message : 'Error cargando los grupos'))
       .finally(() => setLoadingGroups(false));
-  }, []);
+  }, [sex]);
 
   const loadGroupData = useCallback(async (groupId: string, forceRefresh = false) => {
     const group = groups.find(g => g.competitionId === groupId);
@@ -140,7 +151,7 @@ export default function EsvoleyMatchSelector({ onSelectMatch, onClose }: Props) 
 
   const handleMatchSelect = (match: RfevbMatch) => {
     if (!data) return;
-    onSelectMatch(buildMatchDetails(match, data));
+    onSelectMatch(buildMatchDetails(match, data, sex));
     onClose();
   };
 
@@ -157,12 +168,12 @@ export default function EsvoleyMatchSelector({ onSelectMatch, onClose }: Props) 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
-        Liga Nacional Segunda División Femenina
+        {COMPETITION_PATHS[sex].label}
         <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
       </DialogTitle>
 
       <DialogContent dividers>
-        {/* Group selector */}
+        {/* Group selector + sex toggle */}
         <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <FormControl size="small" sx={{ minWidth: 200 }} disabled={loadingGroups}>
             <InputLabel>Grupo</InputLabel>
@@ -177,6 +188,26 @@ export default function EsvoleyMatchSelector({ onSelectMatch, onClose }: Props) 
               ))}
             </Select>
           </FormControl>
+
+          <ToggleButtonGroup
+            value={sex}
+            exclusive
+            onChange={(_: React.MouseEvent, value: Sex | null) => { if (value) setSex(value); }}
+            size="small"
+          >
+            <Tooltip title="Femenino">
+              <ToggleButton value="Femenino">
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Femenino</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>F</Box>
+              </ToggleButton>
+            </Tooltip>
+            <Tooltip title="Masculino">
+              <ToggleButton value="Masculino">
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Masculino</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>M</Box>
+              </ToggleButton>
+            </Tooltip>
+          </ToggleButtonGroup>
         </Box>
 
         {lastFetched && !loading && (
