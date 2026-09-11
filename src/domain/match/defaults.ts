@@ -75,7 +75,13 @@ export const initialOverlaySetup: OverlaySetup = {
         ],
     },
     sponsors: {
-        imageUrls: [`${baseUrl}/images/sponsors/sponsors-1.png`, `${baseUrl}/images/sponsors/sponsors-2.png`, `${baseUrl}/images/sponsors/sponsors-3.png`],
+        imageUrls: [
+            `${baseUrl}/images/sponsors/1-removebg.png`, 
+            `${baseUrl}/images/sponsors/2-removebg.png`, 
+            `${baseUrl}/images/sponsors/3-removebg.png`, 
+            `${baseUrl}/images/sponsors/4-removebg.png`, 
+            `${baseUrl}/images/sponsors/5-removebg.png`
+        ],
         displayTime: 5000,
     },
     subscribe: {
