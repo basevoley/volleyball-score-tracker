@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.20.0...v1.21.0) (2026-09-11)
+
+
+### Features
+
+* updated sponsors 2026 ([365b9a1](https://github.com/basevoley/volleyball-score-tracker/commit/365b9a1ce3d87afaed5b7c055d0baa0bd8c13011))
+
 # [1.20.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.19.0...v1.20.0) (2026-05-22)
 
 
