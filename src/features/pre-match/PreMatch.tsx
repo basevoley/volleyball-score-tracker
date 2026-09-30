@@ -24,13 +24,19 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CustomCombobox from '../../shared/components/CustomCombobox';
 import { getBestBadge } from '../../shared/utils/badgeUtils';
 import MatchSelector from './MatchSelector';
-import ModalOverlay from '../../shared/components/ModalOverlay';
 import RfevbMatchSelector from './RfevbMatchSelector';
 import EsvoleyMatchSelector from './EsvoleyMatchSelector';
+import LigasNacionalesMatchSelector from './LigasNacionalesMatchSelector';
 import { TeamColorSelector } from './TeamColorSelector';
 import TeamPlayerList from './EditablePlayerList';
 
-type ActiveSelector = 'fmv' | 'rfevb' | 'esvoley' | null;
+type ActiveSelector = 'fmv' | 'rfevb' | 'esvoley' | 'ligasNacionales' | null;
+
+// The menu lists federations, not competition types — each entry opens that federation's own
+// popup, which owns any further competition-type selection internally (FMV already does this
+// with its "Tipo de competición" dropdown; the esvoley popup will grow the same kind of
+// selector once there's more than one esvoley-backed competition to choose from again).
+const SELECTOR_ORDER: NonNullable<ActiveSelector>[] = ['fmv', 'ligasNacionales', 'rfevb', 'esvoley'];
 
 function PreMatch() {
   const { matchDetails, setMatchDetails } = useMatchContext();
@@ -52,36 +58,47 @@ function PreMatch() {
   const [lastSelector, setLastSelector] = useState<NonNullable<ActiveSelector>>('fmv');
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
-  const selectorConfig: Record<NonNullable<ActiveSelector>, { label: string; icon: React.ReactNode }> = {
+  const esvoleyIcon = (alt: string) => (
+    <Box
+      component="img"
+      src="https://esvoley.es/images/logo.svg"
+      alt={alt}
+      sx={{ height: '20px' }}
+      onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }}
+    />
+  );
+
+  // The menu shows federation name + logo only — never the competition type. `ligasNacionales`
+  // is currently esvoley's only competition-type popup, so it's what "esvoley.es" opens
+  // directly; once a second one exists, both should move behind an internal type selector in
+  // that popup instead of gaining their own top-level entries here.
+  //
+  // visible: false keeps the component/route reachable in code (they'll be needed again once
+  // their season is active) while removing them from the menu the user actually sees.
+  const selectorConfig: Record<NonNullable<ActiveSelector>, { label: string; icon: React.ReactNode; visible: boolean }> = {
     fmv: {
       label: 'FMV',
       icon: <Box component="img" src="fmv_icon.png" alt="FMV" sx={{ height: '20px' }} />,
+      visible: true,
+    },
+    ligasNacionales: {
+      label: 'esvoley.es',
+      icon: esvoleyIcon('esvoley.es'),
+      visible: true,
     },
     rfevb: {
       label: 'Campeonatos de España',
-      icon: (
-        <Box
-          component="img"
-          src="https://esvoley.es/images/logo.svg"
-          alt="RFEVB"
-          sx={{ height: '20px' }}
-          onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }}
-        />
-      ),
+      icon: esvoleyIcon('RFEVB'),
+      visible: false, // out of season — revisit once Copa de España import is planned
     },
     esvoley: {
       label: 'Liga Nacional 2ª División',
-      icon: (
-        <Box
-          component="img"
-          src="https://esvoley.es/images/logo.svg"
-          alt="Esvoley"
-          sx={{ height: '20px' }}
-          onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }}
-        />
-      ),
+      icon: esvoleyIcon('Esvoley'),
+      visible: false, // superseded by Ligas Nacionales; ascenso/playoff data may resurface there as a new fase
     },
   };
+
+  const visibleSelectors = SELECTOR_ORDER.filter(key => selectorConfig[key].visible);
 
   useEffect(() => {
     setMatchDetails(prevDetails => {
@@ -298,7 +315,7 @@ function PreMatch() {
             open={Boolean(menuAnchor)}
             onClose={() => setMenuAnchor(null)}
           >
-            {(Object.keys(selectorConfig) as NonNullable<ActiveSelector>[]).map((key) => (
+            {visibleSelectors.map(key => (
               <MenuItem
                 key={key}
                 selected={key === lastSelector}
@@ -313,9 +330,10 @@ function PreMatch() {
         </Box>
 
         {activeSelector === 'fmv' && (
-          <ModalOverlay onClose={() => setActiveSelector(null)}>
-            <MatchSelector onSelectMatch={handleSelectMatch} />
-          </ModalOverlay>
+          <MatchSelector
+            onSelectMatch={handleSelectMatch}
+            onClose={() => setActiveSelector(null)}
+          />
         )}
 
         {activeSelector === 'rfevb' && (
@@ -327,6 +345,13 @@ function PreMatch() {
 
         {activeSelector === 'esvoley' && (
           <EsvoleyMatchSelector
+            onSelectMatch={handleSelectMatch}
+            onClose={() => setActiveSelector(null)}
+          />
+        )}
+
+        {activeSelector === 'ligasNacionales' && (
+          <LigasNacionalesMatchSelector
             onSelectMatch={handleSelectMatch}
             onClose={() => setActiveSelector(null)}
           />

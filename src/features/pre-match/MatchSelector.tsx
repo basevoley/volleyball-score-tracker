@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box,
+    CircularProgress,
+    Dialog,
+    DialogContent,
+    DialogTitle,
     FormControl,
+    IconButton,
     InputLabel,
+    List,
+    ListItemButton,
+    ListItemText,
     Select,
-    MenuItem
+    MenuItem,
+    Typography,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import Tooltip from '@mui/material/Tooltip';
 import { getBestBadge } from '../../shared/utils/badgeUtils';
 
 interface FMVApiItem {
@@ -24,6 +36,11 @@ interface MatchItem {
     equipo_local: string;
     equipo_visitante: string;
     pabellon: string;
+    fecha: string;
+    hora: string;
+    puntos_local: number;
+    puntos_visitante: number;
+    finalizado: boolean;
 }
 
 interface RankingItem {
@@ -49,11 +66,36 @@ interface JourneyData {
 
 interface Props {
     onSelectMatch: (matchDetails: Record<string, unknown>) => void;
+    onClose: () => void;
 }
 
-const MatchSelector = ({ onSelectMatch }: Props) => {
+const FMV_BASE = 'https://intranet.fmvoley.com/api/competiciones';
+
+async function getFmv<T>(endpoint: string, params: Record<string, string | number>): Promise<T> {
+    const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))
+    );
+    const response = await fetch(`${FMV_BASE}/${endpoint}?${query.toString()}`);
+    const json = await response.json();
+    return json.content;
+}
+
+interface GroupBundle {
+    journey: JourneyData;
+    ranking: RankingItem[];
+    matches: MatchItem[];
+}
+
+// The jornada/ranking/partidos bundle is the part users actually look at — cached for an
+// hour, same convention as RfevbMatchSelector/EsvoleyMatchSelector, so the selector's
+// refresh button has something real to bypass instead of every load being a fresh
+// network round-trip regardless of the cache. Module-level so it survives dialog reopens.
+const GROUP_BUNDLE_CACHE_TTL_MS = 60 * 60 * 1000;
+const groupBundleCache = new Map<string, { data: GroupBundle; fetchedAt: number }>();
+
+const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
     const [competitionTypes, setCompetitionTypes] = useState<FMVApiItem[]>([]);
-    const [categories, setCompetitions] = useState<CategoryItem[]>([]);
+    const [categories, setCategories] = useState<CategoryItem[]>([]);
     const [divisions, setDivisions] = useState<FMVApiItem[]>([]);
     const [phases, setPhases] = useState<FMVApiItem[]>([]);
     const [groups, setGroups] = useState<FMVApiItem[]>([]);
@@ -65,111 +107,142 @@ const MatchSelector = ({ onSelectMatch }: Props) => {
     const [selectedDivision, setSelectedDivision] = useState<string | number>('');
     const [selectedPhase, setSelectedPhase] = useState<string | number>('');
     const [selectedGroup, setSelectedGroup] = useState<string | number>('');
-    const [selectedMatch, setSelectedMatch] = useState<MatchItem | null>(null);
     const [journeyData, setJourneyData] = useState<JourneyData | null>(null);
 
-    useEffect(() => {
-        const fetchCompetitionTypes = async () => {
-            try {
-                const response = await fetch('https://intranet.fmvoley.com/api/competiciones/getTiposCompeticion');
-                const data = await response.json();
-                setCompetitionTypes(data.content);
-            } catch (error) {
-                console.error('Error fetching competition types:', error);
-            }
-        };
+    const [loadingTypes, setLoadingTypes] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
-        fetchCompetitionTypes();
+    useEffect(() => {
+        getFmv<FMVApiItem[]>('getTiposCompeticion', {})
+            .then(list => {
+                setCompetitionTypes(list);
+                setLoadingTypes(false);
+                // Auto-advance when there's nothing to actually choose — same convention as
+                // LigasNacionalesMatchSelector, which hides/skips single-option levels.
+                if (list.length === 1) handleTipoChange(list[0].id);
+            })
+            .catch(() => { setError('Error cargando los tipos de competición'); setLoadingTypes(false); });
+    // handleTipoChange is defined below but only ever invoked asynchronously, after the
+    // component has finished its first render — safe to reference here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    useEffect(() => {
-        if (selectedCompetitionType) {
-            const fetchCompetitions = async () => {
-                try {
-                    const response = await fetch(`https://intranet.fmvoley.com/api/competiciones/getCompeticiones?tipoCompeticionId=${selectedCompetitionType}`);
-                    const data = await response.json();
-                    setCompetitions(data.content);
-                } catch (error) {
-                    console.error('Error fetching categories:', error);
-                }
-            };
+    const loadGroupData = (groupId: string | number, forceRefresh = false) => {
+        setLoading(true);
+        setError(null);
+        setMatches([]);
+        setRankingData([]);
+        setJourneyData(null);
+        setLastFetched(null);
 
-            fetchCompetitions();
+        const cacheKey = String(groupId);
+        const cached = forceRefresh ? undefined : groupBundleCache.get(cacheKey);
+        if (cached && Date.now() - cached.fetchedAt < GROUP_BUNDLE_CACHE_TTL_MS) {
+            setJourneyData(cached.data.journey);
+            setRankingData(cached.data.ranking);
+            setMatches(cached.data.matches);
+            setLastFetched(new Date());
+            setLoading(false);
+            return;
         }
-    }, [selectedCompetitionType]);
 
-    useEffect(() => {
-        if (selectedCategory) {
-            const fetchDivisions = async () => {
-                try {
-                    const response = await fetch(`https://intranet.fmvoley.com/api/competiciones/getCompeticionesTemporada?competicionId=${selectedCategory}`);
-                    const data = await response.json();
-                    setDivisions(data.content);
-                } catch (error) {
-                    console.error('Error fetching divisions:', error);
-                }
-            };
+        Promise.all([
+            getFmv<JourneyData>('getJornadaActualGrupo', { grupoId: groupId }),
+            getFmv<RankingItem[]>('getClasificacionGrupo', { grupoId: groupId }),
+        ])
+            .then(async ([journey, ranking]) => {
+                const matchesData = await getFmv<MatchItem[]>('getPartidosByJornada', { jornadaId: journey.id });
+                groupBundleCache.set(cacheKey, { data: { journey, ranking, matches: matchesData }, fetchedAt: Date.now() });
+                setJourneyData(journey);
+                setRankingData(ranking);
+                setMatches(matchesData);
+                setLastFetched(new Date());
+            })
+            .catch(() => setError('Error cargando los partidos'))
+            .finally(() => setLoading(false));
+    };
 
-            fetchDivisions();
-        }
-    }, [selectedCategory]);
+    // Each cascade step below follows the same shape: reset everything downstream, fetch this
+    // level's options, and either auto-advance into the next step (which takes over the
+    // `loading` flag itself) or stop and clear `loading` here. Never both — a trailing
+    // `.finally(() => setLoading(false))` would race with a nested step's `setLoading(true)`
+    // and clear it prematurely while that step is still fetching.
+    const handleTipoChange = (tipoId: string | number) => {
+        setSelectedCompetitionType(tipoId);
+        setCategories([]); setSelectedCategory('');
+        setDivisions([]); setSelectedDivision('');
+        setPhases([]); setSelectedPhase('');
+        setGroups([]); setSelectedGroup('');
+        setMatches([]); setRankingData([]); setJourneyData(null); setLastFetched(null); setError(null);
+        if (!tipoId) return;
 
-    useEffect(() => {
-        if (selectedDivision) {
-            const fetchPhases = async () => {
-                try {
-                    const response = await fetch(`https://intranet.fmvoley.com/api/competiciones/getFasesCompeticion?competicionTemporadaId=${selectedDivision}`);
-                    const data = await response.json();
-                    setPhases(data.content);
-                } catch (error) {
-                    console.error('Error fetching phases:', error);
-                }
-            };
+        setLoading(true);
+        getFmv<CategoryItem[]>('getCompeticiones', { tipoCompeticionId: tipoId })
+            .then(list => {
+                setCategories(list);
+                if (list.length === 1) handleCategoriaChange(list[0].id);
+                else setLoading(false);
+            })
+            .catch(() => { setError('Error cargando las categorías'); setLoading(false); });
+    };
 
-            fetchPhases();
-        }
-    }, [selectedDivision]);
+    const handleCategoriaChange = (categoryId: string | number) => {
+        setSelectedCategory(categoryId);
+        setDivisions([]); setSelectedDivision('');
+        setPhases([]); setSelectedPhase('');
+        setGroups([]); setSelectedGroup('');
+        setMatches([]); setRankingData([]); setJourneyData(null); setLastFetched(null); setError(null);
+        if (!categoryId) return;
 
-    useEffect(() => {
-        if (selectedPhase) {
-            const fetchGroups = async () => {
-                try {
-                    const response = await fetch(`https://intranet.fmvoley.com/api/competiciones/getGruposCompeticion?faseId=${selectedPhase}`);
-                    const data = await response.json();
-                    setGroups(data.content);
-                } catch (error) {
-                    console.error('Error fetching groups:', error);
-                }
-            };
+        setLoading(true);
+        getFmv<FMVApiItem[]>('getCompeticionesTemporada', { competicionId: categoryId })
+            .then(list => {
+                setDivisions(list);
+                if (list.length === 1) handleDivisionChange(list[0].id);
+                else setLoading(false);
+            })
+            .catch(() => { setError('Error cargando las divisiones'); setLoading(false); });
+    };
 
-            fetchGroups();
-        }
-    }, [selectedPhase]);
+    const handleDivisionChange = (divisionId: string | number) => {
+        setSelectedDivision(divisionId);
+        setPhases([]); setSelectedPhase('');
+        setGroups([]); setSelectedGroup('');
+        setMatches([]); setRankingData([]); setJourneyData(null); setLastFetched(null); setError(null);
+        if (!divisionId) return;
 
-    useEffect(() => {
-        if (selectedGroup) {
-            const fetchGroupData = async () => {
-                try {
-                    const journeyResponse = await fetch(`https://intranet.fmvoley.com/api/competiciones/getJornadaActualGrupo?grupoId=${selectedGroup}`);
-                    const journeyData = await journeyResponse.json();
-                    setJourneyData(journeyData.content);
-                    const journeyId = journeyData.content.id;
+        setLoading(true);
+        getFmv<FMVApiItem[]>('getFasesCompeticion', { competicionTemporadaId: divisionId })
+            .then(list => {
+                setPhases(list);
+                if (list.length === 1) handleFaseChange(list[0].id);
+                else setLoading(false);
+            })
+            .catch(() => { setError('Error cargando las fases'); setLoading(false); });
+    };
 
-                    const matchesResponse = await fetch(`https://intranet.fmvoley.com/api/competiciones/getPartidosByJornada?jornadaId=${journeyId}`);
-                    const matchesData = await matchesResponse.json();
-                    setMatches(matchesData.content);
+    const handleFaseChange = (phaseId: string | number) => {
+        setSelectedPhase(phaseId);
+        setGroups([]); setSelectedGroup('');
+        setMatches([]); setRankingData([]); setJourneyData(null); setLastFetched(null); setError(null);
+        if (!phaseId) return;
 
-                    const rankingResponse = await fetch(`https://intranet.fmvoley.com/api/competiciones/getClasificacionGrupo?grupoId=${selectedGroup}`);
-                    const rankingData = await rankingResponse.json();
-                    setRankingData(rankingData.content);
-                } catch (error) {
-                    console.error('Error fetching group data:', error);
-                }
-            };
+        setLoading(true);
+        getFmv<FMVApiItem[]>('getGruposCompeticion', { faseId: phaseId })
+            .then(list => {
+                setGroups(list);
+                if (list.length === 1) handleGrupoChange(list[0].id);
+                else setLoading(false);
+            })
+            .catch(() => { setError('Error cargando los grupos'); setLoading(false); });
+    };
 
-            fetchGroupData();
-        }
-    }, [selectedGroup]);
+    const handleGrupoChange = (groupId: string | number) => {
+        setSelectedGroup(groupId);
+        if (groupId) loadGroupData(groupId);
+    };
 
     const mapTeamDataToStats = (teamData: RankingItem) => ({
         ranking: teamData.posicion,
@@ -185,9 +258,9 @@ const MatchSelector = ({ onSelectMatch }: Props) => {
         totalPointsReceived: teamData.puntos_en_contra,
     });
 
-    const handleMatchSelect = (selectedMatch: MatchItem) => {
-        const teamAData = rankingData.find(team => team.nombre.trim() === selectedMatch.equipo_local.trim());
-        const teamBData = rankingData.find(team => team.nombre.trim() === selectedMatch.equipo_visitante.trim());
+    const handleMatchSelect = (match: MatchItem) => {
+        const teamAData = rankingData.find(team => team.nombre.trim() === match.equipo_local.trim());
+        const teamBData = rankingData.find(team => team.nombre.trim() === match.equipo_visitante.trim());
         const category = categories.find(type => type.id === selectedCategory);
         const division = divisions.find(type => type.id === selectedDivision);
         const phase = phases.find(comp => comp.id === selectedPhase);
@@ -197,221 +270,164 @@ const MatchSelector = ({ onSelectMatch }: Props) => {
         const teamABadge = getBestBadge(teamAData.nombre);
         const teamBBadge = getBestBadge(teamBData.nombre);
 
-        const matchDetails = {
+        onSelectMatch({
             teamA: teamAData.nombre,
             teamB: teamBData.nombre,
             teamALogo: teamABadge ? teamABadge : teamAData.imagen,
             teamBLogo: teamBBadge ? teamBBadge : teamBData.imagen,
             matchHeader: `${category.categoria_sexo} - ${division.nombre}`,
             extendedInfo: `Fase ${phase.nombre} - Jornada ${journeyData?.numero}`,
-            stadium: `Pabellón ${selectedMatch.pabellon}`,
+            stadium: `Pabellón ${match.pabellon}`,
             competitionLogo: 'https://fmvoley.com/images/logo.svg',
             maxSets: 5,
             stats: {
                 teamA: mapTeamDataToStats(teamAData),
                 teamB: mapTeamDataToStats(teamBData),
             },
-        };
-
-        onSelectMatch(matchDetails);
+        });
+        onClose();
     };
 
-    const handleMatchDropdownChange = (e: { target: { value: unknown } }) => {
-        const selectedMatchId = parseInt(e.target.value as string, 10);
-        const match = matches.find(match => match.id === selectedMatchId);
-        setSelectedMatch(match ?? null);
-        if (match) {
-            handleMatchSelect(match);
-        }
-    };
+    const selectSx = { minWidth: 160, flex: '1 1 160px' };
 
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                width: '100%',
-                gap: 0
-            }}
-        >
-            <FormControl fullWidth sx={{ margin: '10px 0' }} size="small">
-                <InputLabel>Tipo de competición</InputLabel>
-                <Select
-                    size="small"
-                    value={selectedCompetitionType}
-                    label="Tipo de competición"
-                    onChange={(e) => setSelectedCompetitionType(e.target.value)}
-                    MenuProps={{
-                        PaperProps: {
-                            sx: {
-                                maxHeight: 300,
-                                '& .MuiMenuItem-root': {
-                                    fontSize: '0.875rem',
-                                    padding: '6px 16px',
-                                    whiteSpace: 'normal',
-                                    wordWrap: 'break-word'
-                                }
-                            }
-                        }
-                    }}
-                >
-                    <MenuItem value="">
-                        <em>Tipo de competición</em>
-                    </MenuItem>
-                    {competitionTypes.map(type => (
-                        <MenuItem key={type.id} value={type.id} >{type.nombre}</MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+        <Dialog open onClose={onClose} fullWidth maxWidth="sm">
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
+                FMV
+                <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+            </DialogTitle>
 
-            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedCompetitionType} size="small">
-                <InputLabel>Categoría</InputLabel>
-                <Select
-                    value={selectedCategory}
-                    label="Categoría"
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    MenuProps={{
-                        PaperProps: {
-                            sx: {
-                                maxHeight: 300,
-                                '& .MuiMenuItem-root': {
-                                    fontSize: '0.875rem',
-                                    padding: '6px 16px',
-                                    whiteSpace: 'normal',
-                                    wordWrap: 'break-word'
-                                }
-                            }
-                        }
-                    }}
-                >
-                    <MenuItem value="">
-                        <em>Categoría</em>
-                    </MenuItem>
-                    {categories.map(cat => (
-                        <MenuItem key={cat.id} value={cat.id}>{cat.nombre_comp}</MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+            <DialogContent dividers>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+                    <FormControl size="small" sx={selectSx} disabled={loadingTypes}>
+                        <InputLabel>Tipo de competición</InputLabel>
+                        <Select
+                            value={selectedCompetitionType}
+                            label="Tipo de competición"
+                            onChange={(e) => handleTipoChange(e.target.value)}
+                        >
+                            <MenuItem value=""><em>Seleccionar</em></MenuItem>
+                            {competitionTypes.map(type => (
+                                <MenuItem key={type.id} value={type.id}>{type.nombre}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
 
-            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedCategory} size="small">
-                <InputLabel>División</InputLabel>
-                <Select
-                    value={selectedDivision}
-                    label="División"
-                    onChange={(e) => setSelectedDivision(e.target.value)}
-                    MenuProps={{
-                        PaperProps: {
-                            sx: {
-                                maxHeight: 300,
-                                '& .MuiMenuItem-root': {
-                                    fontSize: '0.875rem',
-                                    padding: '6px 16px',
-                                    whiteSpace: 'normal',
-                                    wordWrap: 'break-word'
-                                }
-                            }
-                        }
-                    }}
-                >
-                    <MenuItem value="">
-                        <em>División</em>
-                    </MenuItem>
-                    {divisions.map(div => (
-                        <MenuItem key={div.id} value={div.id}>{div.nombre}</MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+                    <FormControl size="small" sx={selectSx} disabled={!selectedCompetitionType}>
+                        <InputLabel>Categoría</InputLabel>
+                        <Select
+                            value={selectedCategory}
+                            label="Categoría"
+                            onChange={(e) => handleCategoriaChange(e.target.value)}
+                        >
+                            <MenuItem value=""><em>Seleccionar</em></MenuItem>
+                            {categories.map(cat => (
+                                <MenuItem key={cat.id} value={cat.id}>{cat.nombre_comp}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
 
-            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedDivision} size="small">
-                <InputLabel>Fase</InputLabel>
-                <Select
-                    value={selectedPhase}
-                    label="Fase"
-                    onChange={(e) => setSelectedPhase(e.target.value)}
-                    MenuProps={{
-                        PaperProps: {
-                            sx: {
-                                maxHeight: 300,
-                                '& .MuiMenuItem-root': {
-                                    fontSize: '0.875rem',
-                                    padding: '6px 16px',
-                                    whiteSpace: 'normal',
-                                    wordWrap: 'break-word'
-                                }
-                            }
-                        }
-                    }}
-                >
-                    <MenuItem value="">
-                        <em>Fase</em>
-                    </MenuItem>
-                    {phases.map(phase => (
-                        <MenuItem key={phase.id} value={phase.id}>{phase.nombre}</MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+                    <FormControl size="small" sx={selectSx} disabled={!selectedCategory}>
+                        <InputLabel>División</InputLabel>
+                        <Select
+                            value={selectedDivision}
+                            label="División"
+                            onChange={(e) => handleDivisionChange(e.target.value)}
+                        >
+                            <MenuItem value=""><em>Seleccionar</em></MenuItem>
+                            {divisions.map(div => (
+                                <MenuItem key={div.id} value={div.id}>{div.nombre}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
 
-            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedPhase} size="small">
-                <InputLabel>Grupo</InputLabel>
-                <Select
-                    value={selectedGroup}
-                    label="Grupo"
-                    onChange={(e) => setSelectedGroup(e.target.value)}
-                    MenuProps={{
-                        PaperProps: {
-                            sx: {
-                                maxHeight: 300,
-                                '& .MuiMenuItem-root': {
-                                    fontSize: '0.875rem',
-                                    padding: '6px 16px',
-                                    whiteSpace: 'normal',
-                                    wordWrap: 'break-word'
-                                }
-                            }
-                        }
-                    }}
-                >
-                    <MenuItem value="">
-                        <em>Grupo</em>
-                    </MenuItem>
-                    {groups.map(group => (
-                        <MenuItem key={group.id} value={group.id}>{group.nombre}</MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+                    <FormControl size="small" sx={selectSx} disabled={!selectedDivision}>
+                        <InputLabel>Fase</InputLabel>
+                        <Select
+                            value={selectedPhase}
+                            label="Fase"
+                            onChange={(e) => handleFaseChange(e.target.value)}
+                        >
+                            <MenuItem value=""><em>Seleccionar</em></MenuItem>
+                            {phases.map(phase => (
+                                <MenuItem key={phase.id} value={phase.id}>{phase.nombre}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
 
-            <FormControl fullWidth sx={{ margin: '10px 0' }} disabled={!selectedGroup} size="small">
-                <InputLabel>Partido</InputLabel>
-                <Select
-                    value={selectedMatch?.id || ''}
-                    label="Partido"
-                    onChange={handleMatchDropdownChange}
-                    MenuProps={{
-                        PaperProps: {
-                            sx: {
-                                maxHeight: 300,
-                                '& .MuiMenuItem-root': {
-                                    fontSize: '0.875rem',
-                                    padding: '6px 16px',
-                                    whiteSpace: 'normal',
-                                    wordWrap: 'break-word'
-                                }
-                            }
-                        }
-                    }}
-                >
-                    <MenuItem value="">
-                        <em>Partido</em>
-                    </MenuItem>
-                    {matches.map(match => (
-                        <MenuItem key={match.id} value={match.id}>
-                            {match.equipo_local} vs {match.equipo_visitante}
-                        </MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
-        </Box>
+                    <FormControl size="small" sx={selectSx} disabled={!selectedPhase}>
+                        <InputLabel>Grupo</InputLabel>
+                        <Select
+                            value={selectedGroup}
+                            label="Grupo"
+                            onChange={(e) => handleGrupoChange(e.target.value)}
+                        >
+                            <MenuItem value=""><em>Seleccionar</em></MenuItem>
+                            {groups.map(group => (
+                                <MenuItem key={group.id} value={group.id}>{group.nombre}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Box>
+
+                {lastFetched && !loading && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">
+                            Actualizado: {lastFetched.toLocaleTimeString()}
+                            {journeyData ? ` · Jornada ${journeyData.numero}` : ''}
+                        </Typography>
+                        <Tooltip title="Actualizar">
+                            <span>
+                                <IconButton size="small" aria-label="Actualizar" onClick={() => loadGroupData(selectedGroup, true)} disabled={loading}>
+                                    <RefreshIcon fontSize="small" />
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+                    </Box>
+                )}
+
+                {(loading || loadingTypes) && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                        <CircularProgress size={32} />
+                    </Box>
+                )}
+
+                {error && (
+                    <Typography color="error" sx={{ py: 2 }}>{error}</Typography>
+                )}
+
+                {!loading && matches.length > 0 && (
+                    <List dense disablePadding>
+                        {matches.map(match => (
+                            <ListItemButton
+                                key={match.id}
+                                onClick={() => handleMatchSelect(match)}
+                                disabled={match.finalizado}
+                                divider
+                                sx={{ opacity: match.finalizado ? 0.5 : 1 }}
+                            >
+                                <ListItemText
+                                    primary={`${match.equipo_local} vs ${match.equipo_visitante}`}
+                                    secondary={
+                                        match.finalizado
+                                            ? <>{`${match.fecha} ${match.hora} · ${match.pabellon} · `}<strong>FINALIZADO: {match.puntos_local}-{match.puntos_visitante}</strong></>
+                                            : `${match.fecha} ${match.hora} · ${match.pabellon}`
+                                    }
+                                    primaryTypographyProps={{ fontSize: '0.875rem' }}
+                                    secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                                />
+                            </ListItemButton>
+                        ))}
+                    </List>
+                )}
+
+                {!loading && selectedGroup && matches.length === 0 && !error && (
+                    <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                        No hay partidos disponibles para esta jornada
+                    </Typography>
+                )}
+            </DialogContent>
+        </Dialog>
     );
 };
 
