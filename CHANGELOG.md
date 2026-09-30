@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.21.0...v1.22.0) (2026-09-30)
+
+
+### Features
+
+* add Ligas Nacionales importer and align pre-match selector UI ([d52c4f1](https://github.com/basevoley/volleyball-score-tracker/commit/d52c4f1c059392ba9a6fd3703adf9ba1561e4ace))
+
 # [1.21.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.20.0...v1.21.0) (2026-09-11)
 
 
