@@ -5,7 +5,7 @@ const FONTVENTA_BASE = 'https://rfevb.fontventa.com/api/competiciones';
 
 // Short-lived on purpose: unlike the group list itself, a competition's phase list can
 // grow mid-season (e.g. a promotion playoff phase appearing once seeded) — don't cache forever.
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 // The match list + standings bundle is the part users actually look at — cached for an hour,
 // same convention as RfevbMatchSelector/EsvoleyMatchSelector's intranetClient.ts, so the
@@ -32,7 +32,7 @@ async function get<T>(endpoint: string, params: Record<string, string | number> 
 // Resolved by name and cached rather than hardcoding its numeric id — this is an internal
 // classification, not a sponsor name, but there's no reason to hardcode it when the API
 // already exposes it via getTiposCompeticion.
-let tipoCompeticionIdCache: { id: number; fetchedAt: number } | null = null;
+let tipoCompeticionIdCache: { id: number; fetchedAt: number } | null = {id:3, fetchedAt: Date.now()};
 
 async function resolveTipoCompeticionId(forceRefresh = false): Promise<number> {
   if (!forceRefresh && tipoCompeticionIdCache && Date.now() - tipoCompeticionIdCache.fetchedAt < CACHE_TTL_MS) {
