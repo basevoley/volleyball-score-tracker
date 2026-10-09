@@ -1,3 +1,10 @@
+## [1.22.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.22.0...v1.22.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* esvoley fontventa stopped serving tiposCompeticion ([0866b96](https://github.com/basevoley/volleyball-score-tracker/commit/0866b96e2c34b5406b11b1b607b6d39e35cac82a))
+
 # [1.22.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.21.0...v1.22.0) (2026-09-30)
 
 
