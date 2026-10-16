@@ -1,3 +1,10 @@
+# [1.23.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.22.1...v1.23.0) (2026-10-16)
+
+
+### Features
+
+* **automation:** add manual/preset layout mode and rearrange preset positions ([a2176f1](https://github.com/basevoley/volleyball-score-tracker/commit/a2176f126baeef4dcf4a6c4e89b4d7a8841cd297))
+
 ## [1.22.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.22.0...v1.22.1) (2026-10-09)
 
 
