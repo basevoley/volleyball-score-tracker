@@ -3,6 +3,7 @@ import useAutomationRunner from '../hooks/useAutomationRunner';
 import type { Sequence, SequenceTrigger } from '../types';
 import { useConfig } from './ConfigContext';
 import { useMatchContext } from './MatchContext';
+import { usePreferences } from './PreferencesContext';
 import { useBroadcast } from '../services/socket/useBroadcast';
 
 type DomainEventTrigger = Extract<SequenceTrigger, { type: 'domainEvent' }>;
@@ -20,7 +21,9 @@ export const AutomationProvider = ({ children, sequences }: { children: React.Re
     const { config, setConfig } = useConfig();
     const { matchManager, matchDetails, addMatchEventListener } = useMatchContext();
 
-    const runner = useAutomationRunner({ config, setConfig });
+    const { automationLayout } = usePreferences();
+
+    const runner = useAutomationRunner({ config, setConfig, layoutMode: automationLayout });
     const { syncAll } = useBroadcast();
 
     const hasStats = [...Object.values(matchDetails.stats.teamA), ...Object.values(matchDetails.stats.teamB)]

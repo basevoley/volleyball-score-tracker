@@ -239,6 +239,9 @@ export interface ConfigChange {
   value: unknown;
 }
 
+// 'preset': sequences set panel positions/variants. 'manual': the operator's layout is kept; sequences only show/hide.
+export type AutomationLayoutMode = 'preset' | 'manual';
+
 export interface AutomationCtx {
   hasStats: boolean;
   hasPlayers: boolean;

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { RuntimeConfig, ConfigChange, Sequence, SequenceStep, AutomationCtx } from '../types';
+import type { RuntimeConfig, ConfigChange, Sequence, SequenceStep, AutomationCtx, AutomationLayoutMode } from '../types';
+import { filterLayoutChanges, withoutLayoutKeys } from '../domain/automation/layout';
 
 const applyChanges = (config: RuntimeConfig, changes: ConfigChange[]): RuntimeConfig => {
     const cfg = config as unknown as Record<string, Record<string, unknown>>;
@@ -15,9 +16,10 @@ const applyChanges = (config: RuntimeConfig, changes: ConfigChange[]): RuntimeCo
 interface UseAutomationRunnerParams {
     config: RuntimeConfig;
     setConfig: (config: RuntimeConfig) => void;
+    layoutMode?: AutomationLayoutMode;
 }
 
-const useAutomationRunner = ({ config, setConfig }: UseAutomationRunnerParams) => {
+const useAutomationRunner = ({ config, setConfig, layoutMode = 'preset' }: UseAutomationRunnerParams) => {
     const [isRunning, setIsRunning] = useState(false);
     const [activeSequenceId, setActiveSequenceId] = useState<string | null>(null);
     const [currentStepIndex, setCurrentStepIndex] = useState<number | null>(null);
@@ -33,10 +35,18 @@ const useAutomationRunner = ({ config, setConfig }: UseAutomationRunnerParams) =
         configRef.current = config;
     }, [config]);
 
+    const layoutModeRef = useRef<AutomationLayoutMode>(layoutMode);
+    useEffect(() => {
+        layoutModeRef.current = layoutMode;
+    }, [layoutMode]);
+
     const applySnapshot = useCallback(() => {
         if (!snapshotRef.current) return;
         const restored = Object.entries(snapshotRef.current).reduce(
-            (cfg, [section, values]) => ({ ...cfg, [section]: { ...values } }),
+            (cfg, [section, values]) => ({
+                ...cfg,
+                [section]: { ...cfg[section as keyof RuntimeConfig], ...values },
+            }),
             { ...configRef.current }
         );
         snapshotRef.current = null;
@@ -85,7 +95,11 @@ const useAutomationRunner = ({ config, setConfig }: UseAutomationRunnerParams) =
         // Take snapshot before starting
         if (sequence.snapshotSections && sequence.snapshotSections.length > 0) {
             snapshotRef.current = sequence.snapshotSections.reduce(
-                (snap, section) => ({ ...snap, [section]: { ...configRef.current[section] } }),
+                (snap, section) => {
+                    const values = { ...configRef.current[section] };
+                    // In manual mode the restore must not touch the operator's layout
+                    return { ...snap, [section]: layoutModeRef.current === 'manual' ? withoutLayoutKeys(section, values) : values };
+                },
                 {} as Partial<RuntimeConfig>
             );
         }
@@ -128,7 +142,7 @@ const useAutomationRunner = ({ config, setConfig }: UseAutomationRunnerParams) =
             }
 
             setCurrentStepIndex(index);
-            const updatedConfig = applyChanges(configRef.current, step.changes);
+            const updatedConfig = applyChanges(configRef.current, filterLayoutChanges(step.changes, layoutModeRef.current));
             configRef.current = updatedConfig;
             setConfig(updatedConfig);
 

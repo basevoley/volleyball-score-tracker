@@ -8,6 +8,8 @@ import ControlSection from '../../shared/components/ControlSection';
 import {
     Switch,
     FormControlLabel,
+    ToggleButton,
+    ToggleButtonGroup,
     Select,
     MenuItem,
     FormControl,
@@ -141,7 +143,7 @@ const Controls = () => {
     const { socket } = useSocket();
     const { config, setConfig } = useConfig();
     const { matchManager, matchDetails } = useMatchContext();
-    const { noStats } = usePreferences();
+    const { noStats, automationLayout, setAutomationLayout } = usePreferences();
     const { match: matchData } = matchManager;
 
     const hasStats = [...Object.values(matchDetails.stats.teamA), ...Object.values(matchDetails.stats.teamB)].some(val => Number(val) > 0);
@@ -224,6 +226,29 @@ const Controls = () => {
                     </AccordionSummary>
                     <AccordionDetails>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+                            {/* Layout mode: who decides panel positions */}
+                            <Box>
+                                <Typography variant="caption" color="text.disabled" sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                    Posiciones
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+                                    <ToggleButtonGroup
+                                        exclusive
+                                        size="small"
+                                        value={automationLayout}
+                                        onChange={(_, mode) => mode && setAutomationLayout(mode)}
+                                    >
+                                        <ToggleButton value="preset">Automáticas</ToggleButton>
+                                        <ToggleButton value="manual">Manuales</ToggleButton>
+                                    </ToggleButtonGroup>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {automationLayout === 'preset'
+                                            ? 'Los automatismos colocan los paneles y eligen el tipo de marcador.'
+                                            : 'Los automatismos solo muestran u ocultan paneles; se respetan la posición y el tipo de marcador elegidos abajo. Se restablece al recargar.'}
+                                    </Typography>
+                                </Box>
+                            </Box>
 
                             {/* Manual sequences */}
                             {manualSequences.length > 0 && (

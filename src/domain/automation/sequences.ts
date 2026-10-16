@@ -12,6 +12,16 @@ const ALL_PRESENTATION_PANELS: ConfigChange[] = [
     { section: 'afterMatch', key: 'enabled', value: false },
 ];
 
+// --- Preset layout (1920x1080 canvas) ---
+//
+//   scoreboard  top-left      topmost-left corner is the least busy area of an amateur match feed
+//   socialMedia top-right     persistent; never shares a corner with the scoreboard
+//   subscribe   bottom-left   its round logo overflows 135px ABOVE its box, so it must never use a top-* position;
+//                             bottom-left also avoids the YouTube watermark / player controls (bottom-right)
+//   sponsors, matchup, afterMatch, lineup, teamComparison: centered; lowerThird: bottom-center
+//
+// The sponsors panel starts at 20% of the height (see SponsorsPanel.module.css) to clear the top-left scoreboard.
+
 // --- Sequence data model ---
 //
 // Each sequence object has:
@@ -58,7 +68,7 @@ export const PRE_MATCH_SEQUENCE: Sequence = {
         {
             label: 'Mostrar redes sociales',
             changes: [
-                { section: 'socialMedia', key: 'position', value: 'top-left' },
+                { section: 'socialMedia', key: 'position', value: 'top-right' },
                 { section: 'socialMedia', key: 'enabled', value: true },
             ],
             duration: 12000,
@@ -184,8 +194,9 @@ export const MATCH_START_SEQUENCE: Sequence = {
             changes: [
                 { section: 'scoreboard', key: 'enabled', value: true },
                 { section: 'scoreboard', key: 'type', value: 'vertical-table' },
-                { section: 'scoreboard', key: 'position', value: 'bottom-left' },
+                { section: 'scoreboard', key: 'position', value: 'top-left' },
                 { section: 'scoreboard', key: 'showHistory', value: true },
+                { section: 'socialMedia', key: 'position', value: 'top-right' },
                 { section: 'socialMedia', key: 'enabled', value: true },
             ],
             duration: 30000,
@@ -228,7 +239,7 @@ export const TIMEOUT_SEQUENCE: Sequence = {
         {
             label: 'Mostrar splash de subscripción',
             changes: [
-                { section: 'subscribe', key: 'position', value: 'bottom-right' },
+                { section: 'subscribe', key: 'position', value: 'bottom-left' },
                 { section: 'subscribe', key: 'enabled', value: true }
             ],
             duration: 0,
@@ -301,6 +312,7 @@ export const SET_END_SEQUENCE: Sequence = {
             label: 'Mostrar patrocinadores y marcador',
             changes: [
                 { section: 'sponsors', key: 'enabled', value: true },
+                { section: 'scoreboard', key: 'position', value: 'top-left' },
                 { section: 'scoreboard', key: 'enabled', value: true },
                 { section: 'scoreboard', key: 'showHistory', value: true },
             ],
@@ -309,7 +321,7 @@ export const SET_END_SEQUENCE: Sequence = {
         {
             label: 'Mostrar splash de subscripción',
             changes: [
-                { section: 'subscribe', key: 'position', value: 'bottom-right' },
+                { section: 'subscribe', key: 'position', value: 'bottom-left' },
                 { section: 'subscribe', key: 'enabled', value: true }
             ],
             duration: 0,
@@ -373,7 +385,7 @@ export const MATCH_END_SEQUENCE: Sequence = {
         {
             label: 'Mostrar splash de subscripción',
             changes: [
-                { section: 'subscribe', key: 'position', value: 'bottom-right' },
+                { section: 'subscribe', key: 'position', value: 'bottom-left' },
                 { section: 'subscribe', key: 'enabled', value: true }
             ],
             duration: 0,

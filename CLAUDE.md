@@ -101,6 +101,8 @@ Each action has `apply()` and `undo()`. Actions and their effects:
 
 Automation sequences have a `trigger`: `{ type: 'manual' }` or `{ type: 'domainEvent', event }`. Each step has `changes: ConfigChange[]`, `duration` (ms), optional `condition(ctx)`, optional `loopStart`. `snapshotSections` saves config sections before run and restores on end; `resetOnStop` force-hides sections on stop.
 
+**Layout mode**: `PreferencesContext.automationLayout` (`'preset'` default | `'manual'`, session-only, not persisted) is passed to `useAutomationRunner`. In `manual`, `filterLayoutChanges` (`src/domain/automation/layout.ts`) strips layout keys (`LAYOUT_KEYS`: `scoreboard.position/type`, `socialMedia.position`, `subscribe.position`) from every step, and snapshots exclude them, so automations only show/hide. Add new positionable panel keys to `LAYOUT_KEYS`. Switch lives in Controls → Automatismos.
+
 Defined sequences: `PRE_MATCH_SEQUENCE` (manual), `MATCH_START_SEQUENCE`, `TIMEOUT_SEQUENCE`, `SET_END_SEQUENCE`, `MATCH_END_SEQUENCE`.
 
 ### Socket broadcast (`src/services/socket/useBroadcast.ts`)
