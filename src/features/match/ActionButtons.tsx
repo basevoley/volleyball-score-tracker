@@ -2,6 +2,7 @@ import {  Button, Grid, Stack } from '@mui/material';
 import React from 'react';
 import styled from 'styled-components';
 import type { RallyStage, TeamKey } from '../../types';
+import { POINT_COLOR, POINT_COLOR_HOVER } from './pointColors';
 
 interface ActionButtonProps {
   type?: string;
@@ -12,7 +13,7 @@ interface ActionButtonProps {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ActionButton = (styled(Button as any) as any)(({ type, disabled, $visible }: ActionButtonProps) => ({
   margin: '5px',
-  backgroundColor: disabled ? '#ccc' : type === 'point' ? '#FFD700' : type === 'error' ? '#FF5733' : '#4CAF50',
+  backgroundColor: disabled ? '#ccc' : type === 'point' ? POINT_COLOR : type === 'error' ? '#FF5733' : '#4CAF50',
   color: 'white',
   border: 'none',
   cursor: disabled ? 'not-allowed' : 'pointer',
@@ -21,7 +22,7 @@ const ActionButton = (styled(Button as any) as any)(({ type, disabled, $visible 
   borderRadius: '5px',
   minHeight: '64px',
   '&:hover:enabled': {
-    backgroundColor: type === 'point' ? '#ebce2fff' : type === 'error' ? '#e04e2dff' : '#45a049',
+    backgroundColor: type === 'point' ? POINT_COLOR_HOVER : type === 'error' ? '#e04e2dff' : '#45a049',
   },
 }));
 

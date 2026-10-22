@@ -1,6 +1,6 @@
 import type {
     MatchData, HistoryEntry, MatchPhase,
-    RallyHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry,
+    RallyHistoryEntry, PointHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry,
     AdjustHistoryEntry, SetEndHistoryEntry, SetsWonAdjustHistoryEntry,
 } from '../../types';
 import { reverseStats } from './stats';
@@ -12,6 +12,13 @@ const undoRally = (state: MatchData, entry: RallyHistoryEntry): MatchData => ({
     currentServer: entry.prevServer,
     statistics: reverseStats(state.statistics, entry.statsUpdate),
     currentSetStats: reverseStats(state.currentSetStats, entry.statsUpdate),
+    history: state.history.slice(0, -1),
+});
+
+const undoPoint = (state: MatchData, entry: PointHistoryEntry): MatchData => ({
+    ...state,
+    scores: { ...entry.scores, [entry.team]: entry.scores[entry.team] - 1 },
+    currentServer: entry.prevServer,
     history: state.history.slice(0, -1),
 });
 
@@ -64,6 +71,7 @@ const undoSetsWonAdjust = (state: MatchData, entry: SetsWonAdjustHistoryEntry, m
 export const applyHistoryUndo = (state: MatchData, entry: HistoryEntry, maxSets: number): MatchData => {
     switch (entry.entryType) {
         case 'rally':          return undoRally(state, entry);
+        case 'point':          return undoPoint(state, entry);
         case 'timeout':        return undoTimeout(state, entry);
         case 'substitution':   return undoSubstitution(state, entry);
         case 'adjust':         return undoAdjust(state, entry);

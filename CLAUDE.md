@@ -113,7 +113,7 @@ Emitted events: `matchData` (on match domain events, includes `ComputedTeamStats
 
 ### History undo
 
-`MatchData.history` is an array of discriminated-union `HistoryEntry` objects: `RallyHistoryEntry`, `TimeoutHistoryEntry`, `SubstitutionHistoryEntry`, `AdjustHistoryEntry`, `SetEndHistoryEntry`, `SetsWonAdjustHistoryEntry`. `undoLastHistoryEntry()` calls `applyHistoryUndo` in `src/domain/match/undo.ts` to revert the last entry.
+`MatchData.history` is an array of discriminated-union `HistoryEntry` objects: `RallyHistoryEntry`, `PointHistoryEntry` (no-stats point), `TimeoutHistoryEntry`, `SubstitutionHistoryEntry`, `AdjustHistoryEntry`, `SetEndHistoryEntry`, `SetsWonAdjustHistoryEntry`. `undoLastHistoryEntry()` calls `applyHistoryUndo` in `src/domain/match/undo.ts` to revert the last entry.
 
 `isSetBoundaryUndo: boolean` warns the UI when undo would cross a set boundary.
 
@@ -130,7 +130,7 @@ All shared types are in `src/types/index.ts`. Key types:
 - `RallyStage`, `RallyActionType`, `RallySnapshot`
 - `RawTeamStats` (14 counting fields), `ComputedTeamStats` (extends with effectiveness percentages)
 - `MatchData`, `MatchDetails`, `Config`, `Sequence`, `SequenceStep`, `ConfigChange`
-- `HistoryEntry` (discriminated union of 6 entry types)
+- `HistoryEntry` (discriminated union of 7 entry types)
 - `ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'reconnecting'`
 
 ## Tests
@@ -149,4 +149,4 @@ All shared types are in `src/types/index.ts`. Key types:
 - **Deferred event publishing**: `pendingEventRef` fires via `useEffect` after state commit, so listeners see consistent state.
 - **Set-end confirmation**: `pendingSetUpdate` holds the proposed next state until `confirmSetEnd(true)` is called.
 - **Config patching**: All config mutations go through `ConfigChange[]` arrays — never mutate config directly.
-- **No-stats mode**: Toggled in Settings; hides stat UI and is enforced at the broadcast layer.
+- **No-stats mode**: Toggled in Settings (`PreferencesContext.noStats`); a UI-level flag only — the broadcast layer doesn't know about it. `Match.tsx` hides `RallyControl`/`StatsHandler` and shows a standalone `HistoryUndoBar`. `ScoreBoard` swaps "+" for a round gold "Punto" button calling `scorePoint(team, faultingTeam?)`, and "Falta" scores a point for the opponent. `scorePoint` writes a `point` history entry, gives the serve to the scorer, emits `RallyEnded` (or `SetEnded`/`MatchEnded`) and has no rally-end confirmation; the only confirmation is `ScoreBoard`'s dialog when the point ends a set. With stats on, "+"/"−" remain manual corrections (`adjust` entries).

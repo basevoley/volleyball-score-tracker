@@ -87,6 +87,14 @@ export interface RallyHistoryEntry extends BaseHistoryEntry {
   statsUpdate: TeamRecord<RallyTeamStats>;
 }
 
+/** A point registered directly (no-stats mode): no rally, no stats. `team` is the scorer. */
+export interface PointHistoryEntry extends BaseHistoryEntry {
+  entryType: 'point';
+  team: TeamKey;
+  faultingTeam: TeamKey | null;
+  prevServer: TeamKey | null;
+}
+
 export interface TimeoutHistoryEntry extends BaseHistoryEntry {
   entryType: 'timeout';
   team: TeamKey;
@@ -123,6 +131,7 @@ export interface SetsWonAdjustHistoryEntry extends BaseHistoryEntry {
 
 export type HistoryEntry =
   | RallyHistoryEntry
+  | PointHistoryEntry
   | TimeoutHistoryEntry
   | SubstitutionHistoryEntry
   | AdjustHistoryEntry

@@ -4,6 +4,7 @@ import StatsHandler from './StatsHandler';
 import { Box, Card, Paper } from '@mui/material';
 import WinnerDialog from './WinnerDialog';
 import RallyControl from './RallyControl';
+import HistoryUndoBar from './HistoryUndoBar';
 import MatchHeader from '../../shared/components/MatchHeader';
 import { useMatchContext } from '../../contexts/MatchContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
@@ -73,9 +74,15 @@ function Match() {
           <ScoreBoard
             matchDetails={matchDetails}
             matchManager={matchManager}
+            noStats={noStats}
           />
 
-          {!noStats && (
+          {noStats ? (
+            <HistoryUndoBar
+              teams={teams}
+              matchManager={matchManager}
+            />
+          ) : (
             <RallyControl
               teams={teams}
               matchManager={matchManager}
