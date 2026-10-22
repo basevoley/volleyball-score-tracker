@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileExcel } from '@fortawesome/free-solid-svg-icons';
 import type { TeamRecord, RawTeamStats, SetStats, HistoryEntry } from '../../types';
 import { computeEffectiveness } from '../../domain/match/stats';
+import { getFaultingTeam } from '../../domain/match/history';
 
 interface ExcelProps {
     teams: TeamRecord<string>;
@@ -110,8 +111,9 @@ const generateExcel = async (teams: TeamRecord<string>, statistics: TeamRecord<R
             const setHistory = history.filter(e => e.setNumber === set.setNumber);
             const rallyEvolutionData = setHistory.map((entry, idx) => {
                 let eventDescription = 'Rally';
-                if (entry.entryType === 'rally' && entry.faultingTeam) {
-                    eventDescription = `Falta (${entry.faultingTeam === 'teamA' ? teams.teamA : teams.teamB})`;
+                const faultingTeam = getFaultingTeam(entry);
+                if (faultingTeam) {
+                    eventDescription = `Falta (${teams[faultingTeam]})`;
                 } else if (entry.entryType === 'timeout') {
                     eventDescription = `Tiempo muerto (${entry.team === 'teamA' ? teams.teamA : teams.teamB})`;
                 } else if (entry.entryType === 'substitution') {

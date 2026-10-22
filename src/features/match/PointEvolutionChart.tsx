@@ -1,13 +1,15 @@
 import React from 'react';
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Line, Customized } from 'recharts';
 import type { HistoryEntry, TeamKey, TeamRecord } from '../../types';
+import { getFaultingTeam } from '../../domain/match/history';
 
 type ChartEvent = { type: 'rally' } | { type: 'fault' | 'timeout' | 'substitution'; team: TeamKey };
 
 const toChartEvent = (entry: HistoryEntry): ChartEvent => {
     if (entry.entryType === 'timeout') return { type: 'timeout', team: entry.team };
     if (entry.entryType === 'substitution') return { type: 'substitution', team: entry.team };
-    if (entry.entryType === 'rally' && entry.faultingTeam) return { type: 'fault', team: entry.faultingTeam };
+    const faultingTeam = getFaultingTeam(entry);
+    if (faultingTeam) return { type: 'fault', team: faultingTeam };
     return { type: 'rally' };
 };
 

@@ -3,13 +3,15 @@ import { pdf, Svg, Path, Circle, Rect, G, Text as SvgText, Polygon } from '@reac
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { TeamKey, TeamRecord, RawTeamStats, SetStats, HistoryEntry } from '../../types';
 import { computeEffectiveness } from '../../domain/match/stats';
+import { getFaultingTeam } from '../../domain/match/history';
 
 type ReportEvent = { type: 'rally' } | { type: 'fault' | 'timeout' | 'substitution'; team: TeamKey };
 
 const toReportEvent = (entry: HistoryEntry): ReportEvent => {
     if (entry.entryType === 'timeout') return { type: 'timeout', team: entry.team };
     if (entry.entryType === 'substitution') return { type: 'substitution', team: entry.team };
-    if (entry.entryType === 'rally' && entry.faultingTeam) return { type: 'fault', team: entry.faultingTeam };
+    const faultingTeam = getFaultingTeam(entry);
+    if (faultingTeam) return { type: 'fault', team: faultingTeam };
     return { type: 'rally' };
 };
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';

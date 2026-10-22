@@ -3,7 +3,7 @@ import { applyHistoryUndo } from '../undo';
 import { createEmptyMatchStats, createEmptyRallyStats } from '../stats';
 import type {
     MatchData, RawTeamStats, RallyTeamStats,
-    RallyHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry,
+    RallyHistoryEntry, PointHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry,
     AdjustHistoryEntry, SetEndHistoryEntry, SetsWonAdjustHistoryEntry,
 } from '../../../types';
 
@@ -70,6 +70,47 @@ describe('applyHistoryUndo — rally', () => {
         expect(result.currentSetStats.teamA.serve).toBe(2);
         expect(result.currentSetStats.teamA.ace).toBe(1);
         expect(result.history).toHaveLength(0);
+    });
+});
+
+describe('applyHistoryUndo — point', () => {
+    test('reverses the scorer\'s point and restores the previous server', () => {
+        const entry: PointHistoryEntry = {
+            entryType: 'point',
+            timestamp: 0,
+            scores: { teamA: 10, teamB: 8 },
+            setNumber: 1,
+            team: 'teamA',
+            faultingTeam: null,
+            prevServer: 'teamB',
+        };
+        const state: MatchData = { ...baseMatch(), currentServer: 'teamA', history: [entry] };
+
+        const result = applyHistoryUndo(state, entry, 5);
+
+        expect(result.scores).toEqual({ teamA: 9, teamB: 8 });
+        expect(result.currentServer).toBe('teamB');
+        expect(result.history).toHaveLength(0);
+    });
+
+    test('leaves statistics untouched', () => {
+        const entry: PointHistoryEntry = {
+            entryType: 'point',
+            timestamp: 0,
+            scores: { teamA: 10, teamB: 8 },
+            setNumber: 1,
+            team: 'teamB',
+            faultingTeam: 'teamA',
+            prevServer: null,
+        };
+        const state: MatchData = { ...baseMatch(), history: [entry] };
+
+        const result = applyHistoryUndo(state, entry, 5);
+
+        expect(result.statistics).toEqual(state.statistics);
+        expect(result.currentSetStats).toEqual(state.currentSetStats);
+        expect(result.scores).toEqual({ teamA: 10, teamB: 7 });
+        expect(result.currentServer).toBeNull();
     });
 });
 

@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type {
     TeamKey, TeamRecord, RawTeamStats, RallyTeamStats, MatchData, MatchScores,
-    RallySnapshot, RallyHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry, AdjustHistoryEntry,
+    RallySnapshot, RallyHistoryEntry, PointHistoryEntry, TimeoutHistoryEntry, SubstitutionHistoryEntry, AdjustHistoryEntry,
     SetEndHistoryEntry, SetsWonAdjustHistoryEntry,
     MatchDomainEvent, RallyActionType, MatchPhase,
 } from '../types';
@@ -284,16 +284,47 @@ export const useMatchManager = (
         pendingEventRef.current = { type: 'SubstitutionCalled', team };
     }, []);
 
+    // Registers a point without a rally (no-stats mode). The scorer becomes the server.
+    // The set-end confirmation is the caller's job, so the point is applied immediately.
+    const scorePoint = useCallback((team: TeamKey, faultingTeam: TeamKey | null = null) => {
+        setMatch(prev => {
+            const scores = { ...prev.scores, [team]: prev.scores[team] + 1 };
+            const newEntry: PointHistoryEntry = {
+                entryType: 'point',
+                timestamp: Date.now(),
+                scores,
+                setNumber: prev.setsWon.teamA + prev.setsWon.teamB + 1,
+                team,
+                faultingTeam,
+                prevServer: prev.currentServer,
+            };
+            const stateWithEntry = { ...prev, currentServer: team, history: [...prev.history, newEntry] };
+            const newState = handleGameEnd(stateWithEntry, scores, prev.currentSetStats);
+            if (newState.winner) {
+                pendingEventRef.current = { type: 'MatchEnded', winner: newState.winner };
+            } else if (newState.setsWon.teamA + newState.setsWon.teamB > prev.setsWon.teamA + prev.setsWon.teamB) {
+                pendingEventRef.current = { type: 'SetEnded' };
+            } else {
+                pendingEventRef.current = { type: 'RallyEnded', winner: team, faultingTeam };
+            }
+            return newState;
+        });
+        resetRallyInternal(team);
+    }, [handleGameEnd, resetRallyInternal]);
+
     const adjustScore = useCallback((team: TeamKey, adjustment: number) => {
         setMatch(prev => {
-            const adjustedScores = { ...prev.scores, [team]: Math.max(0, prev.scores[team] + adjustment) };
+            const newScore = Math.max(0, prev.scores[team] + adjustment);
+            // Clamped to a no-op (e.g. "−" at 0): nothing to record or undo
+            if (newScore === prev.scores[team]) return prev;
+            const adjustedScores = { ...prev.scores, [team]: newScore };
             const newEntry: AdjustHistoryEntry = {
                 entryType: 'adjust',
                 timestamp: Date.now(),
                 scores: adjustedScores,
                 setNumber: prev.setsWon.teamA + prev.setsWon.teamB + 1,
                 team,
-                delta: adjustment,
+                delta: newScore - prev.scores[team],
                 prevServer: prev.currentServer,
             };
             const stateWithEntry = { ...prev, history: [...prev.history, newEntry] };
@@ -351,11 +382,13 @@ export const useMatchManager = (
         if (entry.entryType === 'rally') {
             setRally(entry.rallySnapshot);
             initialPossessionRef.current = entry.rallySnapshot.possession;
+        } else if (entry.entryType === 'point') {
+            resetRallyInternal(entry.prevServer);
         } else if (entry.entryType === 'set-end') {
             // Both the set-end and its trigger have been undone — start a fresh rally.
             // Use prevServer from the trigger entry (the server before the set-ending action).
             const triggerEntry = history[history.length - 2];
-            const prevServer = (triggerEntry?.entryType === 'rally' || triggerEntry?.entryType === 'adjust')
+            const prevServer = (triggerEntry?.entryType === 'rally' || triggerEntry?.entryType === 'point' || triggerEntry?.entryType === 'adjust')
                 ? triggerEntry.prevServer
                 : entry.prevServer;
             resetRallyInternal(prevServer);
@@ -430,7 +463,7 @@ export const useMatchManager = (
 
     return useMemo(() => ({
         match,
-        startMatch, resetMatch, restoreMatch, setServer, endRally,
+        startMatch, resetMatch, restoreMatch, setServer, endRally, scorePoint,
         pendingSetEnd: !!pendingSetUpdate,
         confirmSetEnd,
         callTimeout, callSubstitution, adjustScore, updateSetsWon, willRallyEndSet,
@@ -440,7 +473,7 @@ export const useMatchManager = (
         rally,
         handleAction, undoLastAction, discardRally,
         canUndo: rally.actionHistory.length > 0,
-    }), [match, startMatch, resetMatch, restoreMatch, setServer, endRally,
+    }), [match, startMatch, resetMatch, restoreMatch, setServer, endRally, scorePoint,
         pendingSetUpdate,
         confirmSetEnd,
         callTimeout, callSubstitution, adjustScore, updateSetsWon, willRallyEndSet,

@@ -5,17 +5,20 @@ import { Add, Remove, TimerOutlined, SwapHoriz, Flag } from '@mui/icons-material
 import ConfirmationDialog from '../../shared/components/ConfirmationDialog';
 import type { TeamKey, MatchDetails } from '../../types';
 import type { useMatchManager } from '../../hooks/useMatchManager';
+import { POINT_COLOR, POINT_COLOR_HOVER } from './pointColors';
 
 type MatchManager = ReturnType<typeof useMatchManager>;
 
 interface Props {
   matchDetails: MatchDetails;
   matchManager: MatchManager;
+  noStats?: boolean;
 }
 
 function ScoreBoard({
   matchDetails,
   matchManager,
+  noStats = false,
 }: Props) {
 
   const { teams, teamLogos, teamColors, maxSets } = matchDetails;
@@ -27,6 +30,7 @@ function ScoreBoard({
     callTimeout,
     callSubstitution,
     adjustScore,
+    scorePoint,
     updateSetsWon,
     willRallyEndSet
   } = matchManager;
@@ -84,23 +88,111 @@ function ScoreBoard({
     return 'none';
   };
 
+  interface PendingPoint { winner: TeamKey; faultingTeam: TeamKey | null; }
   const [confirmSetOpen, setConfirmSetOpen] = useState(false);
-  const [adjustSetWinner, setAdjustSetWinner] = useState<TeamKey | null>(null);
+  const [pendingPoint, setPendingPoint] = useState<PendingPoint | null>(null);
 
-  const handleAdjustScore = (team: TeamKey, adjustment: number) => {
-    const willEndSet = willRallyEndSet(team);
-    if (willEndSet) {
-      setAdjustSetWinner(team);
+  // In no-stats mode a point is a first-class history entry; with stats on, "+" is a manual correction.
+  const commitPoint = ({ winner, faultingTeam }: PendingPoint) => {
+    if (noStats) scorePoint(winner, faultingTeam);
+    else adjustScore(winner, 1);
+  };
+
+  // The only confirmation is for a point that ends the set
+  const requestPoint = (winner: TeamKey, faultingTeam: TeamKey | null = null) => {
+    const point = { winner, faultingTeam };
+    if (willRallyEndSet(winner)) {
+      setPendingPoint(point);
       setConfirmSetOpen(true);
     } else {
-      adjustScore(team, adjustment);
+      commitPoint(point);
     }
   }
 
-  const performAdjustSetEnd = () => {
-    if (adjustSetWinner) adjustScore(adjustSetWinner, 1);
+  const performPointSetEnd = () => {
+    if (pendingPoint) commitPoint(pendingPoint);
     setConfirmSetOpen(false);
   }
+
+  const handleFault = (faultingTeam: TeamKey) => {
+    if (noStats) requestPoint(faultingTeam === 'teamA' ? 'teamB' : 'teamA', faultingTeam);
+    else handleAction?.('fault', faultingTeam);
+  };
+
+  const adjustButtonSx = (color: string) => ({
+    margin: '2px',
+    padding: '5px 10px',
+    minWidth: 'auto',
+    backgroundColor: '#4CAF50',
+    color: 'white',
+    border: getAdjustButtonBorder(color),
+    '&:hover': {
+      backgroundColor: '#45a049'
+    },
+    '&:disabled': {
+      opacity: 0.6,
+      backgroundColor: '#ccc'
+    }
+  });
+
+  const renderMinusButton = (teamKey: TeamKey) => (
+    <Button
+      size="small"
+      disabled={!isInProgress}
+      onClick={() => adjustScore(teamKey, -1)}
+      sx={adjustButtonSx(teamColors[teamKey])}
+    >
+      <Remove />
+    </Button>
+  );
+
+  // Stats mode: "+"/"−" corrections beside the score
+  const renderAdjustControls = (teamKey: TeamKey) => {
+    if (noStats) return null;
+    return (
+      <ButtonGroup orientation="vertical" variant="outlined">
+        <Button
+          size="small"
+          disabled={!isInProgress}
+          onClick={() => requestPoint(teamKey)}
+          sx={adjustButtonSx(teamColors[teamKey])}
+        >
+          <Add />
+        </Button>
+        {renderMinusButton(teamKey)}
+      </ButtonGroup>
+    );
+  };
+
+  // No-stats mode: own row under the score so a two-digit score never competes with it for width
+  const renderPointControls = (teamKey: TeamKey) => {
+    if (!noStats) return null;
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1 }}>
+        {renderMinusButton(teamKey)}
+        <Button
+          variant="contained"
+          disabled={!isInProgress}
+          onClick={() => requestPoint(teamKey)}
+          sx={{
+            width: 84,
+            height: 84,
+            minWidth: 0,
+            p: 0,
+            borderRadius: '50%',
+            margin: '2px',
+            fontWeight: 'bold',
+            backgroundColor: POINT_COLOR,
+            color: 'white',
+            '&:hover': { backgroundColor: POINT_COLOR_HOVER },
+            '&:disabled': { opacity: 0.6, backgroundColor: '#ccc' }
+          }}
+        >
+          Punto
+        </Button>
+      </Box>
+    );
+  };
 
 
   interface PendingAction { type: 'timeout' | 'substitution'; teamKey: TeamKey; }
@@ -193,53 +285,7 @@ function ScoreBoard({
           >
             {teamKey === 'teamA' ? (
               <>
-                {/* Adjust Buttons */}
-                <ButtonGroup orientation="vertical" variant="outlined">
-                  <Button
-                    size="small"
-                    disabled={!isInProgress}
-                    onClick={() => handleAdjustScore(teamKey, 1)}
-                    sx={{
-                      margin: '2px',
-                      padding: '5px 10px',
-                      minWidth: 'auto',
-                      backgroundColor: '#4CAF50',
-                      color: 'white',
-                      border: getAdjustButtonBorder(color),
-                      '&:hover': {
-                        backgroundColor: '#45a049'
-                      },
-                      '&:disabled': {
-                        opacity: 0.6,
-                        backgroundColor: '#ccc'
-                      }
-                    }}
-                  >
-                    <Add />
-                  </Button>
-                  <Button
-                    size="small"
-                    disabled={!isInProgress}
-                    onClick={() => adjustScore(teamKey, -1)}
-                    sx={{
-                      margin: '2px',
-                      padding: '5px 10px',
-                      minWidth: 'auto',
-                      backgroundColor: '#4CAF50',
-                      color: 'white',
-                      border: getAdjustButtonBorder(color),
-                      '&:hover': {
-                        backgroundColor: '#45a049'
-                      },
-                      '&:disabled': {
-                        opacity: 0.6,
-                        backgroundColor: '#ccc'
-                      }
-                    }}
-                  >
-                    <Remove />
-                  </Button>
-                </ButtonGroup>
+                {renderAdjustControls(teamKey)}
                 {/* Score */}
                 <Typography
                   variant="h1"
@@ -342,56 +388,11 @@ function ScoreBoard({
                   {scores[teamKey]}
                 </Typography>
 
-                {/* Adjust Buttons */}
-                <ButtonGroup orientation="vertical" variant="outlined">
-                  <Button
-                    size="small"
-                    disabled={!isInProgress}
-                    onClick={() => handleAdjustScore(teamKey, 1)}
-                    sx={{
-                      margin: '2px',
-                      padding: '5px 10px',
-                      minWidth: 'auto',
-                      backgroundColor: '#4CAF50',
-                      color: 'white',
-                      border: getAdjustButtonBorder(color),
-                      '&:hover': {
-                        backgroundColor: '#45a049'
-                      },
-                      '&:disabled': {
-                        opacity: 0.6,
-                        backgroundColor: '#ccc'
-                      }
-                    }}
-                  >
-                    <Add />
-                  </Button>
-                  <Button
-                    size="small"
-                    disabled={!isInProgress}
-                    onClick={() => adjustScore(teamKey, -1)}
-                    sx={{
-                      margin: '2px',
-                      padding: '5px 10px',
-                      minWidth: 'auto',
-                      backgroundColor: '#4CAF50',
-                      color: 'white',
-                      border: getAdjustButtonBorder(color),
-                      '&:hover': {
-                        backgroundColor: '#45a049'
-                      },
-                      '&:disabled': {
-                        opacity: 0.6,
-                        backgroundColor: '#ccc'
-                      }
-                    }}
-                  >
-                    <Remove />
-                  </Button>
-                </ButtonGroup>
+                {renderAdjustControls(teamKey)}
               </>
             )}
           </Box>
+          {renderPointControls(teamKey)}
         </CardContent>
         <CardActions sx={{ pt: 2, justifyContent: 'space-evenly' }}>
           <Tooltip title={`Tiempo Muerto (${timeouts?.[teamKey] || 0}/2)`}>
@@ -451,8 +452,8 @@ function ScoreBoard({
           <Tooltip title={'Falta'}>
             <span>
               <IconButton
-                onClick={() => handleAction?.('fault', teamKey)}
-                disabled={!isInProgress || (substitutions?.[teamKey] || 0) >= 6}
+                onClick={() => handleFault(teamKey)}
+                disabled={!isInProgress}
                 sx={{
                   backgroundColor: 'rgba(255, 69, 0, 0.9)',
                   color: 'white',
@@ -495,8 +496,8 @@ function ScoreBoard({
 
         <ConfirmationDialog
           open={confirmSetOpen}
-          message={<Typography align='center'>¿Asignar el set para <br /><b>{adjustSetWinner ? teams[adjustSetWinner] : ''}</b>?</Typography>}
-          onConfirm={performAdjustSetEnd}
+          message={<Typography align='center'>¿Asignar el set para <br /><b>{pendingPoint ? teams[pendingPoint.winner] : ''}</b>?</Typography>}
+          onConfirm={performPointSetEnd}
           onCancel={() => setConfirmSetOpen(false)}
         />
         <ConfirmationDialog
