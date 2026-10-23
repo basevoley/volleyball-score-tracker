@@ -88,19 +88,19 @@ function ScoreBoard({
     return 'none';
   };
 
-  interface PendingPoint { winner: TeamKey; faultingTeam: TeamKey | null; }
+  // `manual` = "+" correction (adjust entry); otherwise a no-stats "Punto"/"Falta" (point entry)
+  interface PendingPoint { winner: TeamKey; faultingTeam: TeamKey | null; manual: boolean; }
   const [confirmSetOpen, setConfirmSetOpen] = useState(false);
   const [pendingPoint, setPendingPoint] = useState<PendingPoint | null>(null);
 
-  // In no-stats mode a point is a first-class history entry; with stats on, "+" is a manual correction.
-  const commitPoint = ({ winner, faultingTeam }: PendingPoint) => {
-    if (noStats) scorePoint(winner, faultingTeam);
+  const commitPoint = ({ winner, faultingTeam, manual }: PendingPoint) => {
+    if (noStats && !manual) scorePoint(winner, faultingTeam);
     else adjustScore(winner, 1);
   };
 
   // The only confirmation is for a point that ends the set
-  const requestPoint = (winner: TeamKey, faultingTeam: TeamKey | null = null) => {
-    const point = { winner, faultingTeam };
+  const requestPoint = (winner: TeamKey, faultingTeam: TeamKey | null = null, manual = false) => {
+    const point = { winner, faultingTeam, manual };
     if (willRallyEndSet(winner)) {
       setPendingPoint(point);
       setConfirmSetOpen(true);
@@ -146,15 +146,14 @@ function ScoreBoard({
     </Button>
   );
 
-  // Stats mode: "+"/"−" corrections beside the score
+  // "+"/"−" manual corrections beside the score (both modes)
   const renderAdjustControls = (teamKey: TeamKey) => {
-    if (noStats) return null;
     return (
       <ButtonGroup orientation="vertical" variant="outlined">
         <Button
           size="small"
           disabled={!isInProgress}
-          onClick={() => requestPoint(teamKey)}
+          onClick={() => requestPoint(teamKey, null, true)}
           sx={adjustButtonSx(teamColors[teamKey])}
         >
           <Add />
@@ -169,7 +168,6 @@ function ScoreBoard({
     if (!noStats) return null;
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1 }}>
-        {renderMinusButton(teamKey)}
         <Button
           variant="contained"
           disabled={!isInProgress}
