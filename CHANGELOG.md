@@ -1,3 +1,10 @@
+## [1.24.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.24.0...v1.24.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **scoreboard:** restore +/- score adjust buttons in no-stats mode ([093c823](https://github.com/basevoley/volleyball-score-tracker/commit/093c8236c7d39abdc1ac1ea4f615947d60219733))
+
 # [1.24.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.23.0...v1.24.0) (2026-10-22)
 
 
