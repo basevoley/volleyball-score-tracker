@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.24.1...v1.25.0) (2026-10-28)
+
+
+### Features
+
+* **effects:** celebrate scored points with text and crowd effects ([dd5789c](https://github.com/basevoley/volleyball-score-tracker/commit/dd5789c9b20496a676c8e678a93fc882ddfdf440))
+
 ## [1.24.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.24.0...v1.24.1) (2026-10-23)
 
 
