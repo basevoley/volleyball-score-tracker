@@ -105,9 +105,19 @@ Automation sequences have a `trigger`: `{ type: 'manual' }` or `{ type: 'domainE
 
 Defined sequences: `PRE_MATCH_SEQUENCE` (manual), `MATCH_START_SEQUENCE`, `TIMEOUT_SEQUENCE`, `SET_END_SEQUENCE`, `MATCH_END_SEQUENCE`.
 
+### Point celebration effects (`src/domain/effects/`, `EffectsContext`)
+
+On a scored point the operator can trigger a **celebration**: an animated text and/or a cheering crowd on the overlay. Text and crowd are two parts of one celebration, so exactly one `triggerEffect` socket event is emitted per point.
+
+- **Preferences** (`EffectPreferences`, `localStorage` key `vb_effect_preferences` (without `target`), via `PreferencesContext.effectPreferences`; edited in Settings → "Efectos de punto"): a single `target` (`none|teamA|teamB|both`, `none` = feature off) plus `crowd.mode` and `text.mode` (`off|every-point|manual`), a global `appendTeamName`, and a text list (`{ text, effect }`, effect = `random` or one of ten). Defaults to off, with the generic "PUNTAZO!!!" (random effect) plus six ready-made texts (`DEFAULT_TEXT_ENTRIES`, each tied to an effect). `target` is never persisted: it lives in memory and resets to `none` on `MatchReset` and when the teams change before kick-off (`PreferencesContext`), so a new match can never cheer for the previous match's team.
+- **Detecting a point**: `scoredPointOf(event, history)` reads who scored from the history tail (`rally`/`point` entry, optionally followed by `set-end`). Corrections (`adjust`, `sets-won-adjust`) are never points, even when they end a set. No domain event carries extra data for this.
+- **Deciding**: `planPointEffects` returns `{ immediate, dialog }`. `every-point` parts are always included; a `manual` part opens `PointEffectsDialog` (modal, countdown on the X (`DIALOG_TIMEOUT_MS`); Escape dismisses, backdrop click does not). Dismissing the dialog plays only the `every-point` parts (`DialogSpec.onDismiss`). `text.mode=every-point` plays the first text.
+- **Orchestration**: `CelebrationController` (framework-free) handles events, the dialog and emission; `EffectsProvider` wires it to React and to the socket (`triggerEffect`, payload `EffectPayload` with `durationMs`).
+- **Automation interplay**: sequences flagged `waitForCelebration` (`SET_END`, `MATCH_END`) are held by `createSequenceDispatcher` until `CelebrationGate` releases their event, i.e. until the dialog is resolved and the celebration has played (`CELEBRATION_DURATION_MS` + exit margin). Undo/reset cancels pending waits. The gate is keyed by the event object, so it is independent of listener order.
+
 ### Socket broadcast (`src/services/socket/useBroadcast.ts`)
 
-Emitted events: `matchData` (on match domain events, includes `ComputedTeamStats` with effectiveness percentages and a `matchEvent` notification), `updateConfig` (on config changes), `matchDetails` (on details changes), `handshake-response` (full state sync on connect).
+Emitted events (celebrations go out separately as `triggerEffect` from `EffectsProvider`): `matchData` (on match domain events, includes `ComputedTeamStats` with effectiveness percentages and a `matchEvent` notification), `updateConfig` (on config changes), `matchDetails` (on details changes), `handshake-response` (full state sync on connect).
 
 `syncAll()` re-broadcasts all state — called after session restore.
 
