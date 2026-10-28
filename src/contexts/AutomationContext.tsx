@@ -4,6 +4,8 @@ import type { Sequence, SequenceTrigger } from '../types';
 import { useConfig } from './ConfigContext';
 import { useMatchContext } from './MatchContext';
 import { usePreferences } from './PreferencesContext';
+import { useEffects } from './EffectsContext';
+import { createSequenceDispatcher } from '../domain/automation/dispatch';
 import { useBroadcast } from '../services/socket/useBroadcast';
 
 type DomainEventTrigger = Extract<SequenceTrigger, { type: 'domainEvent' }>;
@@ -22,6 +24,7 @@ export const AutomationProvider = ({ children, sequences }: { children: React.Re
     const { matchManager, matchDetails, addMatchEventListener } = useMatchContext();
 
     const { automationLayout } = usePreferences();
+    const { gate } = useEffects();
 
     const runner = useAutomationRunner({ config, setConfig, layoutMode: automationLayout });
     const { syncAll } = useBroadcast();
@@ -79,19 +82,21 @@ export const AutomationProvider = ({ children, sequences }: { children: React.Re
             return acc;
         }, {});
 
+        const dispatch = createSequenceDispatcher({
+            gate,
+            run: seq => runnerRunRef.current(seq, () => ctxRef.current),
+            isEnabled: id => !!automationsEnabledRef.current[id],
+        });
+
         return addMatchEventListener((event) => {
             if (event.type === 'HistoryUndone') {
                 runnerStopRef.current();
                 syncAllRef.current();
                 return;
             }
-            const matching = byEvent[event.type] ?? [];
-            for (const seq of matching) {
-                if (!automationsEnabledRef.current[seq.id]) continue;
-                runnerRunRef.current(seq, () => ctxRef.current);
-            }
+            dispatch(event, byEvent[event.type] ?? []);
         });
-    }, [addMatchEventListener]); // autoSequences is derived from stable prop
+    }, [addMatchEventListener, gate]); // autoSequences is derived from stable prop
 
     const runSequence = useCallback((sequence: Sequence) => {
         runnerRunRef.current(sequence, () => ctxRef.current);

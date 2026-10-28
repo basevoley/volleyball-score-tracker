@@ -35,6 +35,8 @@ const ALL_PRESENTATION_PANELS: ConfigChange[] = [
 //   steps             - array of step objects (see below)
 //   snapshotSections  - optional: config sections to snapshot before running; restored on stop or natural end
 //   resetOnStop       - optional: sections to force-hide when stop() is called
+//   waitForCelebration - optional: for domainEvent triggers, hold the run until the point's celebration
+//                       (crowd/text effects) has finished, so the two never overlap on the overlay
 //
 // Each step has:
 //   label      - displayed in the Controls progress indicator
@@ -269,6 +271,7 @@ export const SET_END_SEQUENCE: Sequence = {
     description: 'Al acabar un set, oculta todos los paneles, muestra el panel de resultados durante 1 minuto, y luego muestra patrocinadores y el marcador con historial de sets.',
     trigger: { type: 'domainEvent', event: 'SetEnded' },
     defaultEnabled: true,
+    waitForCelebration: true,
     resetOnStop: ['afterMatch', 'sponsors'],
     steps: [
         {
@@ -338,6 +341,7 @@ export const MATCH_END_SEQUENCE: Sequence = {
     description: 'Al terminar el partido, oculta todos los paneles, muestra el panel de resultados durante 1 minuto, y luego muestra patrocinadores.',
     trigger: { type: 'domainEvent', event: 'MatchEnded' },
     defaultEnabled: true,
+    waitForCelebration: true,
     resetOnStop: ['afterMatch'],
     steps: [
         {

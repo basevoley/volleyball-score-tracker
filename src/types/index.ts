@@ -278,6 +278,43 @@ export interface Sequence {
   steps: SequenceStep[];
   snapshotSections?: (keyof RuntimeConfig)[];
   resetOnStop?: (keyof RuntimeConfig)[];
+  // Domain-event sequences only: hold the run until the point's celebration (if any) has finished
+  waitForCelebration?: boolean;
+}
+
+// ── Point celebration effects ────────────────────────────────────────────────
+
+// Which scorer's points are celebrated; 'none' switches the whole feature off
+export type EffectTarget = 'none' | 'teamA' | 'teamB' | 'both';
+export type EffectMode = 'off' | 'every-point' | 'manual';
+export type TextEffectId = 'superman' | 'explosion' | 'pop' | 'shooting' | 'glitch' | 'jumbotron' | 'slam' | 'laser' | 'sonic' | 'wave';
+export type TextEffectChoice = TextEffectId | 'random';
+
+export interface CelebrationTextEntry {
+  id: string;
+  text: string;
+  effect: TextEffectChoice;
+}
+
+export interface EffectPreferences {
+  target: EffectTarget;
+  appendTeamName: boolean;
+  crowd: { mode: EffectMode };
+  text: { mode: EffectMode };
+  texts: CelebrationTextEntry[];
+}
+
+// What the overlay plays for one point: text and crowd are two parts of the same celebration
+export interface Celebration {
+  team: TeamKey;
+  text?: { content: string; effect: TextEffectId };
+  crowd: boolean;
+}
+
+// Wire format of the `triggerEffect` socket event
+export interface EffectPayload extends Celebration {
+  id: number;
+  durationMs: number;
 }
 
 // ── Rally ────────────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import { SocialNetworksSection } from './SocialNetworksSection';
 import { SponsorsSection } from './SponsorsSection';
 import { AppearanceSection } from './AppearanceSection';
 import { SubscribeSection } from './SubscribeSection';
+import { EffectsSection } from './EffectsSection';
 import { OVERLAY_CUSTOMIZATIONS_ENABLED } from '../../config'
 
 const Settings = () => {
@@ -36,6 +37,15 @@ const Settings = () => {
                             checked={noStats}
                             onChange={setNoStats}
                         />
+                    </AccordionDetails>
+                </Accordion>
+
+                <Accordion sx={{ mt: 1, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="h6">Efectos de punto</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                        <EffectsSection />
                     </AccordionDetails>
                 </Accordion>
 
