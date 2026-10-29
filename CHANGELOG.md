@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.25.0...v1.25.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **pre-match:** jornada selection and results in FMV and Fontventa importers ([c83afa4](https://github.com/basevoley/volleyball-score-tracker/commit/c83afa4b1a787f6358c5362ef6fba4ca5c2f9434))
+
 # [1.25.0](https://github.com/basevoley/volleyball-score-tracker/compare/v1.24.1...v1.25.0) (2026-10-28)
 
 
