@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     CircularProgress,
@@ -19,6 +19,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import Tooltip from '@mui/material/Tooltip';
 import { getBestBadge } from '../../shared/utils/badgeUtils';
+import { pickInitialJornada, jornadaOptionLabel } from './jornadaSelection';
 
 interface FMVApiItem {
     id: string | number;
@@ -81,17 +82,49 @@ async function getFmv<T>(endpoint: string, params: Record<string, string | numbe
 }
 
 interface GroupBundle {
-    journey: JourneyData;
+    jornadas: JourneyData[];
+    currentJornadaId: number;
     ranking: RankingItem[];
-    matches: MatchItem[];
 }
 
-// The jornada/ranking/partidos bundle is the part users actually look at — cached for an
-// hour, same convention as RfevbMatchSelector/EsvoleyMatchSelector, so the selector's
-// refresh button has something real to bypass instead of every load being a fresh
-// network round-trip regardless of the cache. Module-level so it survives dialog reopens.
+// The jornada list/ranking and each jornada's partidos are the parts users actually look
+// at — cached for an hour, same convention as RfevbMatchSelector/EsvoleyMatchSelector, so
+// the selector's refresh button has something real to bypass instead of every load being a
+// fresh network round-trip regardless of the cache. Module-level so it survives dialog reopens.
 const GROUP_BUNDLE_CACHE_TTL_MS = 60 * 60 * 1000;
 const groupBundleCache = new Map<string, { data: GroupBundle; fetchedAt: number }>();
+const jornadaMatchesCache = new Map<number, { data: MatchItem[]; fetchedAt: number }>();
+
+async function fetchJornadaMatches(jornadaId: number, forceRefresh: boolean): Promise<MatchItem[]> {
+    const cached = jornadaMatchesCache.get(jornadaId);
+    if (!forceRefresh && cached && Date.now() - cached.fetchedAt < GROUP_BUNDLE_CACHE_TTL_MS) {
+        return cached.data;
+    }
+    const data = await getFmv<MatchItem[]>('getPartidosByJornada', { jornadaId });
+    jornadaMatchesCache.set(jornadaId, { data, fetchedAt: Date.now() });
+    return data;
+}
+
+async function fetchGroupBundle(groupId: string | number, forceRefresh: boolean): Promise<GroupBundle> {
+    const cacheKey = String(groupId);
+    const cached = groupBundleCache.get(cacheKey);
+    if (!forceRefresh && cached && Date.now() - cached.fetchedAt < GROUP_BUNDLE_CACHE_TTL_MS) {
+        return cached.data;
+    }
+    const [calendar, current, ranking] = await Promise.all([
+        getFmv<Array<{ id: number; numero: string | number }>>('getJornadasCalendario', { grupoId: groupId }),
+        getFmv<JourneyData>('getJornadaActualGrupo', { grupoId: groupId }),
+        getFmv<RankingItem[]>('getClasificacionGrupo', { grupoId: groupId }),
+    ]);
+    // The calendar lists every jornada of the group (so postponed matches from earlier
+    // ones stay reachable). Fall back to just the current one if it comes back empty.
+    const jornadas = calendar.length > 0
+        ? calendar.map(j => ({ id: j.id, numero: Number(j.numero) }))
+        : [current];
+    const data = { jornadas, currentJornadaId: current.id, ranking };
+    groupBundleCache.set(cacheKey, { data, fetchedAt: Date.now() });
+    return data;
+}
 
 const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
     const [competitionTypes, setCompetitionTypes] = useState<FMVApiItem[]>([]);
@@ -107,7 +140,12 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
     const [selectedDivision, setSelectedDivision] = useState<string | number>('');
     const [selectedPhase, setSelectedPhase] = useState<string | number>('');
     const [selectedGroup, setSelectedGroup] = useState<string | number>('');
-    const [journeyData, setJourneyData] = useState<JourneyData | null>(null);
+    const [jornadas, setJornadas] = useState<JourneyData[]>([]);
+    const [currentJornadaId, setCurrentJornadaId] = useState<number | null>(null);
+    const [selectedJornadaId, setSelectedJornadaId] = useState('');
+
+    // Id of the jornada the user last picked, so a slow response for a previous pick can't overwrite it.
+    const latestJornadaRef = useRef('');
 
     const [loadingTypes, setLoadingTypes] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -129,39 +167,51 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const loadGroupData = (groupId: string | number, forceRefresh = false) => {
+    const resetResults = () => {
+        latestJornadaRef.current = '';
+        setMatches([]); setRankingData([]);
+        setJornadas([]); setCurrentJornadaId(null); setSelectedJornadaId('');
+        setLastFetched(null); setError(null);
+    };
+
+    // `keepJornadaId` is the jornada the operator was browsing: a refresh passes it so they
+    // aren't yanked back to the current jornada; a freshly picked group passes nothing.
+    const loadGroupData = (groupId: string | number, forceRefresh = false, keepJornadaId = '') => {
         setLoading(true);
-        setError(null);
-        setMatches([]);
-        setRankingData([]);
-        setJourneyData(null);
-        setLastFetched(null);
+        resetResults();
 
-        const cacheKey = String(groupId);
-        const cached = forceRefresh ? undefined : groupBundleCache.get(cacheKey);
-        if (cached && Date.now() - cached.fetchedAt < GROUP_BUNDLE_CACHE_TTL_MS) {
-            setJourneyData(cached.data.journey);
-            setRankingData(cached.data.ranking);
-            setMatches(cached.data.matches);
-            setLastFetched(new Date());
-            setLoading(false);
-            return;
-        }
-
-        Promise.all([
-            getFmv<JourneyData>('getJornadaActualGrupo', { grupoId: groupId }),
-            getFmv<RankingItem[]>('getClasificacionGrupo', { grupoId: groupId }),
-        ])
-            .then(async ([journey, ranking]) => {
-                const matchesData = await getFmv<MatchItem[]>('getPartidosByJornada', { jornadaId: journey.id });
-                groupBundleCache.set(cacheKey, { data: { journey, ranking, matches: matchesData }, fetchedAt: Date.now() });
-                setJourneyData(journey);
-                setRankingData(ranking);
+        fetchGroupBundle(groupId, forceRefresh)
+            .then(async bundle => {
+                const initialId = pickInitialJornada(
+                    bundle.jornadas.map(j => String(j.id)),
+                    String(bundle.currentJornadaId),
+                    keepJornadaId,
+                );
+                latestJornadaRef.current = initialId;
+                const matchesData = await fetchJornadaMatches(Number(initialId), forceRefresh);
+                setJornadas(bundle.jornadas);
+                setCurrentJornadaId(bundle.currentJornadaId);
+                setSelectedJornadaId(initialId);
+                setRankingData(bundle.ranking);
                 setMatches(matchesData);
                 setLastFetched(new Date());
             })
             .catch(() => setError('Error cargando los partidos'))
             .finally(() => setLoading(false));
+    };
+
+    // Switching jornada only reloads that jornada's partidos — group, ranking and the
+    // dropdown cascade stay as they are.
+    const handleJornadaChange = (jornadaId: string) => {
+        latestJornadaRef.current = jornadaId;
+        setSelectedJornadaId(jornadaId);
+        setMatches([]);
+        setError(null);
+        setLoading(true);
+        fetchJornadaMatches(Number(jornadaId), false)
+            .then(result => { if (latestJornadaRef.current === jornadaId) setMatches(result); })
+            .catch(() => { if (latestJornadaRef.current === jornadaId) setError('Error cargando los partidos'); })
+            .finally(() => { if (latestJornadaRef.current === jornadaId) setLoading(false); });
     };
 
     // Each cascade step below follows the same shape: reset everything downstream, fetch this
@@ -175,7 +225,7 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
         setDivisions([]); setSelectedDivision('');
         setPhases([]); setSelectedPhase('');
         setGroups([]); setSelectedGroup('');
-        setMatches([]); setRankingData([]); setJourneyData(null); setLastFetched(null); setError(null);
+        resetResults();
         if (!tipoId) return;
 
         setLoading(true);
@@ -193,7 +243,7 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
         setDivisions([]); setSelectedDivision('');
         setPhases([]); setSelectedPhase('');
         setGroups([]); setSelectedGroup('');
-        setMatches([]); setRankingData([]); setJourneyData(null); setLastFetched(null); setError(null);
+        resetResults();
         if (!categoryId) return;
 
         setLoading(true);
@@ -210,7 +260,7 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
         setSelectedDivision(divisionId);
         setPhases([]); setSelectedPhase('');
         setGroups([]); setSelectedGroup('');
-        setMatches([]); setRankingData([]); setJourneyData(null); setLastFetched(null); setError(null);
+        resetResults();
         if (!divisionId) return;
 
         setLoading(true);
@@ -226,7 +276,7 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
     const handleFaseChange = (phaseId: string | number) => {
         setSelectedPhase(phaseId);
         setGroups([]); setSelectedGroup('');
-        setMatches([]); setRankingData([]); setJourneyData(null); setLastFetched(null); setError(null);
+        resetResults();
         if (!phaseId) return;
 
         setLoading(true);
@@ -264,8 +314,9 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
         const category = categories.find(type => type.id === selectedCategory);
         const division = divisions.find(type => type.id === selectedDivision);
         const phase = phases.find(comp => comp.id === selectedPhase);
+        const jornada = jornadas.find(j => String(j.id) === selectedJornadaId);
 
-        if (!teamAData || !teamBData || !category || !division || !phase) return;
+        if (!teamAData || !teamBData || !category || !division || !phase || !jornada) return;
 
         const teamABadge = getBestBadge(teamAData.nombre);
         const teamBBadge = getBestBadge(teamBData.nombre);
@@ -276,7 +327,7 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
             teamALogo: teamABadge ? teamABadge : teamAData.imagen,
             teamBLogo: teamBBadge ? teamBBadge : teamBData.imagen,
             matchHeader: `${category.categoria_sexo} - ${division.nombre}`,
-            extendedInfo: `Fase ${phase.nombre} - Jornada ${journeyData?.numero}`,
+            extendedInfo: `Fase ${phase.nombre} - Jornada ${jornada.numero}`,
             stadium: `Pabellón ${match.pabellon}`,
             competitionLogo: 'https://fmvoley.com/images/logo.svg',
             maxSets: 5,
@@ -289,6 +340,7 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
     };
 
     const selectSx = { minWidth: 160, flex: '1 1 160px' };
+    const selectedJornada = jornadas.find(j => String(j.id) === selectedJornadaId);
 
     return (
         <Dialog open onClose={onClose} fullWidth maxWidth="sm">
@@ -374,11 +426,11 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="caption" color="text.secondary">
                             Actualizado: {lastFetched.toLocaleTimeString()}
-                            {journeyData ? ` · Jornada ${journeyData.numero}` : ''}
+                            {selectedJornada ? ` · Jornada ${selectedJornada.numero}` : ''}
                         </Typography>
                         <Tooltip title="Actualizar">
                             <span>
-                                <IconButton size="small" aria-label="Actualizar" onClick={() => loadGroupData(selectedGroup, true)} disabled={loading}>
+                                <IconButton size="small" aria-label="Actualizar" onClick={() => loadGroupData(selectedGroup, true, selectedJornadaId)} disabled={loading}>
                                     <RefreshIcon fontSize="small" />
                                 </IconButton>
                             </span>
@@ -394,6 +446,24 @@ const MatchSelector = ({ onSelectMatch, onClose }: Props) => {
 
                 {error && (
                     <Typography color="error" sx={{ py: 2 }}>{error}</Typography>
+                )}
+
+                {!loadingTypes && jornadas.length > 1 && (
+                    <FormControl size="small" fullWidth sx={{ mb: 2 }} disabled={loading}>
+                        <InputLabel id="fmv-jornada-label">Jornada</InputLabel>
+                        <Select
+                            labelId="fmv-jornada-label"
+                            value={selectedJornadaId}
+                            label="Jornada"
+                            onChange={(e) => handleJornadaChange(String(e.target.value))}
+                        >
+                            {jornadas.map(j => (
+                                <MenuItem key={j.id} value={String(j.id)}>
+                                    {jornadaOptionLabel(j.numero, j.id === currentJornadaId)}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
                 )}
 
                 {!loading && matches.length > 0 && (

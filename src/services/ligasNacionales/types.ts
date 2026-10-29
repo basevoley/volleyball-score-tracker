@@ -28,6 +28,14 @@ export interface LigaMatch {
   jornadaNumero: string;
 }
 
+// The calendar endpoint carries no result data; it comes from getPartidosByJornada (see
+// fetchJornadaResults) and is overlaid on LigaMatch by id.
+export interface LigaMatchResult {
+  finished: boolean;
+  homeScore: number;
+  awayScore: number;
+}
+
 export interface LigaStanding {
   team: string;
   logo: string;
@@ -38,5 +46,7 @@ export interface LigaGroupData {
   grupo: LigaGrupo;
   fase: LigaFase;
   matches: LigaMatch[];
+  currentJornada: string; // jornada number the federation considers current; '' if unknown
+  jornadaIds: Record<string, number>; // jornada number -> API jornada id (needed for per-jornada results)
   standings: Record<string, LigaStanding>; // keyed by team name, trimmed + lowercased
 }
