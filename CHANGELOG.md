@@ -1,3 +1,10 @@
+## [1.25.2](https://github.com/basevoley/volleyball-score-tracker/compare/v1.25.1...v1.25.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **pre-match:** improve team badge matching for FMV names ([341beb7](https://github.com/basevoley/volleyball-score-tracker/commit/341beb7fc607324997ad9124ff85c43d7f88d6d3))
+
 ## [1.25.1](https://github.com/basevoley/volleyball-score-tracker/compare/v1.25.0...v1.25.1) (2026-10-29)
 
 
