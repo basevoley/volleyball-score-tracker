@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   CircularProgress,
@@ -20,8 +20,9 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import Tooltip from '@mui/material/Tooltip';
 import type { TeamCompetitionStats } from '../../types';
 import { getBestBadge } from '../../shared/utils/badgeUtils';
-import { fetchCompeticiones, resolveFases, resolveGrupos, fetchGroupData } from '../../services/ligasNacionales/fontventaClient';
-import type { LigaCompetition, LigaFase, LigaGrupo, LigaGroupData, LigaMatch } from '../../services/ligasNacionales/types';
+import { fetchCompeticiones, resolveFases, resolveGrupos, fetchGroupData, fetchJornadaResults } from '../../services/ligasNacionales/fontventaClient';
+import type { LigaCompetition, LigaFase, LigaGrupo, LigaGroupData, LigaMatch, LigaMatchResult } from '../../services/ligasNacionales/types';
+import { pickInitialJornada, jornadaOptionLabel } from './jornadaSelection';
 
 interface Props {
   onSelectMatch: (matchDetails: Record<string, unknown>) => void;
@@ -75,6 +76,9 @@ export default function LigasNacionalesMatchSelector({ onSelectMatch, onClose }:
   const [data, setData] = useState<LigaGroupData | null>(null);
   const [selectedJornada, setSelectedJornada] = useState('');
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  const [results, setResults] = useState<Record<number, LigaMatchResult>>({});
+  // Set by handleRefresh so the results effect below bypasses its cache for that one reload.
+  const forceResultsRef = useRef(false);
 
   useEffect(() => {
     fetchCompeticiones()
@@ -83,6 +87,20 @@ export default function LigasNacionalesMatchSelector({ onSelectMatch, onClose }:
       .finally(() => setLoadingCompeticiones(false));
   }, []);
 
+  // Results (finished + score) live in a different endpoint than the match list, so they are
+  // fetched for the jornada being viewed. Best-effort: on failure every match stays selectable.
+  useEffect(() => {
+    const jornadaId = data?.jornadaIds[selectedJornada];
+    if (!jornadaId) { setResults({}); return; }
+    let cancelled = false;
+    const forceRefresh = forceResultsRef.current;
+    forceResultsRef.current = false;
+    fetchJornadaResults(jornadaId, forceRefresh)
+      .then(r => { if (!cancelled) setResults(r); })
+      .catch(() => { if (!cancelled) setResults({}); });
+    return () => { cancelled = true; };
+  }, [data, selectedJornada]);
+
   const resetDownstream = () => {
     setData(null);
     setSelectedJornada('');
@@ -90,10 +108,14 @@ export default function LigasNacionalesMatchSelector({ onSelectMatch, onClose }:
     setError(null);
   };
 
+  // `selectedJornada` is '' after resetDownstream (new group) and still set on a refresh, so
+  // pickInitialJornada lands on the current jornada for a new group and keeps what the
+  // operator browsed to on a refresh.
   const loadMatches = async (grupo: LigaGrupo, fase: LigaFase, forceRefresh = false) => {
     const result = await fetchGroupData(grupo, fase, forceRefresh);
+    const jornadaKeys = Array.from(groupByJornada(result.matches).keys());
     setData(result);
-    setSelectedJornada(Array.from(groupByJornada(result.matches).keys())[0] ?? '');
+    setSelectedJornada(previous => pickInitialJornada(jornadaKeys, result.currentJornada, previous));
     setLastFetched(new Date());
   };
 
@@ -106,13 +128,13 @@ export default function LigasNacionalesMatchSelector({ onSelectMatch, onClose }:
     await loadMatches(grupo, fase, forceRefresh);
   };
 
-  const loadFases = async (comp: LigaCompetition, forceRefresh: boolean, preferFaseId?: string) => {
+  const loadFases = async (comp: LigaCompetition, forceRefresh: boolean, preferFaseId?: string, preferGrupoId?: string) => {
     const fs = await resolveFases(comp.competicionId, forceRefresh);
     setFases(fs);
     const fase = fs.find(f => f.id === preferFaseId) ?? fs[0];
     if (!fase) { setSelectedFaseId(''); setGrupos([]); return; }
     setSelectedFaseId(fase.id);
-    await loadGrupos(fase, forceRefresh);
+    await loadGrupos(fase, forceRefresh, preferGrupoId);
   };
 
   const handleCompeticionChange = (competicionId: number) => {
@@ -160,8 +182,9 @@ export default function LigasNacionalesMatchSelector({ onSelectMatch, onClose }:
   // promotion playoff, a final stage — becomes selectable without leaving the dialog.
   const handleRefresh = () => {
     if (!competicion) return;
+    forceResultsRef.current = true;
     setLoading(true);
-    loadFases(competicion, true, selectedFaseId)
+    loadFases(competicion, true, selectedFaseId, selectedGrupoId)
       .catch(e => setError(e instanceof Error ? e.message : 'Error actualizando'))
       .finally(() => setLoading(false));
   };
@@ -234,10 +257,11 @@ export default function LigasNacionalesMatchSelector({ onSelectMatch, onClose }:
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <Typography variant="caption" color="text.secondary">
               Actualizado: {lastFetched.toLocaleTimeString()}
+              {selectedJornada ? ` · Jornada ${selectedJornada}` : ''}
             </Typography>
             <Tooltip title="Actualizar (comprueba también si hay nuevas fases)">
               <span>
-                <IconButton size="small" onClick={handleRefresh} disabled={loading}>
+                <IconButton size="small" aria-label="Actualizar" onClick={handleRefresh} disabled={loading}>
                   <RefreshIcon fontSize="small" />
                 </IconButton>
               </span>
@@ -264,7 +288,7 @@ export default function LigasNacionalesMatchSelector({ onSelectMatch, onClose }:
               onChange={e => setSelectedJornada(e.target.value)}
             >
               {jornadaKeys.map(k => (
-                <MenuItem key={k} value={k}>Jornada {k}</MenuItem>
+                <MenuItem key={k} value={k}>{jornadaOptionLabel(k, k === data.currentJornada)}</MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -272,16 +296,31 @@ export default function LigasNacionalesMatchSelector({ onSelectMatch, onClose }:
 
         {data && !loading && visibleMatches.length > 0 && (
           <List dense disablePadding>
-            {visibleMatches.map(match => (
-              <ListItemButton key={match.id} onClick={() => handleMatchSelect(match)} divider>
-                <ListItemText
-                  primary={`${match.homeTeam} vs ${match.awayTeam}`}
-                  secondary={`${match.date} ${match.time} · ${match.venue}`}
-                  primaryTypographyProps={{ fontSize: '0.875rem' }}
-                  secondaryTypographyProps={{ fontSize: '0.75rem' }}
-                />
-              </ListItemButton>
-            ))}
+            {visibleMatches.map(match => {
+              const result = results[match.id];
+              const finished = result?.finished ?? false;
+              const details = `${match.date} ${match.time} · ${match.venue}`;
+              return (
+                <ListItemButton
+                  key={match.id}
+                  onClick={() => handleMatchSelect(match)}
+                  disabled={finished}
+                  divider
+                  sx={{ opacity: finished ? 0.5 : 1 }}
+                >
+                  <ListItemText
+                    primary={`${match.homeTeam} vs ${match.awayTeam}`}
+                    secondary={
+                      finished
+                        ? <>{`${details} · `}<strong>FINALIZADO: {result.homeScore}-{result.awayScore}</strong></>
+                        : details
+                    }
+                    primaryTypographyProps={{ fontSize: '0.875rem' }}
+                    secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                  />
+                </ListItemButton>
+              );
+            })}
           </List>
         )}
 

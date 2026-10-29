@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { fetchCompeticiones, resolveFases, resolveGrupos, fetchGroupData } from '../fontventaClient';
+import { fetchCompeticiones, resolveFases, resolveGrupos, fetchGroupData, fetchJornadaResults } from '../fontventaClient';
 
 function jsonResponse(content: unknown) {
   return Promise.resolve({ json: () => Promise.resolve({ content }) } as Response);
@@ -138,6 +138,7 @@ describe('fetchGroupData', () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse([
         {
+          id: 587,
           numero: '1',
           partidos: [{
             id: 2138, fecha: '03/10/2026', hora: '16:00', pabellon: 'FADURA',
@@ -152,13 +153,16 @@ describe('fetchGroupData', () => {
           posicion: '1', puntos: '15', jugados: '5', ganados: '5', ganados3: '5', ganados2: '0',
           perdidos: '0', perdidos1: '0', perdidos0: '0', puntos_a_favor: '379', puntos_en_contra: '264',
         },
-      ]));
+      ]))
+      .mockResolvedValueOnce(jsonResponse({ id: 588, fecha: '31/10/2026', numero: '5' }));
     vi.stubGlobal('fetch', fetchMock);
 
     const fase = { id: '108', nombre: 'Liga Regular' };
     const data = await fetchGroupData({ id: '234', nombre: 'GRUPO A' }, fase);
 
     expect(data.fase).toEqual(fase);
+    expect(data.currentJornada).toBe('5');
+    expect(data.jornadaIds).toEqual({ '1': 587 });
     expect(data.matches).toEqual([{
       id: 2138,
       homeTeam: 'Getxoko Aixerrota BKT',
@@ -179,10 +183,20 @@ describe('fetchGroupData', () => {
     });
   });
 
+  test('falls back to an unknown current jornada when getJornadaActualGrupo fails', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes('getJornadaActualGrupo')) return Promise.reject(new Error('boom'));
+      return jsonResponse([]);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const data = await fetchGroupData({ id: 'current-fail', nombre: 'GRUPO A' }, { id: '108', nombre: 'Liga Regular' });
+
+    expect(data.currentJornada).toBe('');
+  });
+
   test('serves a second call for the same grupo from cache instead of refetching', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse([]))
-      .mockResolvedValueOnce(jsonResponse([]));
+    const fetchMock = vi.fn(() => jsonResponse([]));
     vi.stubGlobal('fetch', fetchMock);
 
     const grupo = { id: 'cache-test-1', nombre: 'GRUPO A' };
@@ -192,15 +206,11 @@ describe('fetchGroupData', () => {
     const second = await fetchGroupData(grupo, fase);
 
     expect(second).toBe(first); // same cached object, not just equal
-    expect(fetchMock).toHaveBeenCalledTimes(2); // one round-trip (jornadas + clasificacion), not two
+    expect(fetchMock).toHaveBeenCalledTimes(3); // one round-trip (jornadas + clasificacion + actual), not two
   });
 
   test('bypasses the cache when forceRefresh is true', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse([]))
-      .mockResolvedValueOnce(jsonResponse([]))
-      .mockResolvedValueOnce(jsonResponse([]))
-      .mockResolvedValueOnce(jsonResponse([]));
+    const fetchMock = vi.fn(() => jsonResponse([]));
     vi.stubGlobal('fetch', fetchMock);
 
     const grupo = { id: 'cache-test-2', nombre: 'GRUPO A' };
@@ -209,6 +219,50 @@ describe('fetchGroupData', () => {
     await fetchGroupData(grupo, fase);
     await fetchGroupData(grupo, fase, true);
 
-    expect(fetchMock).toHaveBeenCalledTimes(4); // two full round-trips
+    expect(fetchMock).toHaveBeenCalledTimes(6); // two full round-trips
+  });
+});
+
+describe('fetchJornadaResults', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const rows = [
+    { id: 1477, finalizado: true, puntos_local: '2', puntos_visitante: '1' },
+    { id: 1499, finalizado: false, puntos_local: '0', puntos_visitante: '0' },
+  ];
+
+  test('keys finished flag and numeric scores by match id', async () => {
+    const fetchMock = vi.fn((_url: string) => jsonResponse(rows));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const results = await fetchJornadaResults(9001);
+
+    expect(results).toEqual({
+      1477: { finished: true, homeScore: 2, awayScore: 1 },
+      1499: { finished: false, homeScore: 0, awayScore: 0 },
+    });
+    expect(fetchMock.mock.calls[0][0]).toContain('getPartidosByJornada?jornadaId=9001');
+  });
+
+  test('serves a second call for the same jornada from cache', async () => {
+    const fetchMock = vi.fn((_url: string) => jsonResponse(rows));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchJornadaResults(9002);
+    await fetchJornadaResults(9002);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('bypasses the cache when forceRefresh is true', async () => {
+    const fetchMock = vi.fn((_url: string) => jsonResponse(rows));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchJornadaResults(9003);
+    await fetchJornadaResults(9003, true);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

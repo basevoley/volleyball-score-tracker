@@ -1,4 +1,4 @@
-import type { LigaCompetition, LigaFase, LigaGrupo, LigaGroupData, LigaMatch, LigaStanding } from './types';
+import type { LigaCompetition, LigaFase, LigaGrupo, LigaGroupData, LigaMatch, LigaMatchResult, LigaStanding } from './types';
 import { fetchCompetitionLogos, lookupCompetitionLogo } from './logos';
 
 const FONTVENTA_BASE = 'https://rfevb.fontventa.com/api/competiciones';
@@ -109,6 +109,7 @@ export async function resolveGrupos(faseId: string, forceRefresh = false): Promi
 }
 
 interface JornadaCalendarioResponse {
+  id: number;
   numero: string;
   partidos: Array<{
     id: number;
@@ -179,6 +180,37 @@ function parseStandings(rows: ClasificacionRow[]): Record<string, LigaStanding> 
   return standings;
 }
 
+interface PartidoResultRow {
+  id: number;
+  finalizado: boolean;
+  puntos_local: string;
+  puntos_visitante: string;
+}
+
+const jornadaResultsCache = new Map<number, { results: Record<number, LigaMatchResult>; fetchedAt: number }>(); // keyed by jornadaId
+
+// getJornadasCalendario (which fetchGroupData uses for the match list) has no results, so
+// finished/score come from getPartidosByJornada — one request per jornada, fetched on demand
+// for the jornada being viewed rather than for all ~20 up front. Keyed by match id.
+export async function fetchJornadaResults(jornadaId: number, forceRefresh = false): Promise<Record<number, LigaMatchResult>> {
+  const cached = jornadaResultsCache.get(jornadaId);
+  if (!forceRefresh && cached && Date.now() - cached.fetchedAt < GROUP_DATA_CACHE_TTL_MS) {
+    return cached.results;
+  }
+
+  const rows = await get<PartidoResultRow[]>('getPartidosByJornada', { jornadaId });
+  const results: Record<number, LigaMatchResult> = {};
+  for (const row of rows) {
+    results[row.id] = {
+      finished: row.finalizado,
+      homeScore: Number(row.puntos_local),
+      awayScore: Number(row.puntos_visitante),
+    };
+  }
+  jornadaResultsCache.set(jornadaId, { results, fetchedAt: Date.now() });
+  return results;
+}
+
 const groupDataCache = new Map<string, { data: LigaGroupData; fetchedAt: number }>(); // keyed by grupoId
 
 export async function fetchGroupData(grupo: LigaGrupo, fase: LigaFase, forceRefresh = false): Promise<LigaGroupData> {
@@ -187,15 +219,19 @@ export async function fetchGroupData(grupo: LigaGrupo, fase: LigaFase, forceRefr
     return cached.data;
   }
 
-  const [jornadas, clasificacion] = await Promise.all([
+  const [jornadas, clasificacion, actual] = await Promise.all([
     get<JornadaCalendarioResponse[]>('getJornadasCalendario', { grupoId: grupo.id }),
     get<ClasificacionRow[]>('getClasificacionGrupo', { grupoId: grupo.id }),
+    // Best-effort: without it the selector just falls back to its last jornada.
+    get<{ numero?: string | number } | null>('getJornadaActualGrupo', { grupoId: grupo.id }).catch(() => null),
   ]);
 
   const data: LigaGroupData = {
     grupo,
     fase,
     matches: parseMatches(jornadas),
+    currentJornada: actual?.numero != null ? String(actual.numero) : '',
+    jornadaIds: Object.fromEntries(jornadas.map(j => [j.numero, j.id])),
     standings: parseStandings(clasificacion),
   };
   groupDataCache.set(grupo.id, { data, fetchedAt: Date.now() });
